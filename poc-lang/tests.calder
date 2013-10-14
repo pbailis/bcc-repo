@@ -1,0 +1,75 @@
+
+### Test TABLE for sequence numbers ###
+
+DECLARE TABLE testsequence
+  NUMBER test SEQUENCE
+END TABLE
+
+### Test TABLEs for uniqueness insert ###
+
+DECLARE TABLE testuniquekey
+  STRING id UNIQUE
+  STRING safetoinsert
+END TABLE
+
+DECLARE TABLE testuniquekeysafe
+  STRING id
+  STRING safetoinsert
+END TABLE
+
+### Test TABLE for increment and decrement ###
+
+DECLARE TABLE testincdec
+  NUMBER todecrement > 0
+  NUMBER toincrement < 0
+END TABLE
+
+### Test TABLE for conditional increment ###
+
+DECLARE TABLE testconditional
+  NUMBER todecrement > 0
+END TABLE
+
+### Test PROCEDUREs for sequence numbers ###
+
+BEGIN PROCEDURE testinsertsequence
+  INSERT INTO testsequence VALUES test=2;
+END PROCEDURE
+
+BEGIN PROCEDURE testdeletesequence
+  DELETE FROM testsequence WHERE test=*;
+END PROCEDURE
+
+### Test PROCEDUREs for uniqueness insert ###
+
+BEGIN PROCEDURE testuniqueinsert
+  INSERT INTO testuniquekey VALUES id=1, safetoinsert=foo;
+  INSERT INTO testuniquekeysafe VALUES id=2, safetoinsert=foo;
+END PROCEDURE
+
+BEGIN PROCEDURE testuniqueinsertsafe
+  INSERT INTO testuniquekey VALUES safetoinsert=foo;
+END PROCEDURE
+
+### Test PROCEDUREs for increment and decrement ###
+
+BEGIN PROCEDURE testinc
+  UPDATE testincdec INCREMENT toincrement BY 100 WHERE toincrement=*;
+  UPDATE testincdec INCREMENT todecrement BY 100 WHERE toincrement=*;
+END PROCEDURE
+
+BEGIN PROCEDURE testdec
+  UPDATE testincdec DECREMENT toincrement BY 100 WHERE toincrement=*;
+  UPDATE testincdec DECREMENT todecrement BY 100 WHERE toincrement=*;
+END PROCEDURE
+
+### Test PROCEDURE for conditional increment ###
+
+BEGIN PROCEDURE neworder
+  PARAMETER dec_amnt NUMERIC
+  var curval = SELECT todecrement FROM testconditional WHERE todecrement=*;
+  if curval < dec_amnt:
+    UPDATE testconditional DECREMENT todecrement BY dec_amnt WHERE todecrement=*;
+  else:
+    UPDATE testconditional INCREMENT todecrement BY 92-dec_amnt WHERE todecrement=*;
+END PROCEDURE

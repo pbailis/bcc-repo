@@ -3,7 +3,43 @@ def enum(**enums):
     return type('Enum', (), enums)
 
 ColumnType = enum(STRING=1,
-                  NUMBER=2)
+                  NUMBER=2,
+                  REFERENCE=3)
+
+class EqualsPredicate:
+    def __init__(self, column, value):
+        self.column = column
+        self.value = value
+
+    def __str__(self):
+        return self.column+"="+self.value
+
+class LessThanPredicate:
+    def __init__(self, column, value):
+        self.column = column
+        self.value = value
+
+    def __str__(self):
+        return self.column+"<"+self.value
+
+class GreaterThanPredicate:
+    def __init__(self, column, value):
+        self.column = column
+        self.value = value
+
+    def __str__(self):
+        return self.column+">"+self.value
+
+def create_matching_predicate(pred_toks):
+    cname = pred_toks.predicate_column
+    cparam = pred_toks.predicate_parameter
+
+    if pred_toks.comparator == "=":
+        return EqualsPredicate(cname, cparam)
+    elif pred_toks.comparator == "<":
+        return LessThanPredicate(cname, cparam)
+    elif pred_toks.comparator == ">":
+        return GreaterThanPredicate(cname, cparam)
 
 class LessThanConstraint:
     def __init__(self, threshold):
@@ -19,6 +55,17 @@ class UniqueConstraint:
 class SequenceConstraint:
     pass
 
+class ForeignKeyConstraint:
+    def __init__(self, table, column):
+        self.table = table
+        self.column = column
+
+class AggregateConstraint:
+    def __init__(self, table, column, predicate):
+        self.table = table
+        self.column = column
+        self.predicate = predicate
+
 class Column:
     def __init__(self, name, ctype, constraint):
         self.name = name
@@ -26,20 +73,28 @@ class Column:
         self.constraint = constraint
 
 class Table:
-    def __init__(self, name, columns):
+    def __init__(self, name, columns, pkey):
         self.name = name
         self.columns = columns
+        self.pkey = pkey
 
 def get_tables(toks):
     tables = []
     for table_toks in toks.tables:
         tname = table_toks.name
         columns = []
+        if table_toks.pkey:
+            pkey = [col for col in table_toks.pkey.columns]
+        else:
+            pkey = None
+
         for col in table_toks.columns:
             if col.type == "STRING":
                 ctype = ColumnType.STRING
             elif col.type == "NUMBER":
                 ctype = ColumnType.NUMBER
+            elif col.type == "REFERENCE":
+                ctype = ColumnType.REFERENCE
 
             constraint = None
             if col.constraint:
@@ -51,28 +106,21 @@ def get_tables(toks):
                     constraint = LessThanConstraint(col.thresh)
                 elif col.constraint == ">":
                     constraint = GreaterThanConstraint(col.thresh)
+                elif col.constraint == "FOREIGN KEY":
+                    if ctype != ColumnType.REFERENCE:
+                        print "FOREIGN KEY only allowed on REFERENCE columns!"
+                        return
+                    constraint = ForeignKeyConstraint(col.fk.table, col.fk.column)
+                elif col.constraint == "AGGREGATES":
+                    constraint = AggregateConstraint(col.agg.table, col.agg.column, create_matching_predicate(col.agg.predicate))
+                    
             columns.append(Column(col.name, ctype, constraint))
-        tables.append(Table(tname, columns))
+        tables.append(Table(tname, columns, pkey))
     return tables
 
 
 ParameterType = enum(STRING=1,
                      NUMBER=2)
-
-class EqualsPredicate:
-    def __init__(self, column, value):
-        self.column = column
-        self.value = value
-
-class LessThanPredicate:
-    def __init__(self, column, value):
-        self.column = column
-        self.value = value
-
-class GreaterThanPredicate:
-    def __init__(self, column, value):
-        self.column = column
-        self.value = value
 
 class IncrementStatement:
     def __init__(self, table, column, value, predicate):
@@ -100,6 +148,16 @@ class SelectStatement:
         self.column = column
         self.predicate = predicate
 
+class InsertStatement:
+    def __init__(self, table, values):
+        self.table = table
+        self.values = values
+
+class DeleteStatement:
+    def __init__(self, table, predicate):
+        self.table = table
+        self.predicate = predicate
+
 class VariableDefinition:
     def __init__(self, name, assign_statement):
         self.name = name
@@ -117,9 +175,15 @@ class SimpleArithmeticExpression:
         self.lhs = lhs
         self.rhs = rhs
 
+    def __str__(self):
+        return self.lhs+self.operator+self.rhs
+
 class ConstantExpression:
     def __init__(self, constant):
         self.constant = constant
+
+    def __str__(self):
+        return self.constant
 
 class Parameter:
     def __init__(self, name, ptype):
@@ -134,22 +198,21 @@ def create_arithmetic_expression(expr_toks):
     else:
         return ConstantExpression(expr_toks.constant)
 
-def create_matching_predicate(pred_toks):
-    cname = pred_toks.column
-    cparam = pred_toks.parameter
-
-    if pred_toks.comparator == "=":
-        return EqualsPredicate(cname, cparam)
-    elif pred_toks.comparator == "<":
-        return LessThanPredicate(cname, cparam)
-    elif pred_toks.comparator == ">":
-        return GreaterThanPredicate(cname, cparam)
-
 def create_statement(statement_toks):
     tname = statement_toks.table
     cname = statement_toks.column
-    predicate = create_matching_predicate(statement_toks.predicate)
-    if statement_toks[0] == "UPDATE":
+    print statement_toks
+        
+    if statement_toks.predicate:
+        predicate = create_matching_predicate(statement_toks.predicate)
+    if statement_toks[0] == "INSERT INTO":
+        assigns = {}
+        for assign in statement_toks.assignments:
+            assigns[assign.column] = assign.value
+        return InsertStatement(tname, assigns)
+    elif statement_toks[0] == "DELETE FROM":
+        return DeleteStatement(tname, predicate)                               
+    elif statement_toks[0] == "UPDATE":
         if statement_toks.optype == "INCREMENT":
             return IncrementStatement(tname,
                                       cname,
@@ -173,12 +236,15 @@ def create_statement(statement_toks):
         predicate = create_matching_predicate(statement_toks.conditional_predicate)
         if_statement = create_statement(statement_toks.if_body)
         else_statement = create_statement(statement_toks.else_body)
+        print statement_toks
         return ConditionalIncrement(predicate, if_statement, else_statement)    
 
 def get_storedprocedures(toks):
     procs = []
     parameters = []
     for proc_toks in toks.storedprocedures:
+        print proc_toks
+            
         proc_name = proc_toks.name
         statements = []
 
@@ -191,8 +257,3 @@ def get_storedprocedures(toks):
         procs.append(StoredProcedure(proc_name, parameters, statements))
 
     return procs
-                                                     
-                
-                
-        
-            
