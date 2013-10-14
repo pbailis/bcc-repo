@@ -1,0 +1,260 @@
+
+\section{Consistency sans Coordination}
+\label{sec:bcc-theory}
+
+With a system model and goals in hand, we now address the question:
+when does transaction processing require synchronous coordination? The
+answer depends not only on the transactions that a database may be
+expected to perform and not only on the integrity constraints that the
+database is required to maintain but instead depends on the
+\textit{combination} of the two. Our contribution here is to formalize
+a criterion that will answer this question for specific
+combinations---while only reasoning about and using the abstractions
+of transaction logic and invariants.
+
+\subsection{\iconfluence: Criteria Defined}
+
+To begin, we introduce a concept that will underlie our main result:
+invariant confluence (hereafter,
+\iconfluence)~\cite{obs-confluence}. Applied in a transactional
+context, the \iconfluence property informally ensures that divergent,
+valid database states can be merged into a valid database state. That
+is, if the effects of two $I$-valid series of transactions ($S_1$,
+$S_2$) that operate independently on replicas of $I$-valid database
+state $D_s$ produce valid outputs ($I(S_1(D_s))$ and $I(S_2(D_s))$
+hold), their effects can safely be combined to produce a valid
+database state ($I(S_1(D_s) \sqcup S_2(D_s))$ holds). \iconfluence
+will form the basis of an application's potential for \cfree
+execution.
+
+We first define an $I$-valid sequence of transactions, capturing the
+process of executing a series of transactions in turn on a single,
+independent copy of database state and maintaining invariants between
+each transaction. In a transactionally available system, any would-be
+invariant violation will justify aborting the transaction.  If $T$ is
+a set of transactions, and $S_i = t_{i1},\dots t_{in}$ is a sequence
+of transactions from the set T, then we write $S_i(D) = t_{in}(\dots
+t_{i1}(D))$:
+
+\begin{definition}[Valid Sequence]
+Given invariant $I$, a sequence $S_i$ of transactions in set $T$, and
+database state $D$, we say $S_i$ is an $I$-valid sequence from $D$ if
+$\forall k \in [1, n], t_{ik}(\dots t_{i1}(D))$ are $I$-valid.
+\end{definition}
+
+We now formalize the \iconfluence property, which requires that valid
+sequences with a common ancestor lead to states that are also valid
+under merge.
+
+\begin{definition}[\iconfluence]
+Transactions $T$ are \iconfluent with respect to invariant $I$ if, for
+all $I$-valid database states $D_s=S_0(D_0)$ resulting from an
+$I$-valid sequence of transactions in $T$ from $D_0$ and all pairs of
+$I$-valid sequences $S_1, S_2$ of transactions in $T$ from $D_s$,
+$I(S_1(D_s) \sqcup S_2(D_s))$ is $I$-valid.
+\end{definition}
+
+Figure~\ref{fig:iconfluence} depicts an \iconfluent execution using
+two valid sequences each starting from a shared, $I$-valid database
+state $D_s$. This execution model will be familiar to users of
+fork-join programming models~\cite{hewitt-forkjoin} (e.g., version
+control systems like Git and Subversion). \iconfluence allows users to
+``check out'' a known good copy of database state ($D_s$ such that
+$I(D_s)$ holds) and perform a series of modifications (e.g., $S_1$) to
+the state in isolation---as long as these modifications are ``safe''
+(e.g., $I(S_1(D))$ is true). Under \iconfluent operations, any
+concurrent series of modifications to database state can be safely
+``merged'' to provide a valid database state ($I(S_1(D_s) \sqcup
+S_2(D_s))$ is true). We require that $I$-valid sequences have a common
+ancestor to rule out the possibility of merging arbitrary states that
+could not have arisen from transaction execution (e.g., even if no
+transaction assigns IDs, it may be invalid to merge two states that
+each have unique but overlapping sets of IDs).
+
+\iconfluence holds for some combinations of invariants and
+transactions but not others. For example, assuming merge by union, if
+$I=\{$\textit{no bank account has negative balance}$\}$, then
+$T=\{$\textit{increment user A's balance by 100, increment user A's
+  balance by 50}$\}$ is \iconfluent, as is $T\cup\{$\textit{audit the
+  database and store the sum of user balances in the \textrm{audit}
+  table}$\}$ but not $T\cup\{$\textit{decrement user A's balance by
+  200}$\}$. For now, our goal will be to use this property in the
+abstract, but we discuss practical uses in
+Section~\ref{sec:bcc-practice}.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\columnwidth]{figs/icommute.pdf}\vspace{-1em}
+\end{center}
+\caption{The \iconfluence property illustrated via a diamond
+  diagram. If a set of transactions $T$ is \iconfluent, then all
+  database states ($D_{in}$, $D_{jm}$) produced by $I$-valid sequences
+  in $T$ starting from a common, $I$-valid database state ($D_s$) must
+  be mergeable ($\sqcup$) into an $I$-valid database state.}
+\label{fig:iconfluence}
+\end{figure}
+
+\subsection{\iconfluence and Coordination}
+
+We can apply \iconfluence to our goals from Section~\ref{sec:model}:
+
+\begin{theorem}
+\label{theorem:necessary}
+A globally $I$-valid system can execute transactions $T$ with
+\cfreedom, transactional availability, convergence if and only if $T$
+are \iconfluent with respect to $I$.
+\end{theorem}
+
+Theorem~\ref{theorem:necessary} establishes \iconfluence as a
+necessary and sufficient condition for coordination-free
+execution---the first such condition we are aware of. Effectively, we
+have ``lifted'' the specification of semantics that are achievable
+with scalability, availability, and low latency to the abstraction of
+invariants and transactions. If \iconfluence holds, these goals are
+attainable; if not, there is no possible implementation or execution
+strategy that can guarantee these properties for the provided
+invariants and transactions. That is, if \iconfluence does not hold,
+there exists at least one execution of transactions on divergent
+replicas that will violate the given invariants when replicas
+converge. To prevent invalid states from occurring, at least one of
+the transaction sequences will have to forego availability or
+\cfreedom, or the system will have to forego convergence. This is a
+useful result, and we will spend much of the remainder of the paper
+applying it.
+
+Before doing so, we first prove Theorem~\ref{theorem:necessary}. The
+forwards direction uses a partitioning argument~\cite{gilbert-cap} to
+derive a contradiction, while the backwards direction is by
+construction. Informally, if \iconfluence holds, each replica can
+simply check each transaction's modifications locally and replicas can
+simply merge independent modifications to guarantee convergence to a
+valid state. For the converse, we construct a scenario under which a
+replica cannot determine whether or not a non-\iconfluent update
+should succeed without contacting another replica, diverging forever,
+or compromising availability.\footnote{We can likely apply Newman's
+  lemma and only consider single-transaction divergence (in the case
+  of convergent and therefore ``terminating''
+  executions)~\cite{obs-confluence,termrewriting}, but this is not
+  necessary for our results.}
+
+\begin{proof}{Theorem~\ref{theorem:necessary}}
+($\Leftarrow$) We begin with the simpler proof, which is by
+  construction. Assume a set of transactions $T$ are \iconfluent with
+  respect to an invariant $I$. Consider a system in which each replica
+  executes the transactions it receives against a copy of its current
+  state and checks whether or not the resulting state is $I$-valid. If
+  the resulting state is $I$-valid, the replica commits the
+  transaction and its mutations to the state. If not, the replica
+  aborts the transaction. Replicas asynchronously exchange copies of
+  their local states and merge them. No individual replica will
+  install an invalid state upon executing transactions, and, because
+  $T$ is \iconfluent under $I$, the merge of any two $I$-valid replica
+  states from individual replicas (i.e., valid sequences) as
+  constructed above is $I$-valid. Therefore, the converged database
+  state will be $I$-valid. Transactional availability, convergence,
+  and global $I$-validity are all maintained via coordination-free
+  execution.
+
+($\Rightarrow$) Assume a system $M$ guarantees globally $I$-valid
+  operation for set of transactions $T$ and invariant $I$ with
+  \cfreedom, transactional availability, and convergence, but $T$ is
+  not $I$-confluent. Then there exists an $I$-valid sequence
+  $D_s=S_0(D_0)$ of transactions in $T$ and valid sequences $S_1,S_2$
+  in $T$ such that $I(S_1(D_s)) \wedge I(S_2(D_s))$ is $true$
+  but $I(S_1(D_s) \sqcup I(S_2(D_s))$ is $false$.
+
+  Consider an execution $\alpha_0$ with two replicas $R_1$ and $R_2$
+  in which a client submits $S_0$ to $R_1$. To maintain transactional
+  availability and convergence, $R_1$ must commit $S_0$ and, after
+  some period of time, exchange writes with $R_2$. At the end of
+  $\alpha_0$, $R_1$ and $R_2$ will both contain $D_s$. Next, we
+  consider an execution $\alpha_1$ beginning after convergence in
+  execution $\alpha_0$ in which one client $C_1$ submits the
+  transactions from $S_1$ to a replica $R_1$. We also consider a
+  second execution $\alpha_2$ also beginning after convergence in
+  $\alpha_0$ in which a second client $C_2$ submits the transactions
+  from $S_2$ to replica $R_2$. To preserve transactional availability,
+  in $\alpha_1$, $R_1$ must commit the transactions in $S_1$
+  (resulting in $S_1(D_s)$), while, in $\alpha_2$, $R_2$ must commit
+  the transactions in $S_2$ (resulting in $S_2(D_s)$).
+
+   We now consider a third execution, $\alpha_3$ to produce a
+   contradiction. In $\alpha_3$, which begins immediately after
+   convergence in $\alpha_0$, $C_1$ submits $S_1$ at exactly the same
+   time as $C_2$ submits $S_2$; in our system model, $C_1$ and $C_2$
+   will necessarily access different replicas because their operations
+   are concurrently executing. $M$ is \cfree, so, from the perspective
+   of $R_1$, $\alpha_3$ is indistinguishable from $\alpha_1$, and,
+   from the perspective of $R_2$, $\alpha_3$ is indistinguishable from
+   $\alpha_2$. However, if $R_1$ and $R_2$ each commit their
+   respective sequences (as is required for transactional availability
+   in $\alpha_1$ and $\alpha_2$), then their resulting states will, by
+   assumption, not be $I$-valid under merge. Therefore, to preserve
+   transactional availability, $M$ must sacrifice one of global
+   validity (by allowing the invalid merge), convergence (by never
+   merging), or \cfreedom (by forcing $R_1$ and $R_2$ to communicate
+   prior to commit time).
+\end{proof}
+
+\subsection{Discussion}
+\label{sec:theory-discussion}
+
+\iconfluence captures a simple (informal) rule: \textbf{coordination
+  can only be avoided if all local commit decisions are globally
+  valid} (i.e. the merged global state satisfies all invariants). If
+two independent decisions to commit can result in invalid converged
+state, then replicas must coordinate in order to ensure that only one
+of the decisions is to commit. If two such decisions exist, it is
+unsafe for those operations to proceed in parallel, without
+coordination. Given the existence of an unsafe execution and the
+inability to distinguish between safe and invalid executions using
+only local information, a globally valid system \textit{must}
+coordinate in order to prevent the invalid execution.
+
+\iconfluence analysis effectively captures points of \textit{unsafe
+  non-determinism} in transaction execution. Total non-determinism, as
+we have seen in many of our examples thus far, can compromise
+application-level consistency. But not all non-determinism is bad: in
+many cases, allowing safe concurrency necessarily entails allowing
+non-determinism. \iconfluence analysis allows this non-deterministic
+divergence of database states but makes two powerful guarantees about
+those states. First, the requirement for global validity ensures
+safety (in the form of invariants). Second, the requirement for
+convergence ensures liveness (in the form of
+convergence). Accordingly, via its use of invariants, \iconfluence
+allows users to scope non-determinism while permitting only those
+intermediate states and final outcomes that are
+acceptable~\cite{consistency-borders}.
+
+In contrast, a requirement for total determinism (e.g., ensuring
+equivalent outcomes despite execution order; in the context of
+term-rewriting systems, \textit{confluence}) undoubtedly aids in ease
+of programmability and debugging~\cite{blooml,calm,termrewriting} but
+is too heavyweight of a correctness criterion for many
+applications. As a classic example, serializability is
+non-deterministic at the level of database state because the final
+state may depend on the serial order that the system chooses. (The
+consensus problem exhibits a similar requirement: a value must be
+chosen, but \textit{which} value is not specified; the requirement for
+non-determinism is often referred to as
+non-triviality~\cite{paxos-commit}.) More importantly, ensuring
+deterministic outcomes does not necessarily guarantee
+application-level consistency (safety): there is no guarantee that the
+program outcome will obey invariants.
+
+The use of invariants in \iconfluence allows greater precision in
+analysis. We discuss specific trade-offs in
+Section~\ref{sec:relatedwork}, but this definition is more general
+than related concepts like state-based
+commutativity~\cite{weihl-thesis} (e.g., equivalence of return values)
+or confluence, as above. For example, in Lamport's example from
+Section~\ref{sec:motivation}, the outcome of audit transactions
+differs depend on whether it runs before or after a given deposit
+transaction and is therefore not commutative or confluent with respect
+to deposit transactions. However, audit transactions and deposit
+transactions are indeed confluent with respect to the invariant that
+the database does not contain negative account balances. Reasoning
+about invariants instead of equivalence of database states is key to
+achieving a \textit{necessary} and sufficient condition (instead of
+simply a sufficient condition).
+

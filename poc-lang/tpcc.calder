@@ -1,0 +1,28 @@
+
+DECLARE TABLE warehouse
+  PRIMARY KEY id
+  NUMBER id UNIQUE
+  STRING name
+  NUMBER ytdsales AGGREGATES district.sales WHERE wid = id
+END TABLE
+
+DECLARE TABLE stock
+  REFERENCE wid FOREIGN KEY warehouse.id
+  NUMBER count > 0
+END TABLE
+
+BEGIN PROCEDURE neworder
+  PARAMETER inccount NUMERIC
+
+  UPDATE warehouse INCREMENT stock BY ocount WHERE did = district;
+  INSERT INTO warehouse VALUES name=foo, count=bar;
+  DELETE FROM warehouse WHERE name=test;
+
+  var curstock = SELECT stock FROM warehouse WHERE blah = foo;
+  if curstock < 30:
+    UPDATE stock DECREMENT count BY ocount WHERE did = district;
+  else:
+    UPDATE stock INCREMENT count BY curstock-ocount WHERE did = district;
+
+  UPDATE warehouse INCREMENT stock BY 500 WHERE did = district;
+END PROCEDURE

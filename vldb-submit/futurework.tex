@@ -1,0 +1,54 @@
+
+\section{Discussion and Future Work}
+\label{sec:discussion}
+\label{sec:futurework}
+
+In this paper, we have focused on the problem of recognizing when it
+is possible to avoid coordination. Here, we discuss extensions to our
+approaches and outline areas for future work.
+
+\minihead{\iconfluence as design tool} As we have discussed, if a
+transaction is \iconfluent with respect to an invariant, there exists
+a coordination-free algorithm for safely executing it.  For example, we
+used an early version of \iconfluence analysis in the development of
+our RAMP transactions: coordination-free, atomically visible
+transactions across multiple partitions that are useful in several
+other use cases like foreign key constraint
+maintenance~\cite{ramp-txns}. As we showed in
+Section~\ref{sec:bcc-practice}, insertion and cascading deletes are
+\iconfluent under foreign key constraints, so, when seeking a highly
+concurrent algorithm for this use case, we knew the search was not in
+vain: \iconfluence analysis indicated there existed at least one safe,
+coordination-free mechanism for the task. We see (and have continued
+to use) the \iconfluence property as a useful tool in designing new
+algorithms, particularly in existing, well-specified applications and
+use cases (e.g., B-tree internals, secondary indexes).
+
+\minihead{Amortizing coordination} We have analyzed conflicts on a
+per-transaction basis, but it is possible to amortize the overhead of
+coordination across multiple transactions. For example, the Escrow
+transaction method~\cite{escrow} reduces coordination by allocating a
+``share'' of non-\iconfluent operations between multiple
+processes. For example, in a bank application, a balance of $\$100$
+might be divided between five servers, such that each server can
+dispense $\$20$ without requiring coordination to enforce a
+non-negative balance invariant (servers can coordinate to ``refresh''
+supply). In the context of our \cfreedom analysis, this is
+similar to limiting the branching factor of the execution trace to a
+finite factor. Adapting Escrow and alternative time-, versioned-, and
+numerical- drift-based models~\cite{epsilon-divergence} is a promising
+area for future work.
+
+\minihead{System design} The design of full coordination-avoiding
+database systems raises several interesting questions. For example,
+given a set of \iconfluence results as in
+Table~\ref{table:invariants}, does a coordination-avoiding system have
+to know all queries in advance, or can it dynamically employ
+concurrency primitives as queries are submitted? (Early experiences
+suggest the latter.)  Revisiting heuristics- and statistics-based
+query planning, specifically targeting physical layout,
+choice of concurrency control, and recovery mechanisms appears
+worthwhile. How should a system handle invariants that may change over
+time? Is SQL the right target for language analysis? We view these
+pragmatic questions as exciting areas for future work.
+

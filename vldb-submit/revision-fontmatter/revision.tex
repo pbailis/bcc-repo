@@ -1,0 +1,590 @@
+
+\documentclass[10pt]{article}
+\usepackage[margin=1.48in]{geometry}
+
+\usepackage{times,xspace,color,verbatim}
+
+\renewcommand{\ttdefault}{fi4}
+
+
+\definecolor{reviewercolor}{rgb}{.9, .9, .9}
+
+
+\newcommand{\reviewer}[1] {\noindent\colorbox{reviewercolor}{\parbox{\textwidth}{\noindent\texttt{#1}}}\\}
+
+\newcommand{\response}[1] {\noindent\textit{Response: } #1\\}
+
+\newenvironment{myitemize}
+{
+   \vspace{0mm}
+    \begin{list}{$\bullet$ }{}
+        \setlength{\topsep}{0em}
+        \setlength{\parskip}{0pt}
+        \setlength{\partopsep}{0pt}
+        \setlength{\parsep}{0pt}         
+        \setlength{\itemsep}{1mm} 
+}
+{
+    \end{list} 
+}
+
+
+\newcommand{\ttf}[1]{\texttt{#1}\xspace}
+
+\newcommand{\reviewerstart}[1]{\noindent\textbf{\large{#1}}}
+
+\newcommand{\rampl}{\ttf{RAMP-L}}
+\newcommand{\ramps}{\ttf{RAMP-S}}
+\newcommand{\rampb}{\ttf{RAMP-B}}
+
+\newcommand{\lwlr}{\ttf{LWLR}}
+\newcommand{\lwsr}{\ttf{LWSR}}
+\newcommand{\lwnr}{\ttf{LWNR}}
+\newcommand{\nwnr}{\ttf{NWNR}}
+\newcommand{\mstr}{\ttf{MSTR}}
+
+\thispagestyle{empty}
+
+\begin{document}
+
+\noindent\textbf{{\large Original Paper Number 50}}\\
+
+\noindent\textbf{To the VLDB reviewers and editor:} Thank you
+for your feedback. As we discuss below, we have integrated your
+comments and believe that they have materially strengthened the
+submission. 
+
+\noindent In-line replies to specific comments follow. Thank you again for
+your consideration of our manuscript.\\
+
+\noindent Peter Bailis, Alan Fekete, Michael J. Franklin, Ali Ghodsi,
+Joseph M. Hellerstein, and Ion Stoica\\
+
+\hrulefill
+
+\label{intro}
+
+\begin{comment}
+\vspace{2em}
+
+\begin{tabular}{l r}
+\underline{\textbf{Contents}} & \underline{\textbf{Page}}\\
+{Introduction} & \hspace{5em}\pageref{intro}\\
+{Reviewer 1 Comments} & \pageref{r1c}\\
+{Reviewer 2 Comments} & \pageref{r2c}\\
+{Reviewer 3 Comments} & \pageref{r3c}\\
+\end{tabular}
+\end{comment}
+
+\newpage
+\reviewerstart{Reviewer 1 Comments}\\
+\label{r1c}
+
+\reviewer{Q13: If revision is required, list specific revisions you
+  seek from the Authors: Address points 1-9 in response to question 12.}
+
+\reviewer{1) The paper mentions that I-confluence analysis is
+  applicable to operations on abstract data types (ADTs). While it
+  certainly would be, the paper does not concretely explain how
+  I-confluence analysis for ADTs might work. It seems like reasoning
+  about the I-confluence of a workload which uses ADTs would require
+  knowledge of some kind of specification associated with the ADT,
+  such as pre-conditions and post-conditions on the state that the ADT
+  manipulates. Unless the authors plan to resort to some kind of
+  static analysis of ADT implementations, this requires manual
+  programmer effort, or requires the ADT libraries to specify these
+  details. The authors should have very clearly discussed what their
+  analysis of the I-confluence of databases using ADTs would have
+  required to correctly work.}
+
+% TODO: explain ADT
+\response{The reviewer is correct that I-confluence analysis requires
+  a specification of the merge operation. If ADTs provide custom
+  ``merge'' semantics (as Section 4 discusses), a programmer
+  performing I-confluence analysis must know how merge works. In many
+  cases (e.g., CRDTs), this specification can come from a library,
+  while, in others (e.g., Dynamo-style custom merge functions), the
+  programmer must specify this behavior.  In Appendix C, we specify
+ADTs similar to CRDT operation-based data types: each invocation is
+stored and the semantic behavior of an ADT depends on how the set of
+invocations are interpreted (e.g., a counter value is simply the
+number of \texttt{INCREMENT} invocations). There are additional ways
+of formalizing ADT behavior (as the reviewer suggests, we could also
+consider analyzing pre- and post- conditions) but have found our formalization
+to be both sufficient and compatible with recent, decentralized ADT
+proposals like CRDTs.
+  
+  We have updated the relevant discussion in Section 4 to clarify the fact that
+  the programmer performing I-confluence analysis must have access to
+  a specification for the ADT's merge behavior.}
+
+\reviewer{2) The authors mention that TPC-C's NewOrder transaction is not I-confluent, however, they manage to show that NewOrder transactions can be implemented without distributed co-ordination. NewOrder avoids distributed co-ordination, while not being I-confluent. While NewOrder does requires some local co-ordination (which is why it is classified as not I-confluent), it is clear that it is distributed co-ordination that is the main bottleneck (as evidenced by the performance of two-phase commit). This begs the question, if I-confluence is "necessary and sufficient" for scalability, why is NewOrder able to achieve scalability without being I-confluent? This significantly reduces my confidence in the real world utility of I-confluence. }
+
+\response{I-confluence is a necessary and sufficient condition for
+  safe, coordination-free execution of an operation with respect to a
+  given invariant; we use this analysis to determine which operations
+  within New-Order (and other transactions) are achievable without
+  coordination and which operations require coordination. As we
+  discuss in Section 6, all operations in New-Order---with the
+  exception of ID assignment---are I-confluent, and therefore
+  executable in a coordination-free manner. The resulting query plan
+  described in Section 6.1 and evaluated in Section 6.2 effectively
+  decomposes the execution of New-Order into two sets of operations:
+  those that are I-confluent (all but ID assignment; 25-65 operations
+  per transaction) and those that are not (ID assignment). By limiting
+  the use of synchronous coordination to only those operations that
+  require coordination, the Coordination-Avoiding query plan
+  outperforms the serializable (two-phase locking)
+  implementation.---the coordination required for the ID assignment
+  operation only comprises 0.19\% of the coordination-avoiding
+  transaction execution time (see Section 6.2). In contrast, the
+  two-phase locking implementation coordinates for every operation
+  (i.e., grabs locks and, under contention, slows due to lock
+  contention). It is this coordination on every operation (i.e.,
+  coordination by default) that harms performance (and, as Section 6.1
+  discusses, this limitation is independent of our implementation of serializability).
+  
+  The above discussion and the comparison to serializability
+  highlights the broader role of I-confluence testing: by
+  understanding when coordination is necessary for safe execution, one
+  can limit the use of coordination to when it is strictly necessary
+  while allowing safe, concurrent execution when possible. In the case
+  of New-Order, one operation per transaction must coordinate, which
+  is a potential bottleneck, but, in our implementation (Section 6.2),
+  when coordination is avoided, the overhead of the necessary
+  single-node coordination (for ID assignment) is---in contrast with
+  the serializable coordination overheads---negligible compared to the
+  physical overhead (e.g. CPU cost) of executing the other New-Order
+  operations.
+
+  We have revised the discussion in Sections 6.1 and 6.2 to
+  better reflect these points.}
+
+\reviewer{3) The experiments validate the (well-known) fact that
+  co-ordination avoidance is key to scalability; the co-ordination
+  avoiding implementation significantly outperforms the two-phase
+  commit implementation. However, I do not see the point of comparing
+  the co-ordination avoidance to two-phase commit in the context of
+  this paper. These experiments belong in Section 2, where the paper
+  describes the negative performance cost of co-ordination.}
+
+\response{We have deliberately separated the microbenchmark
+  experiments of Section 2 and the macrobenchmark experiments of
+  Section 6.2 because we believe that the results of Section 6.2 are
+  specifically enabled by the results of the prior sections. That is,
+  we view the coordination-avoiding query plan developed in Section
+  6.1 and evaluated in Section 6.2 is a direct result of the
+  I-confluence property developed in Sections 4 and 5. More
+  specifically:
+
+  The experiments in Section 2 compare the throughput of conflicting
+  operations with that of non-conflicting operations (Figure 1) and
+  the cost of blocking two-phase commit (Figure 2). These represent,
+  respectively, a worst-case microbenchmark and an
+  implementation-independent overview of the costs of
+  coordination. Combined, these experiments serve as
+  evidence---independent of any particular application---of
+  the worst-case overheads of cost of coordination.
+
+  In contrast, the experiments in Section 6.2 provide an empirical
+  validation of our analysis of TPC-C New-Order in Section 6.1 and an
+  in-depth, application-specific performance evaluation. In contrast
+  with the microbenchmark of Figure 1, the evaluation in Section 6.2
+  pertains specifically to the TPC-C New-Order transaction and the
+  impact of the TPC-C specification (i.e., the consistency conditions
+  in Table 3) on coordination. The coordination-avoiding
+  implementation is directly enabled by the results of Section 6.1
+  (which are, in turn, dependent on Sections 3-5). Out of context
+  (e.g., in Section 2) and, without the results of the preceding
+  sections, we believe that the discussion of the experimental
+  behavior of the coordination-avoiding prototype would be premature
+  and/or confusing to readers (i.e., it would not be clear
+  \textit{why} the query plan we execute is safe). We include the
+  performance measurements of the serializable implementation (two
+  phase locking) as a point of comparison, demonstrating the cost of
+  coordinating on every operation by default.
+
+  While analytical models indeed suffice to describe the cost of
+  coordination, we find the real-world implementation and evaluation
+  on modern hardware to be instructive. We have not encountered such
+  an evaluation of worst-case and application-specific performance
+  costs due to distributed coordination on modern cloud platforms in
+  the literature. However, we welcome additional references,
+  particularly to support the assertion that coordination avoidance is
+  key to scalability.}
+
+  \reviewer{4) The paper mentions CRDTs in its related work section, but mentions that while CRDTs ensure liveness, they do not prevent users from observing inconsistent database state (safety). CRDTs can technically ensure safety of reads by *co-ordinating* among all the replicas of a database. My impression of I-confluence's argument for safety is that states of database replicas can be merged by co-ordinating across different nodes (section 4.1). These two mechanisms for ensuring safety seem to be very similar, both require co-ordination. Please explain how CRDTs do not preserve safety, while I-confluence does. }
+
+% Section 3
+  \response{CRDTs do not---by themselves---provide safety
+    properties. They guarantee that every operation invocation will be
+    reflected in the final, merged data type state, but they do not
+    provide guarantees regarding the actual values that may be
+    obtained by the end state. For example, a CRDT OR-Set used to
+    store user access credentials will guarantee that concurrent
+    additions/removals will be merged according to causal ordering,
+    with additions taking precedence over removals. However, the CRDT
+    OR-Set does \textit{not} place restrictions on the values obtained
+    by the set (safety, both at convergence and during divergent
+    executions); for example, the CRDT OR-Set is unable to---by
+    itself---enforce that the \texttt{apache} user does not appear in
+    the \texttt{sudoers} group.
+
+    Now, as the reviewer points out, we can add arbitrary safety
+    properties to CRDTs by co-ordinating between concurrent
+    operations. As a straw-man, we could serialize all accesses to
+    each CRDT (e.g., via two-phase locking) in order to provide
+    additional safety guarantees. However, our goal in this work is to
+    identify guarantees---in the form of invariants---that hold
+    \textit{without} any coordination.
+
+    We have expanded the discussion of CRDTs in Section 8.}
+
+\reviewer{5) The paper mentions that serializability is often too
+  strong a guarantee for many concurrent operations such as
+  incrementing/decrementing a counter; since increments and decrements
+  commute, they need not co-ordinate (modulo lower-bound or
+  upper-bound invariants). Serializability would force all writes to a
+  particular database record field that is being incremented or
+  decremented to unnecessarily co-ordinate. While this is true,
+  serializability can be used to correctly order read-only operations
+  with respect to writes. I-confluence does not co-ordinate readers
+  with respect to writers, therefore, a database which is I-confluent
+  would have to co-ordinate among replicas to service a read that is
+  relatively "fresh", that is, reflects the newest updates (a point
+  alluded to in section 5.2; "Recency and session support"). This
+  represents a clear tradeoff between serializability and
+  I-confluence, both in terms of complexity (how do you decide to
+  order reads with respect to writes), and performance (the read
+  triggers merge operations). Given this tradeoff, I believe that
+  running just TPC-C 's NewOrder gives an unfair advantage to
+  I-confluence. Why don't the authors run full TPC-C (which include
+  StockLevel and OrderStatus)? Had the authors clearly identified this
+  tradeoff between serializability and I-confluence through an
+  experiment (not an anecdotal discussion), it may have made sense to
+  include a comparison of the scalability of a system which doesn't
+  require co-ordination to two-phase commit as representative of the
+  other side of the tradeoff (see point 3). }
+
+% TODO: make these clarifications.
+\response{The reviewer makes several important points.
+
+  First, we agree that a comparison between single-master two-phase
+  locking and an ``active-active''/multi-master system would be
+  unfair. We do not perform such a comparison in Section 6.  Our
+  system architecture is identical for both two-phase locking and
+  coordination-avoiding implementations in order to provide a true
+  apples-to-apples comparison between the two. Both algorithms are
+  implemented in the same system, in which linearizable masters serve
+  each data item and multi-versioning allows snapshot reads. The
+  system provides recency guarantees for \textit{all} reads that are
+  similar to (if not equivalent to) guarantees provided by modern
+  multi-versioned databases like Oracle 12C and SAP HANA under Read
+  Committed isolation or stronger: after a transaction commits, its
+  effects are visible to all transactions that begin afterwards. To
+  directly address the reviewer's concerns regarding physical
+  replication in the coordination-avoiding implementation: under both
+  system configurations, all reads and writes to each item are served
+  using the same physical servers (i.e., the coordination-avoiding
+  evaluation uses the same set of servers---including partitioning
+  strategy and request routing----as the 2PL evaluation, and does not
+  utilize any physical replicas).
+
+  As a broader point, we reiterate that I-confluence is a property of
+  operations and invariants rather than a given database
+  \textit{implementation}: while our system model reasons about
+  ``replicas,'' this is simply a formal device used to ensure that
+  executing transactions do not communicate. As we note in Section 6.2
+  and highlight above, our implementation does \textit{not} use
+  separate physical machines to enforce coordination-free
+  execution. As we discuss in Section 6.1, StockLevel and OrderStatus
+  are I-confluent; we focus on New-Order because
+  it is the source of contention for distributed TPC-C.
+
+  Second, we agree that an implementation relying on physical
+  replication may, as the reviewer points out, lead to worse
+  performance for operations requiring coordination. Among the space
+  of algorithms providing recency guarantees like linearizability,
+  there are a number of performance trade-offs (e.g., should one use a
+  dedicated master as in Section 6, or a potentially large quorum of
+  replicas?). We acknowledge that these are important trade-offs that
+  are ultimately dependent on the concurrency control
+  \textit{implementation} rather than the I-confluence of a set of
+  operations. I-confluence is useful in identifying coordination-free
+  operations but does not (by itself; see Section 7) directly address
+  the question of how to implement mixed ``weak'' and ``strong''
+  semantics.
+
+  To clarify these points, we have revised the discussion in Sections 5.3 and 6.2.}
+
+\reviewer{6) The authors mention that they analyzed OLTPBench
+  applications in order to determine whether or not they were
+  I-confluent. It is unclear whether this analysis was automated
+  (using their tool), or whether it was based on manual inspection of
+  the benchmarks. Given that the authors claim that I-confluence is
+  useful tool because it only requires programmer effort to devise
+  invariants, it is important to automatically analyze the
+  applications in OLTPBench. The authors should have included some
+  kind of empirical evidence (as opposed to their anecdotal account of
+  the applications in OLTPBench) of how many applications are
+  I-confluent, and how many are not and why. }
+
+% TODO: add appendix
+\response{The discussion of the OLTPBench applications is limited due
+  to space constraints, but our analysis of OLTPBench is not
+  anecdotal: we have analyzed the OLTPBench applications in addition
+  to TPC-C. Section 6.3 details the results: CH-benCHmark, SEATS,
+  AuctionMark, sibench, and smallbank each contained transactions with
+  non-I-confluent operations, while the remainder were I-confluent. We
+  have provided a discussion of which operations were not I-confluent
+  and why. We suspect that the discussion of SEATS and AuctionMark may
+  have complicated the initial presentation: neither of these
+  benchmarks explicitly require integrity constraints---a decision we
+  revisited with their authors, and therefore we manually introduced
+  constraints on, respectively, seat assignment and auction closing operations.
+
+  In the revision, we have provided additional detail regarding our
+  automated analysis tool (Section 5.3). We do not view the tool as a
+  contribution to program analysis, but it is indeed sufficient to
+  automatically characterize the invariants of the above applications
+  as I-confluent or not. The expanded discussion provides more detail,
+  but, in brief, the tool performs simple, syntactic analysis of
+  declared invariants based on an existing classification of safe and
+  unsafe pairs.
+
+  We welcome additional feedback regarding how to improve the
+  presentation of these results and, in the interim, have revised
+  Sections 5.3 and Section 6.3 to reflect these comments.}
+
+\reviewer{7) Given the fact that serializability may unnecessarily
+  require transactions to co-ordinate, the authors should have
+  performed an (empirical) experiment identifying applications that
+  unnecessarily co-ordinate due to the use of serializable concurrency
+  control, but which do not actually require the co-ordination because
+  they are I-confluent. The fact that a large number of such
+  applications exist would have provided evidence of the utility of
+  I-confluence. This evidence is arguably much more important than the
+  performance comparison of a co-ordination avoiding application with
+  one that does co-ordinate.}
+
+\response{We examine TPC-C and the OLTPBench application suite in
+  Section 6 to address this question. Any I-confluent operations can
+  be executed in a coordination-free manner, while, in a serializable
+  system, any two operations---at least one of which is a write---will
+  require coordination. In Section 6.1, we provide an in-depth
+  discussion of TPC-C, including an implementation-independent
+  analysis of the overheads due to serializable coordination. In
+  Section 6.3, we analyze the I-confluence of the remainder of the
+  OLTPBench suite. We believe that the large number of I-confluent
+  operations in Sections 6.1 and 6.3 are, as the reviewer suggests,
+  evidence of the utility of this analysis---independent of the
+  experiments in Section 6.2, which are designed to empirically
+  measure the overhead of serializability for TPC-C New-Order.}
+
+\reviewer{8) The authors make several references to related work, when a little elaboration would have made reading much easier. "Avoiding New-Order Coordination" in section 6.1, and "implementation and deployment" in section 6.2 make lots of references to RAMP transactions without getting into any details (a simple, concise explanation would have significantly improved the presentation of this material). }
+
+% TODO: add overview.
+\response{We have added a brief overview in Section 6.1.}
+
+\reviewer{9) Stepping back, I-confluence may be a useful criterion for
+  identifying cases for avoiding co-ordination in an
+  application. However, the authors do not convincingly make the case
+  that their analysis actually succeeds on real benchmarks. It is not
+  even clear that they use their analysis tool to guide their decision
+  of whether or not a workload is I-confluent.}
+
+\response{This paper demonstrates that applications like TPC-C, TPC-E,
+  and those in OLTPBench can benefit from I-confluence analysis; they
+  can safely execute many---and usually most---operations without
+  coordination. While I-confluence analysis depends on the
+  formalization and more theoretical results in the first half of the
+  paper, we have successfully applied our analysis to the above
+  workloads in Section 6. We expect that the revised discussion of our
+  analysis technique in Section 5.3 will alleviate concerns regarding
+  the actual program analysis; simply, these applications use a
+  limited set of invariants that is amenable to simple static
+  analysis, and, while not particularly novel in terms of program
+  analysis techniques, the tool is, in fact, a powerful means of
+  analyzing existing applications such as the benchmarks we consider
+  here.} % \newpage
+
+\reviewerstart{Reviewer 2 Comments}\\
+\label{r2c}
+
+\reviewer{Q13: If revision is required, list specific revisions you seek from the Authors: D1--D5.}
+
+\reviewer{D1. Clarify what language you want to use to express
+  invariants. Simple data dependencies? First-order
+  logic?}
+
+\response{To begin, we note that, in the revision, we have expanded
+  the discussion of our program analysis techniques in Section 5.3. In
+  brief, our analysis is pragmatically motivated: we classify (in
+  Section 5.1 and 5.2) a class of common invariant-operation pairs as
+  I-confluent or not. Our automated tool uses these pairs in a very
+  simple static program analysis technique that checks any declared
+  invariants and detects pairs of invariants and operations that have
+  not been labeled I-confluent (i.e., either have been labeled as
+  non-I-confluent, or---for soundness---have not been previously
+  labeled). We have found that a small list of labeled pairs (those in
+  Table 1) are sufficiently expressive for the applications we
+  consider in Section 6 (the OLTPBench suite)---there is considerable
+  re-use of invariants within and across applications (e.g., many
+  applications use foreign key constraints).
+
+  While I-confluence is a general condition applicable to a range of
+  languages, we have focused our analysis efforts on straightforward
+  use the I-confluence property in existing applications we have
+  encountered (Sections 5.1, 5.2, 6.1, 6.3). These applications are written in
+  SQL, so we target SQL. Invariants take the form of parameterized
+  constraints discussed in Sections 5.1 and 5.2 (e.g., \texttt{FOREIGN
+    KEY REFERENCES [TABLE].[COLUMN]}).}
+
+\reviewer{D2. Accordingly, please provide the complexity of checking 
+  I-confluence with respect to different transactions and different 
+  invariants. When transactions are in SQL as hinted in the paper, the 
+  problem is undecidable even for extremely restricted invariants.}
+
+\response{The reviewer is correct that for arbitrary programs,
+  I-confluence (like monotonicity and commutativity) is undecidable
+  (via straightforward application of Rice's Theorem). Our current
+  program analysis is conservative, relying on a small ``whitelist''
+  of I-confluent operations, effectively resulting in a restricted
+  language of recognized invariants. Specifically, for
+  invariant-operation pairs not in the set of I-confluent pairs, our
+  analysis will potentially provide false positives. (With $I$
+  invariants and $S$ SQL statements, checking all pairs takes $O(IS)$
+  time.) To expand this set (thus reducing false positives), one must
+  prove a pair I-confluent (as in Appendix C).  As we discuss in
+  Section 5.3, we have considered the problem of automatically proving
+  pairs I-confluent or not; this is interesting future work. We
+  believe that the revised discussion in Section 5.3 clarifies these points.}
+
+\reviewer{D3. In light of the complexity, please comment on the practical 
+  impact of this work.}
+
+\response{Despite the simplicity of our static analysis, it is
+  sufficiently powerful to analyze all applications we discuss in
+  Section 6 (i.e., TPC-C, TPC-E, OLTPBench). This is a consequence of
+  two properties. First, the application specifications rely on a
+  small set of invariants (e.g., foreign key constraints, primary key
+  constraints), and, second, (and perhaps unsurprisingly) our analysis
+  in Sections 5.1., 5.2, and Appendix C is accordingly targeted
+  towards (dis-)proving the I-confluence of these common
+  invariants. While our analysis is \textit{not} complete, we have
+  been surprised at the expressiveness of a small set of (templated)
+  invariants.
+
+  Stepping away from the domain of program analysis, towards the
+  question of practical impact, one can see the results contained in
+  this paper as a ``cookbook'' for coordination-free invariant
+  maintenance: if an invariant is I-confluent according to Section 5,
+  a programmer knows she can find a coordination-free query plan. If
+  the invariant is not already classified, she will have to determine
+  whether it is I-confluent or not, but, given the re-use of
+  invariants we have encountered, we see the paper as a useful
+  start. We came to this work via our earlier research on transaction
+  isolation levels, where we labeled existing isolation levels as
+  coordination-free (or ``Highly Available Transactions'') or
+  not. Leaving aside the formalism of I-confluence, from a practical
+  perspective, Sections 5 and 6 (and especially Table 1) provide a
+  similar classification of \textit{invariants} (instead of isolation
+  levels, as in the HAT work), answering the question: which among
+  many of the most commonly-used integrity constraints is achievable without
+  coordination?}
+
+\reviewer{D4. To decide whether a set of transactions is I-confluence, the workload should be known *in advance*. This assumption is not very practical,}
+
+% Todo: clarify in section 3
+\response{To prove a set of transactions is I-confluent with respect
+  to invariants, we necessarily need to know the transactions and the
+  invariants---otherwise, the I-confluence property, which pertains to
+  specific transactions and invariants, would not be
+  well-defined. Towards the practicality of this requirements, we are
+  encouraged by systems like H-Store and VoltDB, which rely heavily on
+  the use of stored procedures for efficient execution. Moreover, if
+  we treat I-confluence analysis in aiding optimization of
+  \textit{existing} applications (like those in Section 5), it is
+  likely that we have access to some transactional code in
+  advance. Restricted languages may also be useful. For example, if we
+  know the form of all possible \texttt{UPDATE}/mutation operations,
+  we can pre-analyze their I-confluence and dynamically dispatch
+  coordination as needed as the database receives new statements in a
+  transaction. However, we reserve this final language question for
+  future work.
+
+  To address this point, we have clarified the discussion of
+  transactions in Section 3 and our analysis techniques in Section
+  5.3.}
+
+\reviewer{D5. It is not surprising that coordination is costly. Hence you may want to make Section 2 concise, and use the space to include more technical results. }
+
+% Todo: shorten section 2
+\response{At the reviewer's recommendation (and, in order to
+  accomodate the additional material in the revision), we made minor
+  revisions to this section. We note that many of the more technical
+  results (primarily, detailed I-confluence analyses and additional
+  detail on experiments and Theorem 1) are contained in the extended
+  version of this work (reference 10). While this decision improves
+  readability for general PVLDB readers, it has implications for the
+  level of technical detail in the body text. We welcome suggestions
+  for re-apportioning material between the Appendices and the main
+  paper text.}
+
+\newpage
+\reviewerstart{Reviewer 3 Comments}\\
+\label{r3c}
+
+The reviewer did not provide comments to address in a revision, but we
+respond briefly to a few of the reviewer's comments below:
+
+\reviewer{4. TPC-C is very easy to partition. It would be interesting
+  to see how the system scales when it runs a difficult to partition
+  workload, such as TPC-E. }
+
+\response{This is a great observation. To show the impact of
+  partitionability, we vary the number of distributed New-Order
+  transactions in the bottom plot of Figure 5---the primary impact on
+  the coordination-avoiding query plan is additional CPU overhead due
+  to serialization. However, by default, TPC-C is indeed reasonably
+  partitionable. Towards more difficult-to-partition workloads, when
+  we examined the TPC-E benchmark, we found that the requirements for
+  compliant execution were actually less coordination-intensive than
+  those in TPC-C (see Section 6.3). However, we've also considered
+  social-networking (i.e., graph-oriented) applications like the Tao workload out of
+  Facebook, although---as published---these workloads are largely
+  non-transactional (while the primary multi-object
+  operations---association put/get---only require I-confluent foreign key
+  constraint maintenance).}
+
+\reviewer{6. As the authors discuss in Sect 8, one interesting issue is that there may be just one transaction in a set that makes it non-I-confluent, the question is how would a system handle such a case. Does it make sense to fall back to coordinated execution or not? }
+
+\response{This is an excellent question. With the exception of Section
+  6.1, we largely consider the issue of determining when \textit{any}
+  coordination is necessary. But the question of ``mixed models'' is
+  particularly salient. We've made minor revisions to the discussion
+  in Section 6.1 and 6.2 to address this point: the key is to separate
+  the coordinated portions of the execution from the I-confluent
+  portions, similar to transaction chopping (Section 8).}
+
+\reviewer{7. It would be good if the authors clearly stated the differences of this paper from the RAMP paper. There is lots of overlap between the two. }
+
+%TODO: related work fixes
+\response{We have added additional discussion in Section 6.1 and in Related Work. We see
+  RAMP as an implementation of coordination-free atomically visible
+  transactions, while this paper presents a broader analysis of when
+  coordination-free execution is achievable for operations under arbitrary invariants.}
+
+\reviewer{- Suggest to change the wording in abstract and intro re the
+  perf of the prototype TPC-C impl, since the authors are running only
+  NewOrder transactions (even though other recent papers did the same,
+  there is no reason to follow the same wrong practice.)\\
+- Fig 1: start y-axis from 10\^{}0. \\
+- Sect 3: "and convergent databases state are"\\
+- Sect 4.1: "two transactions that removes two"\\
+- Sect 6.1: "become a of contention"}
+
+%TODO: make changes
+\response{Thank you for the suggestions. We have incorporated them in the revision.}
+
+\end{document}

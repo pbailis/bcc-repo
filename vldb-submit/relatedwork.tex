@@ -1,0 +1,160 @@
+
+\section{Related Work}
+\label{sec:relatedwork}
+
+Database system designers have long sought to manage the trade-off
+between consistency and coordination. As we have discussed,
+serializability and its many implementations (including lock-based,
+optimistic, and pre-scheduling
+mechanisms)~\cite{silo,bernstein-book,tamer-book,hstore,gray-virtues,calvin,eswaran-consistency,sdd1}
+are sufficient for maintaining application correctness. However,
+serializability is not always necessary: as discussed in
+Section~\ref{sec:intro}, serializable databases do not allow certain
+executions that are correct according to application semantics.  This
+has led to a large class of application-level---or
+semantic---concurrency control models and mechanisms that admit greater
+concurrency. There are several surveys on this topic, such
+as~\cite{tamer-book,ic-survey}, and, in our solution, we integrate
+many concepts from this literature.
+
+\minihead{Commutativity} One of the most popular alternatives to
+serializability is to exploit \textit{commutativity}: if transaction
+return values (e.g., of reads) and/or final database states are
+equivalent despite reordering, they can be executed
+simultaneously~\cite{weihl-thesis,kohler-commutativity,redblue}. Commutativity
+is often sufficient for correctness but is not necessary. For example,
+if an analyst at a wholesaler creates a report on daily cash flows,
+any concurrent sale transactions will \textit{not} commute with the
+report (the results will change depending on whether the sale completes
+before or after the analyst runs her queries). However, the report
+creation is \iconfluent with respect to, say, the invariant that every
+sale in the report references a customer from the customers
+table. \cite{kohler-commutativity,lamport-audit} provide additional
+examples of safe non-commutativity.
+
+\minihead{Monotonicity and Convergence} The CALM
+Theorem~\cite{ameloot-calm} shows that monotone programs exhibit
+deterministic outcomes despite re-ordering. CRDT objects~\cite{crdt}
+similarly ensure convergent outcomes that reflect all updates made to
+each object. These outcome determinism and convergence guarantees are
+useful \textit{liveness} properties~\cite{schneider-concurrent} (e.g.,
+a converged CRDT OR-Set reflects all concurrent additions and
+removals) but do not prevent users from observing inconsistent
+data~\cite{redblue-new}, or \textit{safety} (e.g., the CRDT OR-Set
+does not---by itself---enforce invariants, such as ensuring that no
+employee belongs to two departments), and are therefore not sufficient
+to guarantee correctness for all applications. Further understanding
+the relationship between \iconfluence and CALM is an interesting area
+for further exploration (e.g., as \iconfluence adds safety to
+confluence, is there a natural extension of monotone logic that
+incorporates \iconfluent invariants---say, via an ``invariant-scoped''
+form of monotonicity?).
+
+\minihead{Use of Invariants} A large number of database
+designs---including, in restricted forms, many commercial databases
+today---use various forms of application-supplied invariants,
+constraints, or other semantic descriptions of valid database states
+as a specification for application correctness
+(e.g.,~\cite{korth-serializability,kemme-si-ic,garciamolina-semantics,ic-survey,ic-survey-two,decomp-semantics,redblue,writes-forest,davidson-survey,local-verification,redblue-new}). We
+draw inspiration and, in particular, our use of invariants from this
+prior work. However, we are not aware of related work that discusses
+when coordination is strictly \textit{required} to enforce a given set
+of invariants. Moreover, our practical focus here is primarily
+oriented towards invariants found in SQL and from modern applications.
+
+In this work, we provide a necessary and sufficient condition for
+safe, coordination-free execution. In contrast with many of the
+conditions above (esp. commutativity and monotonicity), we explicitly
+require more information from the application in the form of
+invariants (Kung and Papadimitriou~\cite{kung1979optimality} suggest
+this is information is \textit{required} for general-purpose non-serializable
+yet safe execution.)  When invariants are unavailable, many of these
+more conservative approaches may still be applicable. Our use of
+analysis-as-design-tool is inspired by this literature---in
+particular,~\cite{kohler-commutativity}.
+
+\minihead{Coordination costs} In this work, we determine when
+transactions can run entirely concurrently and without
+coordination. In contrast, a large number of alternative models
+(e.g.,~\cite{garciamolina-semantics,korth-serializability,isolation-semantics,local-verification,kemme-si-ic,aiken-confluence,laws-order})
+assume serializable or linearizable (and therefore coordinated)
+updates to shared state. These assumptions are standard (but not
+universal~\cite{ec-txns}) in the concurrent programming
+literature~\cite{schneider-concurrent,laws-order}. (Additionally,
+unlike much of this literature, we only consider a single set of
+invariants per database rather than per-operation invariants.) For
+example, transaction chopping~\cite{chopping} and later
+application-aware
+extensions~\cite{decomp-semantics,agarwal-consistency} decompose
+transactions into a set of smaller transactions, providing increased
+concurrency, but in turn require that individual transactions execute
+in a serializable (or strict serializable) manner.  This reliance on
+coordinated updates is at odds with our goal of coordination-free
+execution. However, these alternative techniques are useful in
+reducing the duration and distribution of coordination once it is
+established that coordination is required.
+
+\minihead{Term rewriting} In term rewriting systems, \iconfluence
+guarantees that arbitrary rule application will not violate a given
+invariant~\cite{obs-confluence}, generalizing Church-Rosser
+confluence~\cite{termrewriting}. We adapt this concept and effectively
+treat transactions as rewrite rules, database states as constraint
+states, and the database merge operator as a special \textit{join}
+operator (in the term-rewriting sense) defined for all
+states. Rewriting system concepts---including
+confluence~\cite{aiken-confluence}---have previously been integrated
+into active database systems~\cite{activedb-book} (e.g., in triggers,
+rule processing), but we are not familiar with a concept analogous to
+\iconfluence in the existing database literature.
+
+\minihead{Coordination-free algorithms and semantics} Our work is
+influenced by the distributed systems literature, where
+coordination-free execution across replicas of a given data item has
+been captured as ``availability''~\cite{gilbert-cap,queue}. A large
+class of systems provides availability via ``optimistic replication''
+(i.e., perform operations locally, then
+replicate)~\cite{optimistic}. We---like others~\cite{ec-txns}---adopt
+the use of the merge operator to reconcile divergent database
+states~\cite{bayou} from this literature. Both traditional database
+systems~\cite{adya-isolation} and more recent
+proposals~\cite{redblue-new, redblue} allow the simultaneous use of
+``weak'' and ``strong'' isolation; we seek to understand \textit{when}
+strong mechanisms are needed rather than an optimal implementation of
+either. Unlike ``tentative update'' models~\cite{sagas}, we do not
+require programmers to specify compensatory actions (beyond merge,
+which we expect to typically be generic and/or system-supplied) and do
+not reverse transaction commit decisions. Compensatory actions could
+be captured under \iconfluence as a specialized merge procedure.
+
+The CAP Theorem~\cite{gilbert-cap,pacelc} recently popularized the
+tension between strong semantics and coordination and pertains to a
+specific model (linearizability). The relationship between
+serializability and coordination requirements has also been well
+documented in the database literature~\cite{davidson-survey}. We
+recently classified a range of weaker isolation models by
+availability, labeling semantics achievable without coordination as
+``Highly Available Transactions''~\cite{hat-vldb}. Our research here addresses
+when particular \textit{applications} require coordination.
+
+In our evaluation, we make use of our recent RAMP
+transaction algorithms~\cite{ramp-txns}, which guarantee
+coordination-free, atomically visible updates. RAMP transactions are
+an \textit{implementation} of \iconfluent semantics (i.e., Read Atomic
+isolation, used in our implementation for foreign key constraint
+maintenance). Our focus in this paper is \textit{when} RAMP
+transactions (and any other coordination-free or \iconfluent semantics)
+are appropriate for applications.
+
+\minihead{Summary} The \iconfluence property is a necessary and
+sufficient condition for safe, coordination-free execution. Sufficient
+conditions such as commutativity and monotonicity are useful in
+reducing coordination overheads but are not always necessary. Here, we
+explore the fundamental limits of coordination-free execution. To do
+so, we explicitly consider a model without synchronous
+communication. This is key to scalability: if, by default, operations
+must contact a centralized validation service, perform atomic updates
+to shared state, or otherwise communicate, then scalability will be
+compromised. Finally, we only consider a single set of invariants for
+the entire application, reducing programmer overhead without affecting
+our \iconfluence results.
+

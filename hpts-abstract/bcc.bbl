@@ -1,0 +1,14 @@
+\begin{thebibliography}{1}
+
+\bibitem{hat-vldb}
+P.~Bailis et~al.
+\newblock {Highly Available Transactions: Virtues and Limitations}.
+\newblock In {\em VLDB 2014}, 2014.
+
+\bibitem{feral-cc}
+P.~Bailis et~al.
+\newblock {Feral Concurrency Control: An Empirical Investigation of Modern
+  Application Integrity}.
+\newblock In {\em SIGMOD}, 2015.
+
+\end{thebibliography}

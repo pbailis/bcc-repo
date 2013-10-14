@@ -1,0 +1,159 @@
+
+### Test TABLE for sequence numbers ###
+
+DECLARE TABLE testsequence
+  NUMBER test SEQUENCE
+END TABLE
+
+### Test TABLEs for uniqueness insert ###
+
+DECLARE TABLE testuniquekey
+  STRING id UNIQUE
+  STRING safetoinsert
+END TABLE
+
+DECLARE TABLE testuniquekeysafe
+  STRING id
+  STRING safetoinsert
+END TABLE
+
+
+### Test TABLEs for primary key insert ###
+
+DECLARE TABLE testprimarykey
+  PRIMARY KEY id
+  STRING id
+  STRING extra
+END TABLE
+
+DECLARE TABLE testprimarykey_complex
+  PRIMARY KEY id, joint_id
+  STRING id
+  STRING joint_id
+  STRING extra
+END TABLE
+
+### Test TABLE for increment and decrement ###
+
+DECLARE TABLE testincdec
+  NUMBER todecrement > 0
+  NUMBER toincrement < 0
+END TABLE
+
+### Test TABLE for conditional increment ###
+
+DECLARE TABLE testconditional
+  NUMBER todecrement > 0
+END TABLE
+
+### Test TABLEs for FK constraints ###
+
+DECLARE TABLE testconditional1
+  PRIMARY KEY id
+  NUMBER id
+END TABLE
+
+DECLARE TABLE testconditional2
+  PRIMARY KEY parent_id, id
+  REFERENCE parent_id FOREIGN KEY testconditional1.id
+  NUMBER id
+END TABLE
+
+### Test PROCEDUREs for sequence numbers ###
+
+BEGIN PROCEDURE testinsertsequence_breaks
+  INSERT INTO testsequence VALUES test=2;
+END PROCEDURE
+
+BEGIN PROCEDURE testdeletesequence_breaks
+  DELETE FROM testsequence WHERE test=*;
+END PROCEDURE
+
+### Test PROCEDUREs for uniqueness insert ###
+
+BEGIN PROCEDURE testuniqueinsert_breaks
+  INSERT INTO testuniquekey VALUES id=1, safetoinsert=foo;
+  INSERT INTO testuniquekeysafe VALUES id=2, safetoinsert=foo;
+END PROCEDURE
+
+BEGIN PROCEDURE testuniqueinsert_okay
+  INSERT INTO testuniquekey VALUES safetoinsert=foo;
+END PROCEDURE
+
+### Test PROCEDUREs for primary key insert ###
+
+BEGIN PROCEDURE testprimarykey_breaks
+  INSERT INTO testprimarykey VALUES id=1, extra=lol;
+END PROCEDURE
+
+BEGIN PROCEDURE testprimarykey_okay
+  INSERT INTO testprimarykey VALUES extra=lol;
+END PROCEDURE
+
+BEGIN PROCEDURE testprimarykey_composite_break
+  INSERT INTO testprimarykey_complex VALUES id=1, joint_id=2;
+END PROCEDURE
+
+BEGIN PROCEDURE testprimarykey_composite_okay
+  INSERT INTO testprimarykey_complex VALUES id=1;
+END PROCEDURE
+
+### Test PROCEDUREs for increment and decrement ###
+
+BEGIN PROCEDURE testinc_breaks
+  UPDATE testincdec INCREMENT toincrement BY 100 WHERE toincrement=*;
+  UPDATE testincdec INCREMENT todecrement BY 100 WHERE toincrement=*;
+END PROCEDURE
+
+BEGIN PROCEDURE testdec_breaks
+  UPDATE testincdec DECREMENT toincrement BY 100 WHERE toincrement=*;
+  UPDATE testincdec DECREMENT todecrement BY 100 WHERE toincrement=*;
+END PROCEDURE
+
+### Test PROCEDURE for conditional increment ###
+
+BEGIN PROCEDURE conditional_breaks
+  PARAMETER dec_amnt NUMERIC
+  var curval = SELECT todecrement FROM testconditional WHERE todecrement=*;
+  if curval < dec_amnt:
+    UPDATE testconditional DECREMENT todecrement BY dec_amnt WHERE todecrement=*;
+  else:
+    UPDATE testconditional INCREMENT todecrement BY 92-dec_amnt WHERE todecrement=*;
+END PROCEDURE
+
+### Test PROCEDURE for foreign key constraints ###
+
+BEGIN PROCEDURE fkey_test_okay
+  INSERT INTO testconditional1 VALUES id=1;
+  INSERT INTO testconditional2 VALUES parent_id=1, id=2;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_breaks
+  INSERT INTO testconditional1 VALUES id=1;
+  INSERT INTO testconditional2 VALUES parent_id=2, id=2;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_select_okay
+  var selector = SELECT id FROM testconditional1 WHERE id=*;
+  INSERT INTO testconditional2 VALUES parent_id=selector, id=2;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_select_breaks
+  var selector = SELECT id FROM testconditional1 WHERE id=*;
+  INSERT INTO testconditional2 VALUES parent_id=selector2, id=2;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_delete_okay
+  DELETE FROM testconditional1 WHERE id=*;
+  DELETE FROM testconditional2 WHERE parent_id=*;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_delete_okay_two
+  DELETE FROM testconditional1 WHERE id=1;
+  DELETE FROM testconditional2 WHERE parent_id=*;
+END PROCEDURE
+
+BEGIN PROCEDURE fkey_test_delete_breaks
+  DELETE FROM testconditional1 WHERE id=*;
+  DELETE FROM testconditional2 WHERE parent_id=1;
+END PROCEDURE

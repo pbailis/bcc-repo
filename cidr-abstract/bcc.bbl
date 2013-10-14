@@ -1,0 +1,92 @@
+\begin{thebibliography}{10}
+
+\bibitem{adya-isolation}
+A.~Adya.
+\newblock {\em Weak consistency: a generalized theory and optimistic
+  implementations for distributed transactions}.
+\newblock PhD thesis, MIT, 1999.
+
+\bibitem{consistency-borders}
+P.~Alvaro, P.~Bailis, N.~Conway, and J.~M. Hellerstein.
+\newblock Consistency without borders.
+\newblock In {\em SoCC}, 2013.
+
+\bibitem{hat-vldb}
+P.~Bailis, A.~Davidson, A.~Fekete, A.~Ghodsi, J.~M. Hellerstein, and I.~Stoica.
+\newblock Highly available transactions: Virtues and limitations.
+\newblock In {\em VLDB}, 2014.
+
+\bibitem{coord-avoid}
+P.~Bailis, A.~Fekete, M.~J. Franklin, A.~Ghodsi, J.~M. Hellerstein, and
+  I.~Stoica.
+\newblock Coordination avoidance in database systems.
+\newblock In {\em VLDB}, 2015.
+
+\bibitem{ramp-txns}
+P.~Bailis, A.~Fekete, A.~Ghodsi, J.~M. Hellerstein, and I.~Stoica.
+\newblock Scalable atomic visibility with {RAMP} transactions.
+\newblock In {\em SIGMOD}, 2014.
+
+\bibitem{bernstein-semantic}
+A.~J. Bernstein, P.~M. Lewis, and S.~Lu.
+\newblock Semantic conditions for correctness at different isolation levels.
+\newblock In {\em ICDE}, 2000.
+
+\bibitem{chu-avoiding}
+W.~Chu and G.~Ohlmacher.
+\newblock Avoiding deadlock in distributed data bases.
+\newblock In {\em ACM Annual Conference}, 1974.
+
+\bibitem{spanner}
+J.~C. Corbett, J.~Dean, M.~Epstein, A.~Fikes, C.~Frost, J.~J. Furman, et~al.
+\newblock Spanner: Google's globally-distributed database.
+\newblock In {\em OSDI}, 2012.
+
+\bibitem{florentin-constraints}
+J.~J. Florentin.
+\newblock Consistency auditing of databases.
+\newblock {\em The Computer Journal}, 17(1):52--58, 1974.
+
+\bibitem{garcia-mm}
+H.~Garcia-Molina and K.~Salem.
+\newblock Main memory database systems: An overview.
+\newblock {\em TKDE}, 4(6):509--516, 1992.
+
+\bibitem{gray-isolation}
+J.~Gray, R.~Lorie, G.~Putzolu, and I.~Traiger.
+\newblock Granularity of locks and degrees of consistency in a shared data
+  base.
+\newblock Technical report, IBM, 1975.
+
+\bibitem{ec-rfc}
+P.~R. Johnson and R.~H. Thomas.
+\newblock Network working group {RFC 677}: Maintenance of duplicate databases,
+  1975.
+
+\bibitem{kung1979optimality}
+H.-T. Kung and C.~H. Papadimitriou.
+\newblock An optimality theory of concurrency control for databases.
+\newblock In {\em SIGMOD}, 1979.
+
+\bibitem{liskov-clocks}
+B.~Liskov.
+\newblock Practical uses of synchronized clocks in distributed systems.
+\newblock {\em Distributed Computing}, 6(4):211--219, 1993.
+
+\bibitem{stonebraker1985case}
+M.~Stonebraker.
+\newblock The case for shared nothing.
+\newblock In {\em HPTS}, 1985.
+
+\bibitem{hstore}
+M.~Stonebraker, S.~Madden, D.~J. Abadi, S.~Harizopoulos, et~al.
+\newblock The end of an architectural era: (it's time for a complete rewrite).
+\newblock In {\em VLDB}, 2007.
+
+\bibitem{whitney-hpts}
+A.~Whitney, D.~Shasha, and S.~Apter.
+\newblock High volume transaction processing without concurrency control, two
+  phase commit, {SQL} or {C++}.
+\newblock In {\em HPTS}, 1997.
+
+\end{thebibliography}

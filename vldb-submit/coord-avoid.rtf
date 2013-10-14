@@ -1,0 +1,2099 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+{\fonttbl\f0\froman\fcharset0 TimesNewRomanPSMT;\f1\fswiss\fcharset0 Helvetica;\f2\fnil\fcharset0 STIXGeneral-Regular;
+\f3\fmodern\fcharset0 CourierNewPSMT;\f4\fnil\fcharset0 AppleSymbols;}
+{\colortbl;\red255\green255\blue255;\red191\green191\blue191;}
+{\info
+{\title Original file was coord-avoid.tex}
+{\doccomm Created using latex2rtf 2.3.8 r1240 (released June 16 2014) on Sun Oct  5 16:39:08 2014}}\paperw12280\paperh15900\margl2680\margr2700\margb1760\margt2540\vieww43720\viewh25620\viewkind0
+\deftab720
+\pard\pardeftab720\qj
+
+\f0\fs20 \cf0 XXXYYY\
+\pard\pardeftab720\fi300\sb30\qj
+\cf0  \
+\pard\pardeftab720\fi300\sb30\sa240\qc
+
+\b\fs36 \cf0 Coordination Avoidance in Database Systems"\
+(Extended Version)" \
+\pard\pardeftab720\fi300\sb30\sa120\qc
+
+\b0\fs20 \cf0 Peter Bailis, Alan Fekete1214, Michael J. Franklin, Ali Ghodsi, Joseph M. Hellerstein, Ion Stoica \
+\pard\pardeftab720\sb30\sa120\qc
+\cf0 UC Berkeley and 1214University of Sydney\
+\pard\pardeftab720\fi300\sb30\sa120\qc
+\cf0 \
+\pard\pardeftab720\fi300\sb30\sa120\qc
+
+\b \cf0 Abstract\
+\pard\pardeftab720\li1024\fi300\ri1024\sb30\qj
+
+\b0 \cf0  Minimizing coordination, or blocking communication between concurrently executing operations, is key to maximizing scalability, availability, and high performance in database systems. However, uninhibited coordination-free execution can compromise application correctness, or consistency. When is coordination necessary for correctness? The classic use of serializable transactions is sufficient to maintain correctness but is not necessary for all applications, sacrificing potential scalability. In this paper, we develop a formal framework, invariant confluence , that determines whether an application requires coordination for correct execution. By operating on application-level invariants over database states (e.g., integrity constraints), invariant confluence provides a necessary and sufficient condition for safe, coordination-free execution. When programmers specify their application invariants, this analysis allows databases to coordinate only when anomalies that might violate invariants are possible. We analyze the invariant confluence common invariants and operations from real-world database systems (i.e., integrity constraints) and applications and show that many are invariant confluent   and therefore achievable without coordination. We apply these results to a proof-of-concept coordination-avoiding database prototype and demonstrate sizable performance gains compared to serializable execution, notably a 25-fold improvement over prior TPC-C New-Order performance on a 200 server cluster. \
+\pard\pardeftab720\sb390\sa120
+
+\b\fs32 \cf0 1  Introduction\
+\pard\pardeftab720\sb90\qj
+
+\b0\fs20 \cf0 Minimizing coordination is key in high-performance, scalable database design. Coordination\'97informally, the requirement that concurrently executing operations synchronously communicate or otherwise stall in order to complete\'97is expensive: it limits concurrency between operations and undermines the effectiveness of scale-out across servers. In the presence of partial system failures, coordinating operations may be forced to stall indefinitely, and, in the failure-free case, communication delays can increase latency\'a0[9, 28]. In contrast, coordination-free operations allow aggressive scale-out, availability\'a0[28], and low latency execution\'a0[1]. If operations are coordination-free, then adding more capacity (e.g., servers, processors) will result in additional throughput; operations can execute on the new resources without affecting the old set of resources. Partial failures will not affect non-failed operations, and latency between any database replicas can be hidden from end-users.\
+\pard\pardeftab720\fi300\sb30\qj
+\cf0 Unfortunately, coordination-free execution is not always safe. Uninhibited coordination-free execution can compromise application-level correctness. In canonical banking application examples, concurrent, coordination-free withdrawal operations can result in undesirable and \'93inconsistent\'94 outcomes like negative account balances\'97application-level anomalies that the database should prevent. To ensure correct behavior, a database system must coordinate the execution of these operations that, if otherwise executed concurrently, could result in inconsistent application state.\
+This tension between coordination-free execution and correctness is evidenced by the range of database concurrency control policies. In traditional database systems, serializable isolation provides concurrent operations (transactions) with the illusion of executing in some serial order\'a0[15]. As long as individual transactions maintain correct application state, serializability guarantees correctness\'a0[30]. However, each pair of concurrent operations (at least one of which is a write) can potentially compromise serializability and therefore will require coordination to execute\'a0[9, 21]. By isolating users at the level of reads and writes, serializability can be overly conservative and may in turn coordinate more than is strictly necessary for consistency\'a0[29, 39, 53, 58]. For example, hundreds of users can safely and simultaneously retweet Barack Obama on Twitter without observing a serial ordering of updates to the retweet counter. In contrast, a range of widely-deployed weaker models require less coordination to execute but surface read and write behavior that may in turn compromise consistency\'a0[2, 9, 22, 48]. With these alternative models, it is up to users to decide when weakened guarantees are acceptable for their applications\'a0[6], leading to confusion regarding (and substantial interest in) the relationship between consistency, scalability, and availability\'a0[1, 9, 18, 21, 22, 28, 40].\
+In this paper, we address the central question inherent in this trade-off: when is coordination strictly necessary to maintain application-level consistency? To do so, we enlist the aid of application programmers to specify their correctness criteria in the form of 
+\i invariants
+\i0 . For example, our banking application writer would specify that account balances should be positive (e.g., by schema annotations), similar to constraints in modern databases today. Using these invariants, we formalize a 
+\i necessary
+\i0  and sufficient condition for invariant-preserving and coordination-free execution of an application\'92s operations\'97the first such condition we have encountered. This property\'97invariant confluence  (
+\f1\i I
+\f0\i0 -confluence )\'97captures the potential scalability and availability of an application, independent of any particular database implementation: if an application\'92s operations are 
+\f1\i I
+\f0\i0 -confluent  , a database can correctly execute them without coordination. If operations are not 
+\f1\i I
+\f0\i0 -confluent  , coordination is required to guarantee correctness. This provides a basis for 
+\i coordination avoidance
+\i0 : the use of coordination only when necessary.\
+While coordination-free execution is powerful, are any 
+\i useful
+\i0  operations safely executable without coordination? 
+\f1\i I
+\f0\i0 -confluence  analysis determines when concurrent execution of specific operations can be \'93merged\'94 into valid database state; we accordingly analyze invariants and operations from several real-world databases and applications. Many production databases today already support invariants in the form of primary key, uniqueness, foreign key, and row-level check constraints\'a0[9, 42]. We analyze these and show many are 
+\f1\i I
+\f0\i0 -confluent  , including forms of foreign key constraints, unique value generation, and some check constraints, while others, like primary key constraints are, in general, not. We also consider entire 
+\i applications
+\i0  and apply our analysis to the workloads of the OLTPBenchmark suite\'a0[23]: surprisingly, many are easy to express and are also 
+\f1\i I
+\f0\i0 -confluent  . As an extended case study, we examine the TPC-C benchmark\'a0[55], the preferred standard for evaluating new concurrency control algorithms\'a0[23, 35, 46, 52, 54]. We show that ten of twelve of TPC-C\'92s invariants are 
+\f1\i I
+\f0\i0 -confluent   the workload transactions and, more importantly, compliant TPC-C can be implemented without any synchronous coordination across servers. We subsequently scale a coordination-avoiding database prototype linearly, to over 12.7M TPC-C New-Order transactions per second on 200 servers, a 25-fold improvement over prior results.\
+Overall, 
+\f1\i I
+\f0\i0 -confluence a concrete grasp on the challenge of minimizing coordination while ensuring application-level correctness. In seeking a necessary and sufficient (i.e., \'93tight\'94) condition for safe, coordination-free execution, we require the programmer to specify her correctness criteria. If these criteria or application operations are unavailable for inspection, users must fall back to using serializable transactions or, alternatively, perform the same ad-hoc analyses they use today\'a0[12]. Moreover, it is already well known that coordination is required to prevent several read/write isolation anomalies like non-linearizable operations\'a0[9, 28]. However, when users 
+\i can
+\i0  correctly specify their application correctness criteria and operations, they can maximize scalability without requiring expertise in the milieu of weak read/write isolation models\'a0[2, 9]. We have also found that 
+\f1\i I
+\f0\i0 -confluence be a useful design tool: studying specific combinations of invariants and operations can indicate the existence of more scalable algorithms\'a0[18].\
+In summary, this paper offers the following high-level takeaways: \
+\pard\pardeftab720\li600\fi-300\sb130\qj
+\cf0 .\'a0qdcounter=1em      \
+\pard\tx283\pardeftab720\li600\fi-300\sb5\sa120
+\cf0 \'95	Serializable transactions preserve application correctness at the cost of always coordinating between conflicting reads and writes.\
+\'95	Given knowledge of application transactions and correctness criteria (e.g., invariants), it is often possible to avoid this coordination by executing some transactions without coordination (therefore providing availability, low latency, and excellent scalability) while still preserving those correctness criteria.\
+\'95	Invariant confluence  offers a necessary and sufficient condition for this correctness-preserving, coordination-free execution.\
+\'95	Many common integrity constraints found in SQL and standardized benchmarks are invariant confluent  , allowing order-of-magnitude performance gains over coordinated execution.\
+\pard\pardeftab720\fi300\qj
+\cf0 While coordination cannot always be avoided, this work evidences the power of application invariants in scalable and correct execution of modern applications on modern hardware. Application correctness does not always require coordination, and 
+\f1\i I
+\f0\i0 -confluence can explain both when and why this is the case.\
+"
+\b Overview.
+\b0   The remainder of this paper proceeds as follows: Section\'a02 describes and quantifies the costs of coordination. Section\'a03 introduces our system model and Section\'a04 contains our primary theoretical result. Readers may skip to Section\'a05 for practical applications of 
+\f1\i I
+\f0\i0 -confluence real-world invariant-operation combinations. Section\'a06 subsequently applies these combinations to real applications and presents an experimental case study of TPC-C. Section\'a07 describes related work, while Section\'a0? discusses possible extensions and Section\'a08 concludes. "  
+\b Overview.
+\b0   The remainder of this paper proceeds as follows: Section\'a02 describes and quantifies the costs of coordination. Section\'a03 introduces our system model and Section\'a04 contains our primary theoretical result. Readers may skip to Section\'a05 for practical applications of 
+\f1\i I
+\f0\i0 -confluence real-world invariant-operation combinations. Section\'a06 subsequently applies these combinations to real applications and presents an experimental case study of TPC-C. Section\'a07 describes related work, and Section\'a08 concludes. \
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 2  Conflicts and Coordination\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 As repositories for application state, databases are traditionally tasked with maintaining correct data on behalf of users. During concurrent access to data, a database ensuring correctness must therefore decide which user operations can execute simultaneously and which, if any, must coordinate, or block. In this section, we explore the relationship between the conflicts that a database attempts to avoid and the coordination costs of doing so.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 By example.
+\b0   As a running example, we consider a database-backed payroll application that maintains information about employees and departments within a small business. In the application, 
+\i a
+\i0 .) each employee is assigned a unique ID number and 
+\i b
+\i0 .) each employee belongs to exactly one department. A database ensuring correctness must maintain these application-level properties, or 
+\i invariants
+\i0  on behalf of the application (i.e., without application-level intervention). In our payroll application, this is non-trivial: for example, if the application attempts to simultaneously create two employees, then the database must ensure that the employees are assigned distinct IDs.\
+\pard\pardeftab720\qj
+
+\b \cf0 Serializability and conflicts.
+\b0   The classic answer to maintaining application-level invariants is to use serializable isolation: execute each user\'92s ordered sequence of operations, or 
+\i transactions
+\i0 , such that the end result is equivalent to some sequential execution\'a0[15, 30, 53]. If each transaction preserves correctness in isolation, composition via serializable execution ensures correctness. In our payroll example, the database would execute the two employee creation transactions such that one transaction appears to execute after the other, avoiding duplicate ID assignment.\
+While serializability is a powerful abstraction, it comes with a cost: for arbitrary transactions (and for all implementations of serializability\'92s more conservative variant\'97conflict serializability), any two operations to the same item\'97at least one of which is a write\'97will result in a 
+\i conflict
+\i0 . These conflicts require coordination or, informally, blocking communication between concurrent transactions: to provide a serial ordering, conflicts must be totally ordered\'a0[15]. For example, given database state \{
+\i x
+\i0 =
+\f2 \uc0\u8869 
+\f0 ,
+\i y
+\i0 =
+\f2 \uc0\u8869 
+\f0 \}, if transaction  writes 
+\i x
+\i0 =1 and reads from 
+\i y
+\i0  and  writes 
+\i y
+\i0 =1 and reads from 
+\i x
+\i0 , a database cannot both execute  and  entirely concurrently and maintain serializability\'a0[9, 21].\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 The costs of coordination.
+\b0   The coordination overheads above incur three primary penalties: increased latency (due to stalled execution), decreased throughput, and, in the event of partial failures, unavailability. If a transaction takes 
+\i d
+\i0  seconds to execute, the maximum throughput of conflicting transactions operating on the same items under a general-purpose (i.e., interactive, non-batched) transaction model is limited by , while coordinating operations will also have to wait. On a single system, delays can be small, permitting tens to hundreds of thousands of conflicting transactions per item per second. In a partitioned database system, where different items are located on different servers, or in a replicated database system, where the same item is located (and is available for operations) on multiple servers, the cost increases: delay is lower-bounded by network latency. On a local area network, delay may vary from several microseconds (e.g., via Infiniband or RDMA) to several milliseconds on today\'92s cloud infrastructure, permitting anywhere from a few hundred transactions to a few hundred thousand transactions per second. On a wide-area network, delay is lower-bounded by the speed of light (worst-case on Earth, around 75ms, or about 13 operations per second\'a0[9]). Under network partitions\'a0[13], as delay tends towards infinity, these penalties lead to unavailability\'a0[9, 28]. In contrast, coordination-free operations are able to execute concurrently and will not incur these penalties.\
+\pard\pardeftab720\qj
+
+\b \cf0 Quantifying coordination overheads.
+\b0   To further understand the costs of coordination, we performed two sets of measurements\'97one on a database prototype and one using traces from prior studies.\
+\pard\pardeftab720\sb240\qc
+\cf0  \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Figure 1: Microbenchmark performance of coordinated and coordination-free execution of transactions across eight items on eight servers.\
+\pard\pardeftab720\fi300\sb260\qj
+
+\fs20 \cf0 We first compared the throughput of a set of coordinated and coordination-free transaction execution. We partitioned a set of eight data items across eight servers and ran one set of transactions with an optimized variant of two-phase locking (providing serializability)\'a0[15] and another set of transactions without coordination (Figure\'a01; see "Appendix A" [10, Appendix A] for more details and results). With single-item, non-distributed transactions, the coordination-free implementation achieves, in aggregate, over 12M transactions per second and bottlenecks on 
+\i physical resources
+\i0 \'97namely, CPU cycles. In contrast, the lock-based implementation achieves approximately 1.1M transactions per second: it is unable to fully utilize all multi-core processor contexts due to lock contention. For distributed transactions, coordination-free throughput decreases linearly (as an 
+\i N
+\i0 -item transaction performs 
+\i N
+\i0  writes), while the throughput of coordinating transactions drops by over three orders of magnitude.\
+\pard\pardeftab720\fi300\qj
+\cf0 While the above microbenchmark demonstrates the costs of a particular 
+\i implementation
+\i0  of coordination, we also studied the effect of more fundamental, implementation-independent overheads (i.e., also applicable to optimistic and scheduling-based concurrency control mechanisms). We determined the maximum attainable throughput for coordinated execution within a single datacenter (based on data from\'a0[60]) and across multiple datacenters (based on data from\'a0[9]) due to blocking coordination during atomic commitment\'a0[15]. For an 
+\i N
+\i0 -server transaction, classic two-phase commit (
+\f3 C-2PC
+\f0 ) requires 
+\i N
+\i0  (parallel) coordinator to server RTTs, while decentralized two-phase commit (
+\f3 D-2PC
+\f0 ) requires 
+\i N
+\i0  (parallel) server to server broadcasts, or  messages. Figure\'a02 shows that, in the local area, with only two servers (e.g., two replicas or two coordinating operations on items residing on different servers), throughput is bounded by 1125 transactions/s (via 
+\f3 D-2PC
+\f0 ; 668/s via 
+\f3 C-2PC
+\f0 ). Across eight servers, 
+\f3 D-2PC
+\f0 drops to 173 transactions/s (resp. 321 for 
+\f3 C-2PC
+\f0 ) due to long-tailed latency distributions. In the wide area, the effects are more stark: if coordinating from Virginia to Oregon, 
+\f3 D-2PC
+\f0  message delays are 83\'a0ms per commit, allowing 12 operations per second. If coordinating between all eight EC2 availability zones, throughput drops to slightly over 2 transactions/s in both algorithms. ("Appendix A" [10, Appendix A] again provides more details.)\
+These results should be unsurprising: coordinating\'97especially over the network\'97can incur serious performance penalties. In contrast, coordination-free operations can execute without incurring these costs. The costs of actual workloads can vary: if coordinating operations are rare, concurrency control will not be a bottleneck. For example, a serializable database executing transactions with disjoint read and write sets can perform as well as a non-serializable database without compromising correctness\'a0[34]. However, as these results demonstrate, minimizing the amount of coordination and its degree of distribution can therefore have a tangible impact on performance, latency, and availability\'a0[1, 9, 28]. While we study real applications in Section\'a06, these measurements highlight the worst of coordination costs.\
+\pard\pardeftab720\fi300\sb240\qc
+\cf0 \
+\pard\pardeftab720\sb120\qc
+\cf0 \
+\pard\pardeftab720\sb120\sa120\qc
+
+\b\fs14 \cf0 a.) Maximum transaction throughput over local-area network in\'a0[60]
+\b0\fs24 \
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 \
+\pard\pardeftab720\sb120\sa120\qc
+
+\b\fs14 \cf0 b.) Maximum throughput over wide-area network in\'a0[9] with transactions originating from a coordinator in Virginia (VA; OR:\'a0Oregon, CA:\'a0California, IR:\'a0Ireland, SP:\'a0S\'e3o Paulo, TO:\'a0Tokyo, SI:\'a0Singapore, SY:\'a0Sydney)
+\b0\fs24 \
+\pard\pardeftab720\sb120\sa120
+\cf0 Figure 2: Atomic commitment latency as an upper bound on throughput over LAN and WAN networks.\
+\pard\pardeftab720\fi300\sb280\qj
+
+\b\fs20 \cf0 Our goal: Minimize coordination.
+\b0   In this paper, we seek to minimize the amount of coordination required to correctly execute an application\'92s transactions. As discussed in Section\'a01, serializability is 
+\i sufficient
+\i0  to maintain correctness but is not always 
+\i necessary
+\i0 ; that is, many\'97but not all\'97transactions can be executed concurrently without necessarily compromising application correctness. In the remainder of this paper, we identify when safe, coordination-free execution is possible. If serializability requires coordinating between each possible pair of conflicting reads and writes, we will only coordinate between pairs of operations that might compromise 
+\i application-level
+\i0  correctness. To do so, we must both raise the specification of correctness beyond the level of reads and writes and directly account for the process of reconciling the effects of concurrent transaction execution at the application level\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 3  System Model\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 To precisely characterize coordination avoidance, we present a system model. We begin with an informal overview. In our model, transactions operate over independent (logical) \'93snapshots\'94 of database state. Transaction writes are applied at one or more snapshots initially when the transaction commits and then are integrated into other snapshots asynchronously via a \'93merge\'94 operator that incorporates those changes into the snapshot\'92s state. Given a set of invariants describing valid database states, as Table\'a01 outlines, we seek to understand when it is possible to ensure invariants are always satisfied (global validity) while guaranteeing a response (transactional availability) and the existence of a common state (convergence), all without communication during transaction execution (coordination-freedom). This formal model need not directly correspond to a given implementation (e.g., see the database architecture in Section\'a06)\'97rather, it serves as a useful abstraction in our formalization. The remainder of this section precisely defines these concepts; readers more interested in their application should skip to Section\'a04.\
+\pard\pardeftab720\sb240\qc
+\cf0  \
+\pard\pardeftab720\sb120\qc
+
+\fs18 \cf0 \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Property
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720\qr
+
+\b \cf0 Effect
+\b0 \cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0  Global validity\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 Invariants hold over committed states\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Transactional availability\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 Non-trivial response guaranteed\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Convergence\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 Updates are reflected in shared state\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Coordination-freedom\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 No synchronous coordination\cell \lastrow\row
+\pard\pardeftab720\sb240\qc
+\cf0  \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Table 1: Informal utility of properties in system model.\
+\pard\pardeftab720\fi300\sb260\qj
+
+\b\fs20 \cf0 Databases.
+\b0   We represent a state of the shared database as a set 
+\i D
+\i0  of unique 
+\i versions
+\i0  of data items located on a set of database servers. Each version is located on at least one server and possibly multiple servers, but the distinction is not important for our model. We use 
+\i D
+\i0  to denote the set of possible database states\'97that is, the set of sets of versions. The database is initially populated by an initial state  (typically but not necessarily empty).\
+\pard\pardeftab720\qj
+
+\b \cf0 Transactions, Replicas, and Merging.
+\b0   Application clients submit requests to the database in the form of transactions, or ordered groups of operations on data items that should be executed together. Each transaction operates on a local 
+\i replica
+\i0 , or set of versions of the items mentioned in the transaction. At the beginning of the transaction, the replica contains a subset of the database state and is formed from all of the versions of the relevant items that can be found at one or more physical servers that are contacted during transaction execution. As the transaction executes, it may add versions (of items in its writeset) to its replica. Thus, we define a transaction 
+\i T
+\i0  as a transformation on a replica: . In our initial model, we treat transactions as opaque transformations that can contain writes (which add new versions to the replica\'92s set of versions) or reads (which return a specific set of versions from the replica). (Later, we will discuss transactions operating on data types such as counters.)\
+Upon completion, each transaction can 
+\i commit
+\i0 , signaling success, or 
+\i abort
+\i0 , signaling failure. Upon commit, the replica state is subsequently 
+\i merged
+\i0  (
+\f4 \uc0\u8852 
+\f0 :) into the set of versions at one or more servers, where later transactions are able to observe its effects. Over time, the effects are propagated through the system to other servers, again through the use of the merge operator. Though not strictly necessary, we assume this merge operator is commutative, associative, and idempotent\'a0[5, 50]. In our initial model, we define merge as set union of the versions contained at different servers. (Section\'a05 discusses additional implementations.) For example, if server  and , then .\
+\pard\pardeftab720\fi300\qj
+\cf0 In effect, each transaction can modify its replica state without modifying any other concurrently executing transactions\'92 replica state. Replicas therefore provide transactions with partial \'93snapshot\'94 views of global state (that we will use to simulate concurrent executions, similar to revision diagrams\'a0[17]). Importantly, two transactions\'92 replicas do not necessarily correspond to two physically separate servers; rather, a replica is simply a partial \'93view\'94 over the global state of the database system. For now, we assume transactions are known in advance (see also\'a0"Section 8" [10, Section 8]).\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Invariants.
+\b0   To determine whether a database state is valid according to application correctness criteria, we use 
+\i invariants
+\i0 , or predicates over replica state: \'a0[25]. In our payroll example, we could specify an invariant that only one user in a database has a given ID. This invariant\'97as well as almost all invariants we consider\'97is naturally expressed as a part of the database schema (e.g., via DDL); however, our approach allows us to reason about invariants even if they are known to the developer but not declared to the system. Invariants directly capture the notion of ACID Consistency\'a0[15, 30], and we say that a database state is 
+\i valid
+\i0  under an invariant 
+\i I
+\i0  (or 
+\i I
+\i0 -valid) if it satisfies the predicate:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 1
+\b0  
+\i A replica state R
+\f4\i0 \uc0\u8712 
+\f0\i D is I-valid iff I(R)=true. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 We require that  be valid under invariants. Section\'a04.3 provides additional discussion regarding our use of invariants.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Availability.
+\b0   To ensure each transaction receives a non-trivial response, we adopt the following definition of 
+\i availability
+\i0 \'a0[9]:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 2
+\b0  
+\i A system provides transactionally available execution iff, whenever a client executing a transaction T can access servers containing one or more versions of each item in T, then T eventually commits or aborts itself either due to an abort operation in T or if committing the transaction would violate a declared invariant over T\'92s replica state. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 Under the above definition, a transaction can only abort if it explicitly chooses to abort itself or if committing would violate invariants over the transaction\'92s replica state.\
+\pard\pardeftab720\fi300\sb240\qc
+\cf0 \
+\pard\pardeftab720\sb120\sa120\qc
+
+\fs24 \cf0  \
+\pard\pardeftab720\sb120\sa120
+\cf0 Figure 3: An example coordination-free execution of two transactions,  and , on two servers. Each transaction writes to its local replica, then, after commit, the servers asynchronously exchange state and converge to a common state ().\
+\pard\pardeftab720\fi300\sb260\qj
+
+\b\fs20 \cf0 Convergence.
+\b0   Transactional availability allows replicas to maintain valid state 
+\i independently
+\i0 , but it is vacuously possible to maintain \'93consistent\'94 database states by letting replicas diverge (contain different state) forever. This guarantees 
+\i safety
+\i0  (nothing bad happens) but not 
+\i liveness
+\i0  (something good happens)\'a0[49]. To require state sharing, we adopt the following definition:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 3
+\b0  
+\i A system is convergent iff, in the absence of new update transactions and in the absence of indefinite communication delays, all pairs of servers eventually contain the same set of versions for any item that they both store. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 To capture the process of reconciling divergent states, we use the previously introduced merge operator: given two divergent server states, we apply the merge operator to produce convergent state. We assume the effects of merge are atomically visible: either all effects of a merge are visible or none are. This assumption is not always necessary but, as it is maintainable without coordination\'a0[9, 11], does not affect our results.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Maintaining validity.
+\b0   To make sure that both divergent and convergent database states are valid and, therefore, that transactions never observe invalid states, we introduce the following property:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 4
+\b0  
+\i A system is globally I-valid iff all replicas always contain I-valid state. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+
+\b \cf0 Coordination.
+\b0   Our system model is missing one final constraint on coordination between transactions, or replicas. We adopt the following definition of coordination-freedom:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 5
+\b0  
+\i A system provides coordination-free execution iff any finite number of transactions can sequentially execute on a replica without communicating with or adding versions from any other replica. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+
+\b \cf0 By example.
+\b0   Figure\'a03 illustrates a coordination-free execution of two transactions  and  on two separate, fully-replicated physical servers. Each transaction commits on its local replica, and the result of each transaction is reflected in the transaction\'92s local server state. After the transactions have completed, the servers exchange state and, after applying the merge operator, contain the same state. Any transactions executing later on either server will be able to work on a snapshot of the converged set of versions that includes the effects of both transactions.\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 4  Consistency sans Coordination\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 With a system model and goals in hand, we now address the question: when do applications require coordination for correctness? The answer depends not just on the transactions that a database may be expected to perform and not just on the integrity constraints that the database is required to maintain. Rather, the answer depends on the 
+\i combination
+\i0  of the two under study. Our contribution in this section is to formulate a criterion that will answer this question for specific combinations in an implementation-agnostic manner.\
+\pard\pardeftab720\fi300\qj
+\cf0 In this section, we focus almost exclusively on providing a formal answer to this question. The remaining sections of this paper are devoted to practical interpretation and application of these results.\
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 4.1  
+\f1\i I
+\f0\i0 -confluence : Criteria Defined\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 To begin, we introduce a concept (adapted from the constraint programming literature\'a0[24]) that will underlie our main result: invariant confluence  (hereafter, 
+\f1\i I
+\f0\i0 -confluence ). Applied in a transactional context, the 
+\f1\i I
+\f0\i0 -confluence informally ensures that divergent, valid database states can be merged into a valid database state. That is, if the effects of two 
+\i I
+\i0 -valid sequences of transactions (, ) operating independently on replicas of 
+\i I
+\i0 -valid database state  produce valid outputs ( and  each hold), their effects can safely be merged into a third, valid database state ( holds). In the next sub-section, we show that 
+\f1\i I
+\f0\i0 -confluence  analysis directly determines the potential for safe, coordination-free.\
+\pard\pardeftab720\fi300\qj
+\cf0 We first formalize the process of executing a sequence of transactions on a single, valid replica and maintaining invariants between each transaction (which we will use to model divergent executions). If 
+\i T
+\i0  is a set of transactions, and  is a sequence of transactions from the set T, then we write :\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 6 (Valid Sequence)
+\b0  
+\i  Given invariant I, a sequence  of transactions in set T, and database state D, we say  is an I-valid sequence from D if  are I-valid. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 We can now formalize the 
+\f1\i I
+\f0\i0 -confluence :\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Definition 7 ($I$-confluence )
+\b0  
+\i  A set of transactions T is 
+\f1 I
+\f0 -confluent  respect to invariant I if, for all I-valid database states  where  is an I-valid sequence of transactions in T from , for all pairs of I-valid sequences  of transactions in T from ,  is I-valid. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 Figure\'a04 depicts an 
+\f1\i I
+\f0\i0 -confluent  using two 
+\i I
+\i0 -valid sequences each starting from a shared, 
+\i I
+\i0 -valid database state . Two 
+\i I
+\i0 -valid sequences  and  each modify a shared database state . Under 
+\f1\i I
+\f0\i0 -confluence , the terminal states resulting from these sequences ( and ) must be valid under merge.\
+\pard\pardeftab720\fi300\qj
+
+\f1\i \cf0 I
+\f0\i0 -confluence for specific combinations of invariants and transactions. In our payroll database example from Section\'a02, removing a user from the database is 
+\f1\i I
+\f0\i0 -confluent  respect to the invariant that user IDs are unique. However, two transactions that remove two different users from the database are not 
+\f1\i I
+\f0\i0 -confluent  respect to the invariant that there exists at least one user in the database at all times. We devote Section\'a05 to further (and more precise) study of these combinations.\
+\pard\pardeftab720\fi300\sb240\qc
+\cf0 \
+\pard\pardeftab720\sb120\sa120\qc
+
+\fs24 \cf0  \
+\pard\pardeftab720\sb120\sa120
+\cf0 Figure 4: The 
+\f1\i I
+\f0\i0 -confluence illustrated via a diamond diagram. If a set of transactions 
+\i T
+\i0  is 
+\f1\i I
+\f0\i0 -confluent  , then all database states (, ) produced by 
+\i I
+\i0 -valid sequences in 
+\i T
+\i0  starting from a common, 
+\i I
+\i0 -valid database state () must be mergeable (
+\f4 \uc0\u8852 
+\f0 ) into an 
+\i I
+\i0 -valid database state.\
+\pard\pardeftab720\sb380\sa120
+
+\b\fs32 \cf0 4.2  
+\f1\i I
+\f0\i0 -confluence and Coordination\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 We can now apply 
+\f1\i I
+\f0\i0 -confluence our goals from Section\'a03:\
+\pard\pardeftab720\sb60\sa120
+
+\b \cf0 Theorem 1
+\b0  
+\i  A globally I-valid system can execute a set of transactions T with coordination-freedom, transactional availability, convergence if and only if T is 
+\f1 I
+\f0 -confluent  respect to I. 
+\i0 \
+\pard\pardeftab720\fi300\sb60\qj
+\cf0 We provide a full proof of Theorem\'a01 in\'a0"Appendix B" [10, Appendix B] (which is straightforward) but provide a sketch here. The backwards direction is by construction: if 
+\f1\i I
+\f0\i0 -confluence , each replica can check each transaction\'92s modifications locally and replicas can merge independent modifications to guarantee convergence to a valid state. The forwards direction uses a partitioning argument\'a0[28] to derive a contradiction: we construct a scenario under which a system cannot determine whether a non-
+\f1\i I
+\f0\i0 -confluent  should commit without violating one of our desired properties (either compromising validity or availability, diverging forever, or coordinating).\
+\pard\pardeftab720\fi300\qj
+\cf0 Theorem\'a01 establishes 
+\f1\i I
+\f0\i0 -confluence a necessary and sufficient condition for invariant-preserving, coordination-free execution. If 
+\f1\i I
+\f0\i0 -confluence , there exists a correct, coordination-free execution strategy for the transactions; if not, no possible implementation can guarantee these properties for the provided invariants and transactions. That is, if 
+\f1\i I
+\f0\i0 -confluence  not hold, there exists at least one execution of transactions on separate replicas that will violate the given invariants when servers converge. To prevent invalid states from occurring, at least one of the transaction sequences will have to forego availability or coordination-freedom, or the system will have to forego convergence. 
+\f1\i I
+\f0\i0 -confluence  analysis is independent of any given implementation, and effectively \'93lifts\'94 prior discussions of scalability, availability, and low latency\'a0[1, 9, 28] to the level of application (i.e., not \'93I/O\'94\'a0[6]) correctness. This provides a useful handle on the implications of coordination-free execution without requiring reasoning about low-level properties such as physical data location and the number of servers.\
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 4.3  Discussion and Limitations\
+\pard\pardeftab720\sb60\qj
+
+\f1\i\b0\fs20 \cf0 I
+\f0\i0 -confluence a simple (informal) rule: 
+\i\b coordination can only be avoided if all local commit decisions are globally valid
+\i0\b0  (i.e. merging all accessible local states satisfies invariants). If two independent decisions to commit can result in invalid converged state, then replicas must coordinate in order to ensure that only one of the decisions is to commit. Given the existence of an unsafe execution and the inability to distinguish between safe and invalid executions using only local information, a globally valid system 
+\i must
+\i0  coordinate in order to prevent the invalid execution from arising.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Use of invariants.
+\b0   Our use of invariants in 
+\f1\i I
+\f0\i0 -confluence  key to achieving a 
+\i necessary
+\i0  and not simply sufficient condition. By directly capturing application-level correctness criteria via invariants, 
+\f1\i I
+\f0\i0 -confluence only identifies \'93true\'94 conflicts. This allows 
+\f1\i I
+\f0\i0 -confluence to perform a more accurate assessment of whether coordination is needed compared to related conditions such as commutativity (Section\'a07).\
+\pard\pardeftab720\qj
+\cf0 However, the reliance on invariants also has drawbacks. 
+\f1\i I
+\f0\i0 -confluence  analysis only guards against violations of any provided invariants. If invariants are incorrectly or incompletely specified, an 
+\f1\i I
+\f0\i0 -confluent   database system may violate application-level correctness. If users cannot guarantee the correctness and completeness of their invariants and operations, they should opt for a more conservative analysis or mechanism such as employing serializable transactions. Accordingly, our development of 
+\f1\i I
+\f0\i0 -confluence provides developers with a powerful option\'97but only if used correctly. If used incorrectly, 
+\f1\i I
+\f0\i0 -confluence  incorrect results, or, if not used at all, developers must resort to existing alternatives.\
+\pard\pardeftab720\fi300\qj
+\cf0 This final point raises several questions: can we specify invariants in real-world use cases? Classic database concurrency control models assume that \'93the [set of application invariants] is generally not known to the system but is embodied in the structure of the transaction\'94\'a0[25, 56]. Nevertheless, since 1976, databases have introduced support for a finite set of invariants\'a0[14, 26, 29, 32, 37] in the form of primary key, foreign key, uniqueness, and row-level \'93check\'94 constraints\'a0[42]. We can (and, in this paper, do) analyze these invariants, which can\'97like many program analyses\'a0[18]\'97lead to new insights about execution strategies. We have found the process of invariant specification to be non-trivial but feasible; Section\'a06 describes some of our experiences.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 (Non-)determinism.
+\b0   
+\f1\i I
+\f0\i0 -confluence effectively captures points of 
+\i unsafe non-determinism
+\i0 \'a0[6] in transaction execution. As we have seen in many of our examples thus far, total non-determinism under concurrent execution can compromise application-level consistency\'a0[5, 36]. But not all non-determinism is bad: many desirable properties (e.g., classical distributed consensus among processes) involve forms of acceptable non-determinism (e.g., any proposed outcome is acceptable as long as all processes agree)\'a0[31]. In many cases, maximizing safe concurrency requires non-determinism.\
+\pard\pardeftab720\qj
+
+\f1\i \cf0 I
+\f0\i0 -confluence allows this non-deterministic divergence of database states but makes two useful guarantees about those states. First, the requirement for global validity ensures safety (in the form of invariants). Second, the requirement for convergence ensures liveness (in the form of convergence). Accordingly, via its use of invariants, 
+\f1\i I
+\f0\i0 -confluence users to scope non-determinism while permitting only those states that are acceptable.\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 5  From Theory to Practice\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 As a test for coordination requirements, 
+\f1\i I
+\f0\i0 -confluence a trade-off between the operations a user wishes to perform and the properties she wishes to guarantee. At one extreme, if a user\'92s transactions do not modify database state, she can guarantee any satisfiable invariant. At the other extreme, with no invariants, a user can safely perform any operations she likes. While neither of these extremes is particularly realistic, the space in-between contains a spectrum of interesting and useful combinations.\
+\pard\pardeftab720\fi300\qj
+\cf0 Until now, we have been largely concerned with formalizing 
+\f1\i I
+\f0\i0 -confluence abstract operations; in this section, we begin to leverage this property. We examine a series of practical invariants by considering several features of SQL, ending with abstract data types and revisiting our payroll example along the way. We will apply these results to full applications in Section\'a06.\
+In this section, we focus on providing intuition and informal explanations of our 
+\f1\i I
+\f0\i0 -confluence . Interested readers can find a more formal analysis in "Appendix C" [10, Appendix C], including discussion of invariants not presented here. For convenience, we reference specific proofs from "Appendix C" [10, Appendix C] inline.\
+\pard\pardeftab720\sb240\qc
+\cf0 yesgraygray0.92 \
+\pard\pardeftab720\sb120\qc
+
+\fs18 \cf0 \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0  
+\b Invariant
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Operation
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720\qc
+
+\f1\i \cf0 I
+\f0\i0 -C?\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Proof #\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 \
+yesgray Attribute Equality\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Any\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 1\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Attribute Inequality\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Any\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 2\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Uniqueness\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Choose specific value\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 3\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Uniqueness\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Choose some value\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 4\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+
+\f3 \cf0 AUTO_INCREMENT
+\f0 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Insert\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 5\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Foreign Key\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Insert\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 6\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Foreign Key\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Delete\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 7\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Foreign Key\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Cascading Delete\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 8\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Secondary Indexing\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Update\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 9\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray Materialized Views\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Update\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 10\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0  yesgray >\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Increment [Counter]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 11\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 <\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Increment [Counter]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 12\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 >\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Decrement [Counter]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 13\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray <\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Decrement [Counter]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 14\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 
+\f3 [NOT] CONTAINS
+\f0 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Any [Set, List, Map]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 Yes\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 15, 16\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+
+\f3 \cf0 SIZE=
+\f0 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Mutation [Set, List, Map]\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 No\cell 
+\pard\intbl\itap1\pardeftab720\qc
+\cf0 17\cell \lastrow\row
+\pard\pardeftab720\sb240\qc
+\cf0  \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Table 2: Example SQL (top) and ADT invariant 
+\f1\i I
+\f0\i0 -confluence with references to formal proofs in "Appendix C" [10, Appendix C].\
+\pard\pardeftab720\sb380\sa120
+
+\b\fs32 \cf0 5.1  
+\f1\i I
+\f0\i0 -confluence for Relations\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 We begin by considering several constraints found in SQL.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Equality.
+\b0   As a warm-up, what if an application wants to prevent a particular value from appearing in a database? For example, our payroll application from Section\'a02 might require that every user have a last name, marking the 
+\f3 LNAME
+\f0  column with a 
+\f3 NOT NULL
+\f0  constraint. While not particularly exciting, we can apply 
+\f1\i I
+\f0\i0 -confluence to insertions and updates of databases with (in-)equality constraints (Claims 1, 2 in "Appendix C" [10, Appendix C]). Per-record inequality invariants are 
+\f1\i I
+\f0\i0 -confluent  , which we can show by contradiction: assume two database states  and  are each 
+\i I
+\i0 -valid under per-record in-equality invariant  but that  is false. Then there must be a  that violates  (i.e., 
+\i r
+\i0  has the forbidden value). 
+\i r
+\i0  must appear in , , or both. But, that would imply that one of  or  is not 
+\i I
+\i0 -valid under , a contradiction.\
+\pard\pardeftab720\qj
+
+\b \cf0 Uniqueness.
+\b0   We can also consider common uniqueness invariants (e.g., 
+\f3 PRIMARY KEY
+\f0  and 
+\f3 UNIQUE
+\f0  constraints). For example, in our payroll example, we wanted user IDs to be unique. In fact, our earlier discussion in Section\'a02 already provided a counterexample showing that arbitrary insertion of users is not 
+\f1\i I
+\f0\i0 -confluent   these invariants: \{Stan:5\} and \{Mary:5\} are both valid databases that can be created by 
+\i I
+\i0 -valid sequences of insertions (starting at ), but their merge\'97\{Stan:5, Mary:5\}\'97is not 
+\i I
+\i0 -valid. Therefore, uniqueness is not 
+\f1\i I
+\f0\i0 -confluent   for inserts of unique values (Claim 3). Note that although insertions are not 
+\f1\i I
+\f0\i0 -confluent  uniqueness invariants, other operations 
+\i are
+\i0 . For example, reads and deletions are both 
+\f1\i I
+\f0\i0 -confluent   under uniqueness invariants: reading and removing items cannot introduce duplicates.\
+Can the database safely 
+\i choose
+\i0  unique values on behalf of users (e.g., assign a new user an ID)? In this case, we can achieve uniqueness without coordination\'97as long as we have a notion of replica membership (e.g., server or replica IDs). The difference is subtle (\'93grant this record this specific, unique ID\'94 versus \'93grant this record some unique ID\'94), but, in a system model with membership (as is practical in many contexts), is powerful. If replicas assign unique IDs within their respective portion of the ID namespace, then merging locally valid states will also be globally valid (Claim 4).\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Foreign Keys.
+\b0   We can consider more complex invariants, such as foreign key constraints. In our payroll example, each employee belongs to a department, so the application could specify a constraint to capture this relationship (e.g., 
+\f3 EMP.D_ID FOREIGN KEY REFERENCES DEPT.ID
+\f0 ).\
+\pard\pardeftab720\qj
+\cf0 Are foreign key constraints maintainable without coordination? Again, the answer depends on the actions of transactions modifying the data governed by the invariant. Insertions under foreign key constraints 
+\i are
+\i0  
+\f1\i I
+\f0\i0 -confluent  (Claim 6), which we again demonstrate by contradiction. We look for the existence of two 
+\i I
+\i0 -valid states that, when merged, result in invalid state. In the case of foreign key constraints, an invalid state will contain a record with a \'93dangling pointer\'94\'97a record missing a corresponding record on the opposite side of the association. If we assume there exists some invalid state  containing a record 
+\i r
+\i0  with an invalid foreign key to record 
+\i f
+\i0 , but  and  are both valid, then 
+\i r
+\i0  must appear in , , or both. But, since  and  are both valid, 
+\i r
+\i0  must have a corresponding foreign key record (
+\i f
+\i0 ) that \'93disappeared\'94 during merge. Merge (in the current model) does not remove versions, so this is impossible.\
+\pard\pardeftab720\fi300\qj
+\cf0 From the perspective of 
+\f1\i I
+\f0\i0 -confluence , foreign key constraints concern the 
+\i visibility
+\i0  of related updates: if individual database states maintain referential integrity, a non-destructive merge function such as set union cannot cause tuples to \'93disappear\'94 and compromise the constraint. This also explains why models such as read committed\'a0[2] and read atomic\'a0[2] isolation as well as causal consistency\'a0[9] are also achievable without coordination: restricting the visibility of updates does not require coordination between concurrent operations.\
+Deletions and modifications under foreign key constraints are more challenging. Arbitrary deletion of records is unsafe: a user might be added to a department that was concurrently deleted (Claim 7). However, performing cascading deletions (e.g., SQL 
+\f3 DELETE CASCADE
+\f0 ), where the deletion of a record also deletes 
+\i all
+\i0  matching records on the opposite end of the association, is 
+\f1\i I
+\f0\i0 -confluent  foreign key constraints (Claim 8). We can generalize this discussion to updates (and cascading updates).\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Materialized Views.
+\b0   Applications often pre-compute results to speed query performance via a materialized view\'a0[53] (e.g., 
+\f3 UNREAD_CNT = SELECT COUNT(*) FROM emails WHERE read_date=NULL
+\f0 ). We can consider a class of invariants that specify that materialized views reflect primary data; when a transaction (or merge invocation) modifies data, any relevant materialized views should be updated as well. This requires installing updates at the same time as the changes to the primary data are installed (a problem related to maintaining foreign key constraints). However, given that a view should simply reflect primary data, there are no \'93conflicts.\'94 Accordingly, updates are 
+\f1\i I
+\f0\i0 -confluent   under materialized view maintenance (Claim 10).\
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 5.2  
+\f1\i I
+\f0\i0 -confluence for Data Types\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 So far, we have considered databases that store growing sets of immutable versions. We have used this model to analyze several useful constraints, but, in practice, databases do not (often) provide these semantics, leading to a variety of interesting anomalies. For example, if we implement a user\'92s account balance using a \'93last writer wins\'94 merge policy\'a0[50], then performing two concurrent withdrawal transactions might result in a database state reflecting only one transaction (a classic example of the Lost Update anomaly)\'a0[2, 9]. To avoid variants of these anomalies, many optimistic, coordination-free database designs have proposed the use of 
+\i abstract data types
+\i0  (ADTs), providing merge functions for a variety of uses such as counters, sets, and maps\'a0[19, 44, 50, 58] that ensure that all updates are reflected in final database state. For example, a database can represent a simple counter ADT by recording the number of times each transaction performs an 
+\f3 increment
+\f0  operation on the counter\'a0[50].\
+\pard\pardeftab720\fi300\qj
+
+\f1\i \cf0 I
+\f0\i0 -confluence is also applicable to these ADTs and their associated invariants. For example, a row-level \'93greater-than\'94 (
+\f3 >
+\f0 ) threshold invariant is 
+\f1\i I
+\f0\i0 -confluent  counter 
+\f3 increment
+\f0  and 
+\f3 assign
+\f0  (\uc0\u8592 ) but not 
+\f3 decrement
+\f0  (Claims 11, 13), while a row-level \'93less-than\'94 (
+\f3 <
+\f0 ) threshold invariant is 
+\f1\i I
+\f0\i0 -confluent  counter 
+\f3 decrement
+\f0  and 
+\f3 assign
+\f0  but not 
+\f3 increment
+\f0  (Claims 12, 14). This means that, in our payroll example, we can provide coordination-freefor concurrent salary increments but not concurrent salary decrements. ADTs (including lists, sets, and maps) can be combined with standard relational constraints like materialized view maintenance (e.g., the \'93total salary\'94 row should contain the sum of employee salaries in the 
+\f3 employee
+\f0  table). This analysis presumes user program explicitly use ADTs, and, as with our generic set-union merge, 
+\f1\i I
+\f0\i0 -confluence analysis requires a specification of the ADT merge behavior ("Appendix C" [10, Appendix C] provides several examples).\
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 5.3  Discussion and Limitations\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 We have analyzed a number of combinations of invariants and operations (shown in Table\'a02). These results are by no means comprehensive, but they are expressive for many applications (Section\'a06). In this section, we discuss lessons from this classification process.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Analysis mechanisms.
+\b0   Here (and in\'a0"Appendix C" [10, Appendix C]), we manually analyzed particular invariant and operation combinations, demonstrating each to be 
+\f1\i I
+\f0\i0 -confluent  not. To study actual applications, we can apply these labels via simple static analysis. Specifically, given invariants (e.g., captured via SQL DDL) and transactions (e.g., expressed as stored procedures), we can examine each invariant and each operation within each transaction and identify pairs that we have labeled as 
+\f1\i I
+\f0\i0 -confluent   non-
+\f1\i I
+\f0\i0 -confluent  . Any pairs labeled as 
+\f1\i I
+\f0\i0 -confluent  be marked as safe, while, for soundness (but not completeness), any unrecognized operations or invariants can be flagged as potentially non-
+\f1\i I
+\f0\i0 -confluent  . Despite its simplicity (both conceptually and in terms of implementation), this technique\'97coupled with the results of Table\'a02\'97is sufficiently powerful to automatically characterize the I-confluence  of the applications we consider in Section\'a06 when expressed in SQL (with support for multi-row aggregates like Invariant 8 in Table\'a03).\
+\pard\pardeftab720\qj
+\cf0 By growing our recognized list of 
+\f1\i I
+\f0\i0 -confluent  on an as-needed basis (via manual analysis of the pair), the above technique has proven useful\'97due in large part to the common re-use of invariants like foreign key constraints. However, one could use more complex forms of program analysis. For example, one might analyze the 
+\f1\i I
+\f0\i0 -confluence 
+\i arbitrary
+\i0  invariants, leaving the task of proving or disproving 
+\f1\i I
+\f0\i0 -confluence an automated model checker or SMT solver. While I-confluence \'97like monotonicity and commutativity (Section\'a07)\'97is undecidable for arbitrary programs, others have recently shown this alternative approach (e.g., in commutativity analysis\'a0[18, 40] and in invariant generation for view serializable transactions\'a0[47]) to be fruitful for restricted languages. We view language design and more automated analysis as an interesting area for speculative future work.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Recency and session support.
+\b0   Our proposed invariants are declarative, but a class of useful semantics\'97recency, or real-time guarantees on reads and writes\'97are operational (i.e., they pertain to transaction execution rather than the state(s) of the database). For example, users often wish to read data that is up-to-date as of a given point in time (e.g., \'93read latest\'94\'a0[20] or linearizable\'a0[28] semantics). While traditional isolation models do not directly address these recency guarantees\'a0[2], they are often important to programmers. Are these models 
+\f1\i I
+\f0\i0 -confluent  ? We can attempt to simulate recency guarantees in 
+\f1\i I
+\f0\i0 -confluence by logging the result of all reads and any writes with a timestamp and requiring that all logged timestamps respect their recency guarantees (thus treating recency guarantees as invariants over recorded read/write execution traces). However, this is a somewhat pointless exercise: it is well known that recency guarantees are unachievable with transactional availability\'a0[9, 21, 28]. Thus, if application reads face these requirements, coordination is required. Indeed, when application \'94consistency\'94 means \'93recency,\'94 systems cannot circumvent speed-of-light delays.\
+\pard\pardeftab720\qj
+\cf0 If users wish to \'93read their writes\'94 or stronger \'93session\'94 guarantees\'a0[45] (maintaining recency on a per-user or per-session basis), they must maintain affinity or \'93stickiness\'94\'a0[9] with a given (set of) replicas. These guarantees are also expressible in our data-centric 
+\f1\i I
+\f0\i0 -confluence  formalism and do not require coordination between different users\'92 transactions.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Physical and logical replication.
+\b0   We have used the concept of replicas to reason about concurrent transaction execution. However, as previously noted, our use of replicas is simply a formal device and is independent of the actual concurrency control mechanisms at work. Specifically, reasoning about replicas allows us to separate the 
+\i analysis
+\i0  of transactions from their 
+\i implementation
+\i0 : just because a transaction is executed with (or without) coordination does not mean that all query plans or implementations require (or do not require) coordination\'a0[9]. However, in deciding on an implementation, there is a range of design decisions yielding a variety of performance trade-offs. Simply because an application is 
+\f1\i I
+\f0\i0 -confluent  not mean that all implementations will perform equally well. Rather, 
+\f1\i I
+\f0\i0 -confluence that a coordination-free implementation exists.\
+\pard\pardeftab720\qj
+
+\b \cf0 Requirements and Restrictions.
+\b0   Our techniques are predicated on the ability to correctly and completely specify invariants and inspect user transactions; without such a correctness specification, for arbitrary transaction schedules, serializability is\'97in a sense\'97the \'93optimal\'94 strategy\'a0[38]. By casting correctness in terms of application state rather than as a property of read-write schedules, we achieve a more precise statement of coordination overheads. However, as we have noted, this does not obviate the need for coordination in all cases.\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 6  Experiences With Coordination\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 When achievable, coordination-free execution enables scalability limited to that of available hardware. This is powerful: an 
+\f1\i I
+\f0\i0 -confluent   application can therefore scale out without sacrificing correctness, latency, or availability. In Section\'a05, we saw how many combinations of invariants and transactions were not 
+\f1\i I
+\f0\i0 -confluent  how others were not; in this section, we apply these combinations to real-world applications, with a focus on the TPC-C benchmark.\
+\pard\pardeftab720\sb240\qc
+\cf0  yesgraygray0.92 
+\fs18  \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0  
+\b #
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Informal Invariant Description
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Type
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Txns
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720
+
+\f1\b \cf0 I
+\f0 -C
+\b0 \cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0  yesgray 1\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 YTD wh sales = sum(YTD district sales)
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 P\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 2\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Per-district order IDs are sequential
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 +FK\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N, D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 No\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 3\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 New order IDs are sequentially assigned
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N, D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 No\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 4\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Per-district, item order count = roll-up
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 5\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Order carrier is set iff order is pending
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 FK\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N, D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 6\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Per-order item count = line item roll-up
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 7\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Delivery date set iff carrier ID set
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 FK\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 8\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 YTD wh = sum(historical wh)
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 9\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 YTD district = sum(historical district)
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 P\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 10\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Customer balance matches expenditures
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 P, D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 11\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Orders reference New-Orders table
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 FK\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 N\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx1728
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx3456
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx5184
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx6912
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 yesgray 12\cell 
+\pard\intbl\itap1\pardeftab720
+
+\fs14 \cf0 Per-customer balance = cust. expenditures
+\fs18 \cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 MV\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 P, D\cell 
+\pard\intbl\itap1\pardeftab720
+\cf0 Yes\cell \lastrow\row
+\pard\pardeftab720\sb240\qc
+\cf0  \
+\pard\pardeftab720\sb120\sa120
+\cf0 Table 3: TPC-C Declared \'93Consistency Conditions\'94 (3.3.2.x) and 
+\f1\i I
+\f0\i0 -confluence  analysis results (Invariant type: MV: materialized view, : sequential ID assignment, FK: foreign key; Transactions: N: New-Order, P: Payment, D: Delivery).\
+\pard\pardeftab720\sb380\sa120
+
+\b\fs32 \cf0 6.1  TPC-C Invariants and Execution\
+\pard\pardeftab720\sb60\qj
+
+\b0\fs20 \cf0 The TPC-C benchmark is the gold standard for database concurrency control\'a0[23] both in research and in industry\'a0[55], and in recent years has been used as a yardstick for distributed database concurrency control performance\'a0[52, 54, 57]. How much coordination does TPC-C actually require a compliant execution?\
+\pard\pardeftab720\fi300\qj
+\cf0 The TPC-C workload is designed to be representative of a wholesale supplier\'92s transaction processing requirements. The workload has a number of application-level correctness criteria that represent basic business needs (e.g., order IDs must be unique) as formulated by the TPC-C Council and which must be maintained in a compliant run. We can interpret these well-defined \'93consistency criteria\'94 as invariants and subsequently use 
+\f1\i I
+\f0\i0 -confluence to determine which transactions require coordination and which do not.\
+Table\'a03 summarizes the twelve invariants found in TPC-C as well as their 
+\f1\i I
+\f0\i0 -confluence results as determined by Table\'a02. We classify the invariants into three broad categories: materialized view maintenance, foreign key constraint maintenance, and unique ID assignment. As we discussed in Section\'a05, the first two categories are 
+\f1\i I
+\f0\i0 -confluent  (and therefore maintainable without coordination) because they only regulate the 
+\i visibility
+\i0  of updates to multiple records. Because these (10 of 12) invariants are 
+\f1\i I
+\f0\i0 -confluent  the workload transactions, there exists some execution strategy that does not use coordination. However, simply because these invariants are 
+\f1\i I
+\f0\i0 -confluent  not mean that 
+\i all
+\i0  execution strategies will scale well: for example, using locking would 
+\i not
+\i0  be coordination-free.\
+As one coordination-free execution strategy (which we implement in Section\'a06.2) that respects the foreign key and materialized view invariants, we can use RAMP transactions, which provide atomically visible transactional updates across servers without relying on coordination for correctness\'a0[11]. In brief, RAMP transactions employ limited multi-versioning and metadata to ensure that readers and writers can always proceed concurrently: any client whose reads overlap with another client\'92s writes to the same item(s) can use metadata stored in the items to fetch any \'93missing\'94 writes from the respective servers. A standard RAMP transaction over data items suffices to enforce foreign key constraints, while a RAMP transaction over commutative counters as described in\'a0[11] is sufficient to enforce the TPC-C materialized view constraints.\
+Two of TPC-C\'92s invariants are not 
+\f1\i I
+\f0\i0 -confluent  respect to the workload transactions and therefore 
+\i do
+\i0  require coordination. On a per-district basis, order IDs should be assigned sequentially (both uniquely and sequentially, in the New-Order transaction) and orders should be processed sequentially (in the Delivery transaction). If the database is partitioned by warehouse (as is standard\'a0[52, 54, 57]), the former is a distributed transaction (by default, 10% of New-Order transactions span multiple warehouses). The benchmark specification allows the latter to be run asynchronously and in batch mode on a per-warehouse (non-distributed) basis, so we, like others\'a0[54, 57], focus on New-Order. Including additional transactions like the read-only Order-Status in the workload mix would increase performance due to the transactions\'92 lack of distributed coordination and (often considerably) smaller read/write footprints.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Avoiding New-Order Coordination.
+\b0   New-Order is not 
+\f1\i I
+\f0\i0 -confluent  respect to the TPC-C invariants, so we can always fall back to using serializable isolation. However, the per-district ID assignment records (10 per warehouse) would become a point of contention, limiting our throughput to effectively  for a 
+\i W
+\i0 -warehouse TPC-C benchmark with the expected 10% distributed transactions. Others\'a0[57] (including us, in prior work\'a0[9]) have suggested disregarding consistency criteria 3.3.2.3 and 3.3.2.4, instead opting for unique but non-sequential ID assignment: this allows inconsistency and violates the benchmark compliance criteria.\
+\pard\pardeftab720\qj
+\cf0 During a compliant run, New-Order transactions must coordinate. However, as discussed above, only the ID assignment operation is non-I-confluent  ; the remainder of the operations in the transaction can execute coordination-free. With some effort, we can avoid distributed coordination. A na\'efve implementation might grab a lock on the appropriate district\'92s \'93next ID\'94 record, perform (possibly remote) remaining reads and writes, then release the lock at commit time. Instead, as a more efficient solution, New-Order can defer ID assignment until commit time by introducing a layer of indirection. New-Order transactions can generate a temporary, unique, but non-sequential ID (
+\f3 tmpID
+\f0 ) and perform updates using this ID using a RAMP transaction (which, in turn, handles the foreign key constraints)\'a0[11]. Immediately prior to transaction commit, the New-Order transaction can assign a \'93real\'94 ID by atomically incrementing the current district\'92s\'93next ID\'94 record (yielding 
+\f3 realID
+\f0 ) and recording the 
+\f3 [tmpID, realID]
+\f0  mapping in a special ID lookup table. Any read requests for the 
+\f3 ID
+\f0  column of the Order, New-Order, or Order-Line tables can be safely satisfied (transparently to the end user) by joining with the ID lookup table on 
+\f3 tmpID
+\f0 . In effect, the New-Order ID assignment can use a nested atomic transaction\'a0[44] upon commit, and all coordination between any two transactions is confined to a single server.\
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 6.2  Evaluating TPC-C New-Order\
+\pard\pardeftab720\sb300\qc
+
+\b0\fs20 \cf0     \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Figure 5: TPC-C New-Order throughput across eight servers.\
+\pard\pardeftab720\fi300\sb260\qj
+
+\fs20 \cf0 We subsequently implemented the above execution strategy in a distributed database prototype to quantify the overheads associated with coordination in TPC-C New-Order. In brief, the coordination-avoiding query plan scales linearly to over 12.7M transactions per second on 200 servers while substantially outperforming distributed two-phase locking. Our goal here is to demonstrate\'97beyond the microbenchmarks of Section\'a02\'97that safe but judicious use of coordination can have meaningful positive effect on performance.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Implementation and Deployment.
+\b0   We employ a multi-versioned storage manager, with RAMP-Fast transactions for snapshot reads and atomically visible writes/\'93merge\'94 (providing a variant of regular register semantics, with writes visible to later transactions after commit)\'a0[11] and implement the nested atomic transaction for ID assignment as a subprocedure inside RAMP-Fast\'92s server-side commit procedure (using spinlocks). We implement transactions as stored procedures and fulfill the TPC-C \'93Isolation Requirements\'94 by using read and write buffering as proposed in\'a0[9]. As is common\'a0[35, 46, 52, 54], we disregard per-warehouse client limits and \'93think time\'94 to increase load per warehouse. In all, our base prototype architecture is similar to that of\'a0[11]: a JVM-based partitioned, main-memory, mastered database.\
+\pard\pardeftab720\qj
+\cf0 For an apples-to-apples comparison with a coordination-intensive technique within the same system, we also implemented textbook two-phase locking (2PL)\'a0[15], which provides serializability but also requires distributed coordination. We totally order lock requests across servers to avoid deadlock, batching lock requests to each server and piggybacking read and write requests on lock request RPC. As a validation of our implementation, our 2PL prototype achieves per-warehouse (and sometimes aggregate) throughput similar to (and often in excess of) several recent serializable database implementations (of both 2PL and other approaches)\'a0[35, 46, 52, 54].\
+\pard\pardeftab720\fi300\qj
+\cf0 By default, we deploy our prototype on eight EC2 
+\f3 cr1.8xlarge
+\f0  instances in the Amazon EC2 
+\f3 us-west-2
+\f0  region (with non-co-located clients) with one warehouse per server (recall there are 10 \'93hot\'94 district ID records per warehouse) and report the average of three 120 second runs.\
+\pard\pardeftab720\fi300\qj
+
+\b \cf0 Basic behavior.
+\b0   Figure\'a05 shows performance across a variety of configurations, which we detail below. Overall, the coordination-avoiding query plan far outperforms the serializable execution. The coordination-avoiding query plan performs some coordination, but, because coordination points are not distributed (unlike 2PL), physical resources (and not coordination) are the bottleneck.\
+\pard\pardeftab720\qj
+
+\i \cf0 Varying load.
+\i0   As we increase the number of clients, the coordination-avoiding query plan throughput increases linearly, while 2PL throughput increases to 40K transactions per second, then levels off. As in our microbenchmarks in Section\'a02, the former is able to utilize available hardware resources (bottlenecking on CPU cycles at 640K transactions per second), while the latter bottlenecks on logical contention.\
+
+\i Physical resource consumption.
+\i0   To understand the overheads of each component in the coordination-avoiding query plan, we used JVM profiling tools to sample thread execution while running at peak throughput, attributing time spent in functions to relevant modules within the database implementation (where possible):\
+\pard\pardeftab720\sb120\sa120\qc
+
+\fs18 \cf0  \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+
+\b \cf0 Code Path
+\b0 \cell 
+\pard\intbl\itap1\pardeftab720\qr
+
+\b \cf0 Cycles
+\b0 \cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Storage Manager (Insert, Update, Read)\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 45.3%\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Stored Procedure Execution\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 14.4%\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 RPC and Networking\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 13.2%\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Serialization\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 12.6%\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 ID Assignment Synchronization (spinlock contention)\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 0.19%\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720
+\cf0 Other\cell 
+\pard\intbl\itap1\pardeftab720\qr
+\cf0 14.3%\cell \lastrow\row
+\pard\pardeftab720\sb120\sa120\qc
+\cf0  \
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\fs24 \cf0 The coordination-avoiding prototype spends a large portion of execution in the storage manager, performing B-tree modifications and lookups and result set creation, and in RPC/serialization. In contrast to 2PL, the prototype spends less than 0.2% of time coordinating, in the form of waiting for locks in the New-Order ID assignment; the (single-site) assignment is fast (a linearizable integer increment and store, followed by a write and fence instruction on the spinlock), so this should not be surprising. We observed large throughput penalties due to garbage collection (GC) overheads (up to 40%)\'97an unfortunate cost of our highly compact (several thousand lines of Scala), JVM-based implementation. However, even in this current prototype, physical resources are the bottleneck\'97not coordination.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\i \cf0 Varying contention.
+\i0   We subsequently varied the number of \'93hot,\'94 or contended items by increasing the number of warehouses on each server. Unsurprisingly, 2PL benefits from a decreased contention, rising to over 87K transactions per second with 64 warehouses. In contrast, our coordination-avoiding implementation is largely unaffected (and, at 64 warehouses, is even negatively impacted by increased GC pressure). The coordination-avoiding query plan is effectively agnostic to read/write contention.\
+\pard\pardeftab720\sb120\sa120\qc
+
+\i \cf0 Varying distribution.
+\i0   We also varied the percentage of distributed transactions. The coordination-avoiding query plan incurred a 29% overhead moving from no distributed transactions to all distributed transactions due to increased serialization overheads and less efficient batching of RPCs. However, the 2PL implementation decreased in throughput by over 90% (in line with prior results\'a0[46, 54], albeit exaggerated here due to higher contention) as more requests stalled due to coordination with remote servers.\
+\pard\pardeftab720\sb120\sa120\qc
+
+\b \cf0 Scaling out.
+\b0   Finally, we examined our prototype\'92s scalability, again deploying one warehouse per server. As Figure\'a06 demonstrates, our prototype scales linearly, to over 12.74 million transactions per second on 200 servers (in light of our earlier results, and, for economic reasons, we do not run 2PL at this scale). Per-server throughput is largely constant after 100 servers, at which point our deployment spanned all three 
+\f3 us-west-2
+\f0  datacenters and experienced slightly degraded per-server performance. While we make use of application semantics, we are unaware of any other compliant multi-server TPC-C implementation that has achieved greater than 500K New-Order transactions per second\'a0[35, 46, 52, 54].\
+
+\b Summary.
+\b0   We present these quantitative results as a proof of concept that executing even challenging workloads like TPC-C that contain complex integrity constraints are not necessarily at odds with scalability if implemented in a coordination-avoiding manner. Distributed coordination need not be a bottleneck for all applications, even if conflict serializable execution indicates otherwise. Coordination avoidance ensures that physical resources\'97and not logical contention\'97are the system bottleneck whenever possible.\
+\pard\pardeftab720\sb240\qc
+
+\fs20 \cf0   \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Figure 6: Coordination-avoiding New-Order scalability.\
+\pard\pardeftab720\sb380\sa120
+
+\b\fs32 \cf0 6.3  Analyzing Additional Applications\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 These results begin to quantify the effects of coordination-avoiding concurrency control. If considering 
+\i application-level
+\i0  invariants, databases only have to pay the price of coordination when necessary. We were surprised that the \'93current industry standard for evaluating the performance of OLTP systems\'94\'a0[23] was so amenable to coordination-avoiding execution\'97at least for compliant execution as defined by the TPC-C standard.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 For greater variety, we also studied the workloads of the recently assembled OLTP-Bench suite\'a0[23], performing a similar analysis to that of Section\'a06.1. We found (and confirmed with an author of\'a0[23]) that for nine of fourteen remaining (non-TPC-C) OLTP-Bench applications, the workload transactions did not involve integrity constraints (e.g., did not modify primary key columns), one (
+\f3 CH-benCHmark
+\f0 ) matched TPC-C, and two specifications implied (but did not explicitly state) a requirement for unique ID assignment (
+\f3 AuctionMark
+\f0 \'92s 
+\f3 new-purchase
+\f0  order completion, 
+\f3 SEATS
+\f0 \'92s 
+\f3 NewReservation
+\f0  seat booking; achievable like TPC-C order IDs). The remaining two benchmarks, 
+\f3 sibench
+\f0  and 
+\f3 smallbank
+\f0  were specifically designed (by an author of this paper) as research benchmarks for serializable isolation. Finally, the three \'93consistency conditions\'94 required by the newer TPC-E benchmark are a proper subset of the twelve conditions from TPC-C considered here (and are all materialized counters). It is possible (even likely) that these benchmarks are underspecified, but according to official specifications, TPC-C contains the most coordination-intensive invariants among all but two of the OLTP-Bench workloads.\
+Anecdotally, our conversations and experiences with real-world application programmers and database developers have not identified invariants that are radically different than those we have studied here. A simple thought experiment identifying the invariants required for a social networking site yields a number of invariants but none that are particularly exotic (e.g., username uniqueness, foreign key constraints between updates, privacy settings\'a0[11, 20]). Nonetheless, we view the further study of real-world invariants to be a necessary area for future investigation. In the interim, these preliminary results hint at what is possible with coordination-avoidance as well as the costs of coordination if applications are not 
+\f1\i I
+\f0\i0 -confluent  .\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 7  Related Work\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 Database system designers have long sought to manage the trade-off between consistency and coordination. As we have discussed, serializability and its many implementations (including lock-based, optimistic, and pre-scheduling mechanisms)\'a0[15, 16, 25, 30, 52-54, 57] are sufficient for maintaining application correctness. However, serializability is not always necessary: as discussed in Section\'a01, serializable databases do not allow certain executions that are correct according to application semantics. This has led to a large class of application-level\'97or semantic\'97concurrency control mechanisms that admit greater concurrency. There are several surveys on this topic, such as\'a0[29, 53], and, in our solution, we integrate many concepts from this literature.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\b \cf0 Commutativity.
+\b0   One of the most popular alternatives to serializability is to exploit 
+\i commutativity
+\i0 : if transaction return values (e.g., of reads) and/or final database states are equivalent despite reordering, they can be executed simultaneously\'a0[18, 41, 58]. Commutativity is often sufficient for correctness but is not necessary. For example, if an analyst at a wholesaler creates a report on daily cash flows, any concurrent sale transactions will 
+\i not
+\i0  commute with the report (the results will change depending on whether the sale completes before or after the analyst runs her queries). However, the report creation is 
+\f1\i I
+\f0\i0 -confluent  respect to, say, the invariant that every sale in the report references a customer from the customers table. [18, 39] provide additional examples of safe non-commutativity.\
+\pard\pardeftab720\sb120\sa120\qc
+
+\b \cf0 Monotonicity and Convergence.
+\b0   The CALM Theorem\'a0[7] shows that monotone programs exhibit deterministic outcomes despite re-ordering. CRDT objects\'a0[50] similarly ensure convergent outcomes that reflect all updates made to each object. These convergence and outcome determinism guarantees are useful 
+\i liveness
+\i0  properties\'a0[49] (e.g., a converged CRDT OR-Set reflects all concurrent additions and removals) but do not prevent users from observing inconsistent data\'a0[40]\'97
+\i safety
+\i0  (e.g., the CRDT OR-Set does not\'97by itself\'97enforce invariants, such as ensuring that no employee belongs to two departments)\'97and are therefore not sufficient to guarantee correctness for all applications.\
+
+\b Use of Invariants.
+\b0   A large number of database designs\'97including, in restricted forms, many commercial databases today\'97use application-supplied invariants as a correctness specification (e.g.,\'a0[14, 21, 26, 29, 32, 33, 37, 40-42, 47]). We draw inspiration from this prior work, but are not aware of related work that formally discusses when coordination is strictly 
+\i required
+\i0  to enforce these invariants.\
+In this work, we provide a necessary and sufficient condition for safe, coordination-free execution. Yet, in contrast with many of the above conditions, we require more information from the application in the form of invariants. When invariants are unavailable, the above, more conservative approaches may instead be applicable. Our use of analysis-as-design-tool is inspired by this literature\'97in particular,\'a0[18].\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\b \cf0 Coordination costs.
+\b0   In this work, we determine when transactions can run entirely concurrently and without coordination. In contrast, a large number of alternative models (e.g.,\'a0[4, 8, 26, 33, 37, 42, 43]) assume serializable or linearizable (and therefore coordinated) updates to shared state. These assumptions are standard (but not universal\'a0[17]) in the concurrent programming literature\'a0[8, 49]. (Additionally, unlike much of this literature, we only consider a single set of invariants per database rather than per-operation invariants.) However, this can harm scalability as coordinating updates can become a bottleneck\'a0[9, 28]. For example, transaction chopping\'a0[51] and later application-aware extensions\'a0[3, 14] decompose transactions into a set of smaller transactions, providing increased concurrency, but in turn require that individual transactions execute in a serializable (or strict serializable) manner. These alternative techniques are useful once it is established that coordination is actually required.\
+\pard\pardeftab720\sb120\sa120\qc
+
+\b \cf0 Term rewriting.
+\b0   In term rewriting systems, 
+\f1\i I
+\f0\i0 -confluence  guarantees that arbitrary rule application will not violate a given invariant\'a0[24], generalizing Church-Rosser confluence \'a0[36]. We adapt this concept and effectively treat transactions as rewrite rules, database states as constraint states, and the database merge operator as a special 
+\i join
+\i0  operator (in the term-rewriting sense) defined for all states. Rewriting system concepts\'97including confluence \'a0[4]\'97have previously been integrated into active database systems\'a0[59] (e.g., in triggers, rule processing), but we are not familiar with a concept analogous to 
+\f1\i I
+\f0\i0 -confluence the existing database literature.\
+
+\b Coordination-free algorithms and semantics.
+\b0   Our work is influenced by the distributed systems literature, where coordination-free execution across replicas of a given data item has been captured as \'93availability\'94\'a0[28]. A large class of systems provides availability via \'93optimistic replication\'94 (i.e., perform operations locally, then replicate)\'a0[48], which is complementary to our goal of coordination-free execution. We\'97like others\'a0[17]\'97adopt the use of the merge operator to reconcile divergent database states\'a0[45] from this literature. Both traditional database systems\'a0[2] and more recent proposals\'a0[40, 41] allow the simultaneous use of \'93weak\'94 and \'93strong\'94 isolation; we seek to understand 
+\i when
+\i0  strong mechanisms are needed rather than an optimal implementation of either. Unlike \'93tentative update\'94 models\'a0[27], we do not require programmers to specify compensatory actions (beyond merge, which we expect to typically be generic and/or system-supplied) and do not reverse transaction commit/abort decisions. Compensatory actions could be viewed as a specialized merge procedure.\
+The CAP Theorem\'a0[1, 28] popularized the tension between strong semantics and coordination but pertains to a specific model (linearizability), while the relationship between serializability and coordination has also been well documented\'a0[21]. We recently classified a range of isolation models by availability\'a0[9]. This paper addresses when particular 
+\i applications
+\i0  require coordination.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 In our evaluation, we make use of our recent RAMP transaction algorithms\'a0[11], which guarantee coordination-free, atomically visible updates. RAMP transactions are an 
+\i implementation
+\i0  of 
+\f1\i I
+\f0\i0 -confluent  (i.e., Read Atomic isolation, used in our implementation for foreign key constraint maintenance). Our focus in this paper is 
+\i when
+\i0  RAMP transactions (and any other coordination-free/
+\f1\i I
+\f0\i0 -confluent  ) are appropriate for applications.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\b \cf0 Summary.
+\b0   The 
+\f1\i I
+\f0\i0 -confluence is a necessary and sufficient condition for safe, coordination-free execution. Sufficient conditions such as commutativity and monotonicity are useful in reducing coordination overheads but are not always necessary. Here, we explore the fundamental limits of coordination-free execution. To do so, we explicitly consider a model without synchronous communication. This is key to scalability: if, by default, operations must contact a centralized validation service, perform atomic updates to shared state, or otherwise communicate, then scalability will be compromised. Finally, we only consider a single set of invariants for the entire application, reducing programmer overhead without affecting our 
+\f1\i I
+\f0\i0 -confluence .\
+\pard\pardeftab720\sb240\sa120
+\cf0 "
+\b\fs32 8  Discussion and Future Work\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 In this paper, we have focused on the problem of recognizing when it is possible to avoid coordination. Here, we discuss extensions to our approaches and outline areas for future work.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\f1\b \cf0 I
+\f0 -confluence design tool.
+\b0   As we have discussed, if a transaction is 
+\f1\i I
+\f0\i0 -confluent  respect to an invariant, there exists a coordination-free algorithm for safely executing it. For example, we used an early version of 
+\f1\i I
+\f0\i0 -confluence in the development of our RAMP transactions: coordination-free, atomically visible transactions across multiple partitions that are useful in several other use cases like foreign key constraint maintenance\'a0[11]. As we showed in Section\'a05, insertion and cascading deletes are 
+\f1\i I
+\f0\i0 -confluent  foreign key constraints, so, when seeking a highly concurrent algorithm for this use case, we knew the search was not in vain: 
+\f1\i I
+\f0\i0 -confluence indicated there existed at least one safe, coordination-free mechanism for the task. We see (and have continued to use) the 
+\f1\i I
+\f0\i0 -confluence as a useful tool in designing new algorithms, particularly in existing, well-specified applications and use cases (e.g., B-tree internals, secondary indexes).\
+\pard\pardeftab720\sb120\sa120\qc
+
+\b \cf0 Amortizing coordination.
+\b0   We have analyzed conflicts on a per-transaction basis, but it is possible to amortize the overhead of coordination across multiple transactions. For example, the Escrow transaction method\'a0[escrow] reduces coordination by allocating a \'93share\'94 of non-
+\f1\i I
+\f0\i0 -confluent  between multiple processes. For example, in a bank application, a balance of $100 might be divided between five servers, such that each server can dispense $20 without requiring coordination to enforce a non-negative balance invariant (servers can coordinate to \'93refresh\'94 supply). In the context of our coordination-freedom, this is similar to limiting the branching factor of the execution trace to a finite factor. Adapting Escrow and alternative time-, versioned-, and numerical- drift-based models\'a0[epsilon\\s\\do5(
+\fs16 d
+\fs24 )ivergence] is a promising area for future work.\
+
+\b System design.
+\b0   The design of full coordination-avoiding database systems raises several interesting questions. For example, given a set of 
+\f1\i I
+\f0\i0 -confluence as in Table\'a02, does a coordination-avoiding system have to know all queries in advance, or can it dynamically employ concurrency primitives as queries are submitted? (Early experiences suggest the latter.) Revisiting heuristics- and statistics-based query planning, specifically targeting physical layout, choice of concurrency control, and recovery mechanisms appears worthwhile. How should a system handle invariants that may change over time? Is SQL the right target for language analysis? We view these pragmatic questions as exciting areas for future work.\
+\pard\pardeftab720\sb240\sa120
+\cf0 " 
+\b\fs32 9  Conclusion\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 ACID transactions and associated strong isolation levels dominated the field of database concurrency control for decades, due in large part to their ease of use and ability to automatically guarantee application correctness criteria. However, this powerful abstraction comes with a hefty cost: concurrent transactions must coordinate in order to prevent read/write conflicts that could compromise equivalence to a serial execution. At large scale and, increasingly, in geo-replicated deployments, the coordination costs necessarily associated with these implementations produce significant overheads in the form of penalties to throughput, latency, and availability. In light of these trends, we developed a formal framework, called invariant confluence , in which application invariants are used as a basis for determining if and when coordination is strictly necessary. With this framework, we demonstrated that, in fact, many\'97but not all\'97common database invariants and integrity constraints are actually achievable without coordination. By applying these results to a range of actual transactional workloads, we demonstrated an opportunity to avoid coordination in many cases that traditional serializable mechanisms would otherwise coordinate. The order-of-magnitude performance improvements we demonstrated via coordination-avoiding concurrency control strategies provide strong evidence that invariant-based coordination avoidance is a promising approach to meaningfully scaling future data management systems.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0  
+\b Acknowledgments.
+\b0   The authors would like to thank Peter Alvaro, Neil Conway, Shel Finkelstein, and Josh Rosen for helpful feedback on earlier versions of this work, Dan Crankshaw, Joey Gonzalez, Nick Lanham, and Gene Pang for various engineering contributions, and Yunjing Yu for sharing the Bobtail dataset. This research is supported in part by NSF CISE Expeditions Award CCF-1139158, LBNL Award 7076018, DARPA XData Award FA8750-12-2-0331, the NSF Graduate Research Fellowship (grant DGE-1106400), and gifts from Amazon Web Services, Google, SAP, the Thomas and Stacey Siebel Foundation, Adobe, Apple, Inc., Bosch, C3Energy, Cisco, Cloudera, EMC, Ericsson, Facebook, GameOnTalis, Guavus, HP, Huawei, Intel, Microsoft, NetApp, Pivotal, Splunk, Virdata, VMware, and Yahoo!. \
+\pard\pardeftab720\sb120\sa120\qc
+
+\fs14 \cf0 1 \
+\pard\pardeftab720\sb120\sa120
+
+\b\fs32 \cf0 References
+\fs14 \
+\pard\pardeftab720\li450\sb60
+
+\b0 \cf0 [1]	D.\'a0J. Abadi. Consistency tradeoffs in modern distributed database system design: CAP is only part of the story. 
+\i IEEE Computer
+\i0 , 45(2):37\'9642, 2012.\
+\pard\pardeftab720\li450
+\cf0 [2]	A.\'a0Adya. 
+\i Weak consistency: a generalized theory and optimistic implementations for distributed transactions
+\i0 . PhD thesis, MIT, 1999.\
+[3]	D.\'a0Agrawal et\'a0al. Consistency and orderability: semantics-based correctness criteria for databases. 
+\i ACM TODS
+\i0 , 18(3):460\'96486, Sept. 1993.\
+[4]	A.\'a0Aiken, J.\'a0Widom, and J.\'a0M. Hellerstein. Behavior of database production rules: Termination, confluence , and observable determinism. In 
+\i SIGMOD 1992
+\i0 .\
+[5]	P.\'a0Alvaro, N.\'a0Conway, J.\'a0M. Hellerstein, and W.\'a0Marczak. Consistency analysis in Bloom: a CALM and collected approach. In 
+\i CIDR 2011
+\i0 .\
+[6]	P.\'a0Alvaro et\'a0al. Consistency without borders. In 
+\i SoCC 2013
+\i0 .\
+[7]	T.\'a0J. Ameloot, F.\'a0Neven, and J.\'a0Van Den\'a0Bussche. Relational transducers for declarative networking. 
+\i J. ACM
+\i0 , 60(2):15:1\'9615:38, May 2013.\
+[8]	H.\'a0Attiya, R.\'a0Guerraoui, D.\'a0Hendler, et\'a0al. Laws of order: Expensive synchronization in concurrent algorithms cannot be eliminated. In 
+\i POPL 2011
+\i0 .\
+[9]	P.\'a0Bailis, A.\'a0Davidson, A.\'a0Fekete, A.\'a0Ghodsi, J.\'a0M. Hellerstein, and I.\'a0Stoica. Highly Available Transactions: Virtues and limitations. In 
+\i VLDB 2014
+\i0 .\
+[10]	P.\'a0Bailis, A.\'a0Fekete, M.\'a0J. Franklin, A.\'a0Ghodsi, et\'a0al. Coordination avoidance in database systems (Extended version). 2014. 
+\f3 arXiv:1402.2237
+\f0 .\
+[11]	P.\'a0Bailis, A.\'a0Fekete, A.\'a0Ghodsi, J.\'a0M. Hellerstein, and I.\'a0Stoica. Scalable atomic visibility with RAMP transactions. In 
+\i SIGMOD 2014
+\i0 .\
+[12]	P.\'a0Bailis and A.\'a0Ghodsi. Eventual Consistency today: Limitations, extensions, and beyond. 
+\i ACM Queue
+\i0 , 11(3), 2013.\
+[13]	P.\'a0Bailis and K.\'a0Kingsbury. The network is reliable: An informal survey of real-world communications failures. 
+\i ACM Queue
+\i0 , 12(7):20, 2014.\
+[14]	A.\'a0J. Bernstein and P.\'a0M. Lewis. Transaction decomposition using transaction semantics. 
+\i Distributed and Parallel Databases
+\i0 , 4(1):25\'9647, 1996.\
+[15]	P.\'a0Bernstein, V.\'a0Hadzilacos, and N.\'a0Goodman. 
+\i Concurrency control and recovery in database systems
+\i0 . Addison-wesley New York, 1987.\
+[16]	P.\'a0A. Bernstein, D.\'a0W. Shipman, and J.\'a0B. Rothnie, Jr. Concurrency control in a system for distributed databases (SDD-1). 
+\i ACM TODS
+\i0 , 5(1):18\'9651, Mar. 1980.\
+[17]	S.\'a0Burckhardt, D.\'a0Leijen, M.\'a0F\'e4hndrich, and M.\'a0Sagiv. Eventually consistent transactions. In 
+\i ESOP
+\i0 . 2012.\
+[18]	A.\'a0T. Clements et\'a0al. The scalable commutativity rule: designing scalable software for multicore processors. In 
+\i SOSP 2013
+\i0 .\
+[19]	N.\'a0Conway et\'a0al. Logic and lattices for distributed programming. In 
+\i SoCC 2012
+\i0 .\
+[20]	B.\'a0F. Cooper, R.\'a0Ramakrishnan, U.\'a0Srivastava, A.\'a0Silberstein, P.\'a0Bohannon, et\'a0al. PNUTS: Yahoo!\'92s hosted data serving platform. In 
+\i VLDB 2008
+\i0 .\
+[21]	S.\'a0Davidson, H.\'a0Garcia-Molina, and D.\'a0Skeen. Consistency in partitioned networks. 
+\i ACM Computing Surveys
+\i0 , 17(3):341\'96370, 1985.\
+[22]	G.\'a0DeCandia, D.\'a0Hastorun, M.\'a0Jampani, G.\'a0Kakulapati, A.\'a0Lakshman, et\'a0al. Dynamo: Amazon\'92s highly available key-value store. In 
+\i SOSP 2007
+\i0 .\
+[23]	D.\'a0E. Difallah, A.\'a0Pavlo, C.\'a0Curino, and P.\'a0Cudre-Mauroux. OLTP-Bench: An extensible testbed for benchmarking relational databases. In 
+\i VLDB 2014
+\i0 .\
+[24]	G.\'a0Duck, P.\'a0Stuckey, and M.\'a0Sulzmann. Observable confluence  for constraint handling rules. In 
+\i ICLP 2007
+\i0 .\
+[25]	K.\'a0P. Eswaran et\'a0al. The notions of consistency and predicate locks in a database system. 
+\i Commun. ACM
+\i0 , 19(11):624\'96633, 1976.\
+[26]	H.\'a0Garcia-Molina. Using semantic knowledge for transaction processing in a distributed database. 
+\i ACM TODS
+\i0 , 8(2):186\'96213, June 1983.\
+[27]	H.\'a0Garcia-Molina and K.\'a0Salem. Sagas. In 
+\i SIGMOD 1987
+\i0 .\
+[28]	S.\'a0Gilbert and N.\'a0Lynch. Brewer\'92s conjecture and the feasibility of consistent, available, partition-tolerant web services. 
+\i SIGACT News
+\i0 , 33(2):51\'9659, 2002.\
+[29]	P.\'a0Godfrey et\'a0al. 
+\i Logics for databases and information systems
+\i0 , chapter Integrity constraints: Semantics and applications, pages 265\'96306. Springer, 1998.\
+[30]	J.\'a0Gray. The transaction concept: Virtues and limitations. In 
+\i VLDB 1981
+\i0 .\
+[31]	J.\'a0Gray and L.\'a0Lamport. Consensus on transaction commit. 
+\i ACM TODS
+\i0 , 31(1):133\'96160, Mar. 2006.\
+[32]	P.\'a0W. Grefen and P.\'a0M. Apers. Integrity control in relational database systems\'96an overview. 
+\i Data & Knowledge Engineering
+\i0 , 10(2):187\'96223, 1993.\
+[33]	A.\'a0Gupta and J.\'a0Widom. Local verification of global integrity constraints in distributed databases. In 
+\i SIGMOD 1993
+\i0 , pages 49\'9658.\
+[34]	R.\'a0Johnson, I.\'a0Pandis, and A.\'a0Ailamaki. Eliminating unscalable communication in transaction processing. 
+\i The VLDB Journal
+\i0 , pages 1\'9623, 2013.\
+[35]	E.\'a0P. Jones, D.\'a0J. Abadi, and S.\'a0Madden. Low overhead concurrency control for partitioned main memory databases. In 
+\i SIGMOD 2010
+\i0 .\
+[36]	J.\'a0W. Klop. 
+\i Term rewriting systems
+\i0 . Stichting Mathematisch Centrum Amsterdam, 1990.\
+[37]	H.\'a0K. Korth and G.\'a0Speegle. Formal model of correctness without serializabilty. In 
+\i SIGMOD 1988
+\i0 .\
+[38]	H.-T. Kung and C.\'a0H. Papadimitriou. An optimality theory of concurrency control for databases. In 
+\i SIGMOD
+\i0 , 1979.\
+[39]	L.\'a0Lamport. Towards a theory of correctness for multi-user database systems. Technical report, CCA, 1976. Described in \'a0[3, 49].\
+[40]	C.\'a0Li, J.\'a0Leitao, A.\'a0Clement, N.\'a0Pregui\'e7a, R.\'a0Rodrigues, et\'a0al. Automating the choice of consistency levels in replicated systems. In 
+\i USENIX ATC 2014
+\i0 .\
+[41]	C.\'a0Li, D.\'a0Porto, A.\'a0Clement, J.\'a0Gehrke, et\'a0al. Making geo-replicated systems fast as possible, consistent when necessary. In 
+\i OSDI 2012
+\i0 .\
+[42]	Y.\'a0Lin, B.\'a0Kemme, R.\'a0Jim\'e9nez-Peris, et\'a0al. Snapshot isolation and integrity constraints in replicated databases. 
+\i ACM TODS
+\i0 , 34(2), July 2009.\
+[43]	S.\'a0Lu, A.\'a0Bernstein, and P.\'a0Lewis. Correct execution of transactions at different isolation levels. 
+\i IEEE TKDE
+\i0 , 16(9), 2004.\
+[44]	N.\'a0A. Lynch, M.\'a0Merritt, W.\'a0Weihl, and A.\'a0Fekete. 
+\i Atomic Transactions: In Concurrent and Distributed Systems
+\i0 . Morgan Kaufmann Publishers Inc., 1993.\
+[45]	K.\'a0Petersen, M.\'a0J. Spreitzer, D.\'a0B. Terry, M.\'a0M. Theimer, and A.\'a0J. Demers. Flexible update propagation for weakly consistent replication. In 
+\i SOSP 1997
+\i0 .\
+[46]	K.\'a0Ren, A.\'a0Thomson, and D.\'a0J. Abadi. Lightweight locking for main memory database systems. VLDB 2013.\
+[47]	S.\'a0Roy, L.\'a0Kot, et\'a0al. Writes that fall in the forest and make no sound: Semantics-based adaptive data consistency, 2014. 
+\f3 arXiv:1403.2307
+\f0 .\
+[48]	Y.\'a0Saito and M.\'a0Shapiro. Optimistic replication. 
+\i ACM CSUR
+\i0 , 37(1), Mar. 2005.\
+[49]	F.\'a0B. Schneider. 
+\i On concurrent programming
+\i0 . Springer, 1997.\
+[50]	M.\'a0Shapiro et\'a0al. A comprehensive study of convergent and commutative replicated data types. Technical Report 7506, INRIA, 2011.\
+[51]	D.\'a0Shasha, F.\'a0Llirbat, E.\'a0Simon, and P.\'a0Valduriez. Transaction chopping: algorithms and performance studies. 
+\i ACM TODS
+\i0 , 20(3):325\'96363, Sept. 1995.\
+[52]	M.\'a0Stonebraker, S.\'a0Madden, D.\'a0J. Abadi, S.\'a0Harizopoulos, et\'a0al. The end of an architectural era: (it\'92s time for a complete rewrite). In 
+\i VLDB 2007
+\i0 .\
+[53]	M.\'a0Tamer\'a0\'d6zsu and P.\'a0Valduriez. 
+\i Principles of distributed database systems
+\i0 . Springer, 2011.\
+[54]	A.\'a0Thomson, T.\'a0Diamond, S.\'a0Weng, K.\'a0Ren, P.\'a0Shao, and D.\'a0Abadi. Calvin: Fast distributed transactions for partitioned database systems. In 
+\i SIGMOD 2012
+\i0 .\
+[55]	TPC Council. TPC Benchmark C revision 5.11, 2010.\
+[56]	I.\'a0L. Traiger, J.\'a0Gray, C.\'a0A. Galtieri, and B.\'a0G. Lindsay. Transactions and consistency in distributed database systems. 
+\i ACM TODS
+\i0 , 7(3):323\'96342, 1982.\
+[57]	S.\'a0Tu, W.\'a0Zheng, E.\'a0Kohler, B.\'a0Liskov, and S.\'a0Madden. Speedy transactions in multicore in-memory databases. In 
+\i SOSP 2013
+\i0 .\
+[58]	W.\'a0Weihl. 
+\i Specification and implementation of atomic data types
+\i0 . PhD thesis, Massachusetts Institute of Technology, 1984.\
+[59]	J.\'a0Widom and S.\'a0Ceri. 
+\i Active database systems: Triggers and rules for advanced database processing
+\i0 . Morgan Kaufmann, 1996.\
+[60]	Y.\'a0Xu et\'a0al. Bobtail: avoiding long tails in the cloud. In 
+\i NSDI 2013
+\i0 .\
+\pard\pardeftab720\fi300\sb60\sa120\qc
+\cf0 1 \
+\pard\pardeftab720\sb240\sa120
+\cf0 "
+\b\fs32 APPENDIX A: Experimental Details\
+\pard\pardeftab720\sb60\sa120\qc
+
+\fs24 \cf0 Microbenchmark experiment description.
+\b0   We implemented traditional two-phase locking and an optimized variant of two-phase locking on the experimental prototype described in Section\'a06.\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 In two-phase locking, each client acquires locks one at a time, requiring a full round trip time (RTT) for every lock request. For an 
+\i N
+\i0  item transaction, locks are held for 2
+\i N
+\i0 +1 message delays (the +1 is due to broadcasting the unlock/commit command to the participating servers).\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 Our optimized two-phase locking only uses one message delay (half RTT) to perform each lock request: the client specifies the entire set of items it wishes to modify at the start of the transaction (in our implementation, the number of items in the transaction and the starting item ID), and, once a server has updated its respective item, the server forwards the remainder of the transaction to the server responsible for the next write in the transaction. For an 
+\i N
+\i0 -item transaction, locks are only held for 
+\i N
+\i0  message delays (the final server both broadcasts the unlock request to all other servers and also notifies the client), while a 1-item transaction does not require distributed locking.\
+To avoid deadlock (which was otherwise common in this high-contention microbenchmark), our implementation totally orders any lock requests according to item and executes them sequentially (e.g., lock server 1 then lock server 2). Our implementation also piggybacks write commands along with lock requests, further avoiding message delays. Unlike the locking implementation used in Section\'a06, since we are only locking one item per server, our microbenchmark code does not use a dynamic lock manager and instead associates a single lock with each item; this should further lower locking overheads.\
+On each server, our lock implementation uses Java 
+\f3 ReentrantLock
+\f0 , which unfortunately means that, for all but 1-item optimized 2PL, our implementation was unable to used fixed-size thread pools (in contrast with our Scala 
+\f3 Future
+\f0 -based coordination-free runtime). Nevertheless, we do not believe that our locking implementation is the actual bottleneck in the distributed setting: coordination is.\
+We partitioned eight in-memory items (integers) across eight 
+\f3 cr1.8xlarge
+\f0  Amazon EC2 instances with clients located on a separate set of 
+\f3 cr1.8xlarge
+\f0  instances. Figure\'a01 reported in Section\'a02 depicts results for the coordination-free implementation and the optimized two-phase locking case. Figure\'a0? in this second depicts all three algorithms. Unsurprisingly, two-phase locking performs worse than optimized two-phase locking, but both incur substantial penalties due to coordination delay over the network.\
+\pard\pardeftab720\fi300\sb240\qc
+
+\fs20 \cf0  \
+\pard\pardeftab720\sb120\sa120
+
+\fs24 \cf0 Figure 7: Additional performance details for microbenchmark performance of conflicting and non-conflicting transactions.\
+\pard\pardeftab720\fi300\sb260\sa120\qc
+
+\b \cf0 Trace-based simulation description.
+\b0   We simulate traditional two-phase commit and decentralized two-phase commit, using network models derived from existing studies. Our simulation is rather straightforward, but we make several optimizations to improve the throughput of each algorithm. First, we assume that transactions are pipelined, so that each server can 
+\f3 prepare
+\f0  immediately after it has 
+\f3 commit
+\f0 ted the prior transaction. Second, our pipelines are ideal in that we do not consider deadlock: only one transaction 
+\f3 prepare
+\f0 s at a given time. Third, we do not consider the cost of local processing of each transaction: throughput is determined entirely by communication delay.\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 While this study is based solely on reported latencies, deployment reports corroborate our findings. For example, Google\'92s F1 uses optimistic concurrency control via WAN with commit latencies of 50 to 150\'a0ms. As the authors discuss, this limits throughput to between 6 to 20 transactions per second per data item\'a0[f1]. Megastore\'92s average write latencies of 100 to 400\'a0ms suggest similar throughputs to those that we have predicted\'a0[megastore]. Again, 
+\i aggregate
+\i0  throughput may be greater as multiple 2PC rounds for disjoint sets of data items may safely proceed in parallel. However, 
+\i worst-case
+\i0  access patterns will indeed greatly limit scalability.\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 APPENDIX B: 
+\f1\i I
+\f0\i0 -confluence proof\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 [Sorry. Ignored 
+\f3 \\begin\{proof\} ... \\end\{proof\}
+\f0 ]\
+\pard\pardeftab720\sb240\sa120
+
+\b\fs32 \cf0 APPENDIX C: 
+\f1\i I
+\f0\i0 -confluence Analysis\
+\pard\pardeftab720\sb60\sa120\qc
+
+\b0\fs24 \cf0 In this section, we more formally demonstrate the 
+\f1\i I
+\f0\i0 -confluence invariants and operations discussed in Section\'a05. Our goals in this section are two-fold. First, we have found the experience of formally proving 
+\f1\i I
+\f0\i0 -confluence be instructive in understanding these combinations (beyond less formal arguments made in the body text for brevity and intuition). Second, we have found 
+\f1\i I
+\f0\i0 -confluence to take on two general structures that, via repetition and in and variations below, may prove useful to the reader. In particular, the structure of our 
+\f1\i I
+\f0\i0 -confluence takes one of two forms:\
+\pard\tx283\pardeftab720\li600\fi-300\sb5\sa120
+
+\fs20 \cf0 \'95	To show a set of transactions are not 
+\f1\i I
+\f0\i0 -confluent  respect to an invariant 
+\i I
+\i0 , we use proof by counterexample: we present two 
+\i I
+\i0 -valid states resulting from 
+\i I
+\i0 -valid sequences in 
+\i T
+\i0  with a common ancestor state that, when merged, are not 
+\i I
+\i0 -valid. \
+\'95	To show a set of transactions are 
+\f1\i I
+\f0\i0 -confluent  respect to an invariant 
+\i I
+\i0 , we use proof by contradiction: we show that, if a state 
+\i S
+\i0  is not 
+\i I
+\i0 -valid, merging two 
+\i I
+\i0 -valid states resulting from 
+\i I
+\i0 -valid sequences in 
+\i T
+\i0  with common ancestor state (say,  and ) to produce 
+\i S
+\i0  implies either one or both of  or  would not be 
+\i I
+\i0 -valid.\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+
+\fs24 \cf0 Of course, these results are not exhaustive, and there are literally infinite combinations of invariants and operations to consider. Rather, the seventeen examples below serve as a demonstration of what can be accomplished via 
+\f1\i I
+\f0\i0 -confluence .\
+We introduce additional formalism as necessary. To start, unless otherwise specified, we use the set union merge operator. We denote version 
+\i i
+\i0  of item 
+\i x
+\i0  as  and a write of version  with value 
+\i v
+\i0  as .\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 For the next proof, we consider a model as suggested in Section\'a05 where replicas are able to generate unique (but not arbitrary (!)) IDs (in the main text, we suggested the use of a replica ID and sequence number). In the following proof, to account for this non-deterministic choice of unique ID, we introducea special 
+\i nonce
+\i0 () function and require that, 
+\i nonce
+\i0 () return unique values for each replica; that is, 
+\f4 \uc0\u8852 
+\f0  is not defined for replicas on which independent invocations of 
+\i nonce
+\i0 () return the same value.\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 To discuss foreign key constraints, we need some way to 
+\i refer
+\i0  to other records within the database. There are a number of ways of formalizing this; we are not picky and, here, refer to a field 
+\i f
+\i0  within a given version  as .\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 For simplicity, in the following proof, we assume that deleted elements remain deleted under merge. In practice, this can be accomplished by tombstoning records and, if required, using counters to record the number of deletions and additions\'a0[50]. We represent a deleted version  by .\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 We denote a casading delete of all records that reference field 
+\i f
+\i0  with value 
+\i v
+\i0  (
+\i v
+\i0  a constant) as 
+\i cascade
+\i0 (
+\i f
+\i0 =
+\i v
+\i0 ).\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 We define a \'93consistent\'94 secondary index invariant as requiring that, when a record is visible, its secondary index entry should also be visible. This is similar to the guarantees provided by Read Atomic isolation\'a0[11]. For simplicity, in the following proof, we only consider updates to a single indexed attribute 
+\i attr
+\i0 , but the proof is easily generalizable to multiple index entries, insertions, and deletion via tombstones. We use last-writer wins for index entries.\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 In our formalism, we can treat materialized views as functions over database state .\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 For our proofs over counter ADTs, we represent increments of a counter 
+\i c
+\i0  by , where 
+\i i
+\i0  is a distinct invocation, decrements of 
+\i c
+\i0  by , and the value of 
+\i c
+\i0  in database 
+\i D
+\i0  as .\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 We provide proofs for ADT lists; the remainder are remarkably similar. Our implementation of ADT lists in these proofs uses a lexicographic sorting of values to determine list order. Transactions add a version 
+\i v
+\i0  to list 
+\i l
+\i0  via 
+\i add
+\i0 (
+\i v
+\i0 ,
+\i l
+\i0 ) and remove it via 
+\i del
+\i0 (
+\i v
+\i0 ,
+\i l
+\i0 ) (where an item is considered contained in the list if it has been added more times than it has been deleted) and access the length of 
+\i l
+\i0  in database 
+\i D
+\i0  via 
+\i size
+\i0 (
+\i l
+\i0 )=|\{
+\i k
+\i0 |
+\i add
+\i0 (
+\i k
+\i0 ,
+\i l
+\i0 )
+\f2 \uc0\u8712 
+\f0\i D
+\i0 \}|\uc0\u8722 |\{
+\i m
+\i0 |
+\i del
+\i0 (
+\i m
+\i0 ,
+\i l
+\i0 )
+\f2 \uc0\u8712 
+\f0\i D
+\i0 \}| (note that 
+\i size
+\i0  of a non-existent list is zero).\
+\pard\pardeftab720\sb120\sa120\qc
+\cf0 [Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+[Sorry. Ignored 
+\f3 \\begin\{claim\} ... \\end\{claim\}
+\f0 ]\
+\pard\pardeftab720\fi300\sb120\sa120\qc
+\cf0 Note that, in our above list ADT, modifying the list is 
+\f1\i I
+\f0\i0 -confluent  respect to constraints on the head and tail of the list but not intermediate elements of the list! That is, the head (resp. tail) of the merged list will be the head (tail) of one of the un-merged lists. However, the second element may come from either of the two lists.\
+" }

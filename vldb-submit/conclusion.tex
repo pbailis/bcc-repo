@@ -1,0 +1,28 @@
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+ACID transactions and associated strong isolation levels dominated the
+field of database concurrency control for decades, due in large part
+to their ease of use and ability to automatically guarantee
+application correctness criteria. However, this powerful abstraction
+comes with a hefty cost: concurrent transactions must coordinate in
+order to prevent read/write conflicts that could compromise
+equivalence to a serial execution. At large scale and, increasingly,
+in geo-replicated system deployments, the coordination costs
+necessarily associated with these implementations produce significant
+overheads in the form of penalties to throughput, latency, and
+availability. In light of these trends, we developed a formal
+framework, called \fullnameconfluence, in which application invariants
+are used as a basis for determining if and when coordination is
+strictly necessary to maintain correctness. With this framework, we
+demonstrated that, in fact, many---but not all---common database
+invariants and integrity constraints are actually achievable without
+coordination. By applying these results to a range of actual
+transactional workloads, we demonstrated an opportunity to avoid
+coordination in many cases that traditional serializable mechanisms
+would otherwise coordinate. The order-of-magnitude performance
+improvements we demonstrated via coordination-avoiding concurrency
+control strategies provide compelling evidence that invariant-based
+coordination avoidance is a promising approach to meaningfully scaling
+future data management systems.

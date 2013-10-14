@@ -1,0 +1,201 @@
+
+\section{Introduction}
+\label{sec:intro}
+
+% coordination-freedom provides scalability
+
+Minimizing coordination is key in high-performance, scalable database
+design. Coordination---informally, the requirement that concurrently
+executing operations synchronously communicate or otherwise stall in
+order to complete---is expensive: it limits concurrency between
+operations and undermines the effectiveness of scale-out across
+servers. In the presence of partial system failures, coordinating
+operations may be forced to stall indefinitely, and, in the
+failure-free case, communication delays can increase
+latency~\cite{hat-vldb,gilbert-cap}. In contrast, coordination-free
+operations allow aggressive scale-out,
+availability~\cite{gilbert-cap}, and low latency
+execution~\cite{pacelc}. If operations are coordination-free, then
+adding more capacity (e.g., servers, processors) will result in additional
+throughput; operations can execute on the new resources without
+affecting the old set of resources. Partial failures will not affect
+non-failed operations, and latency between any database replicas can
+be hidden from end-users.
+
+% serializability is traditional answer to correctness, but requires
+% coordination
+
+Unfortunately, coordination-free execution is not always safe. Uninhibited
+coordination-free execution can compromise application-level
+correctness, or consistency.\footnote{Our use of the term
+  ``consistency'' in this paper refers to \textit{application-level} correctness, as
+  is traditional in the database
+  literature~\cite{gray-virtues,bernstein-book,eswaran-consistency,traiger-tods,davidson-survey}. As
+  we discuss in Section~\ref{sec:bcc-practice}, replicated data
+  consistency (and isolation~\cite{adya-isolation,hat-vldb})
+  models like linearizability~\cite{gilbert-cap} can be cast as
+  application criteria if desired.} In canonical banking application
+examples, concurrent, coordination-free withdrawal operations can
+result in undesirable and ``inconsistent'' outcomes like negative account
+balances---application-level anomalies that the database should
+prevent. To ensure correct behavior, a database system must coordinate
+the execution of these operations that, if otherwise executed
+concurrently, could result in inconsistent application state.
+
+This tension between coordination and correctness is
+evidenced by the range of database concurrency control policies. In
+traditional database systems, serializable isolation provides
+concurrent operations (transactions) with the illusion of executing in
+some serial order~\cite{bernstein-book}. As long as individual
+transactions maintain correct application state, serializability
+guarantees correctness~\cite{gray-virtues}. However, each pair of
+concurrent operations (at least one of which is a write) can
+potentially compromise serializability and therefore will require
+coordination to execute~\cite{hat-vldb,davidson-survey}. By isolating
+users at the level of reads and writes, serializability can be overly
+conservative and may in turn coordinate more than is strictly
+necessary for
+consistency~\cite{lamport-audit,tamer-book,ic-survey,weihl-thesis}.
+For example, hundreds of users can safely and simultaneously retweet
+Barack Obama on Twitter without observing a serial ordering of updates
+to the retweet counter. In contrast, a range of widely-deployed weaker
+models require less coordination to execute but surface read and write
+behavior that may in turn compromise
+consistency~\cite{dynamo,optimistic,adya-isolation,hat-vldb}. With
+these alternative models, it is up to users to decide when weakened
+guarantees are acceptable for their
+applications~\cite{consistency-borders}, leading to confusion
+regarding (and substantial interest in) the relationship between
+consistency, scalability, and
+availability~\cite{hat-vldb,pacelc,dynamo,gilbert-cap,davidson-survey,kohler-commutativity,redblue-new,queue}.
+
+% which anomalies matter depends on application; think about
+% invariants instead, use to identify necessary and sufficient
+% condition
+
+In this paper, we address the central question inherent in this
+trade-off: when is coordination strictly necessary to maintain
+application-level consistency? To do so, we enlist the aid of
+application programmers to specify their correctness criteria in the
+form of \textit{invariants}. For example, our banking application
+writer would specify that account balances should be positive (e.g.,
+by schema annotations), similar to constraints in modern databases
+today. Using these invariants, we formalize a \textit{necessary} and
+sufficient condition for invariant-preserving and coordination-free
+execution of an application's operations---the first such condition we
+have encountered. This property---\fullnameconfluence
+(\iconfluence)---captures the potential scalability and availability
+of an application, independent of any particular database
+implementation: if an application's operations are \iconfluent, a
+database can correctly execute them without coordination. If
+operations are not \iconfluent, coordination is required to
+guarantee correctness. This provides a basis for \textit{coordination
+  avoidance}: the use of coordination only when necessary.
+
+While coordination-free execution is powerful, are any \textit{useful}
+operations safely executable without coordination? \iconfluence
+analysis determines when concurrent execution of specific operations
+can be ``merged'' into valid database state; we accordingly analyze
+invariants and operations from several real-world databases and
+applications. Many production databases today already support
+invariants in the form of primary key, uniqueness, foreign key, and
+row-level check constraints~\cite{kemme-si-ic,hat-vldb}. We analyze
+these and show many are \iconfluent, including forms of foreign key
+constraints, unique value generation, and check constraints, while
+others, like primary key constraints are, in general, not. We also
+consider entire \textit{applications} and apply our analysis to the
+workloads of the OLTPBenchmark suite~\cite{oltpbench}. Many of the 
+operations and invariants are \iconfluent. As an extended case study, we examine the
+TPC-C benchmark~\cite{tpcc}, the preferred standard for evaluating new
+concurrency control
+algorithms~\cite{abadi-vll,jones-dtxn,calvin,hstore,oltpbench}. We
+show that ten of twelve of TPC-C's invariants are \iconfluent under
+the workload transactions and, more importantly, compliant TPC-C can
+be implemented without any synchronous coordination across servers. We
+subsequently scale a coordination-avoiding database prototype
+linearly, to over 12.7M TPC-C New-Order transactions per second on
+$200$ servers, a 25-fold improvement over prior results.
+
+% many workloads are amenable to cfree execution! the following ICs
+% are actually okay. but if not, here's the cost.
+
+Overall, \iconfluence offers a concrete grasp on the challenge of
+minimizing coordination while ensuring application-level correctness. In seeking a necessary and sufficient (i.e., ``tight'')
+condition for safe, coordination-free execution, we require the
+programmer to specify her correctness criteria. If either these criteria or
+application operations are unavailable for inspection, users must fall
+back to using serializable transactions or, alternatively, perform the
+same ad-hoc analyses they use today~\cite{queue}. Moreover, it is already well
+known that coordination is required to prevent several read/write
+isolation anomalies like non-linearizable
+operations~\cite{gilbert-cap,hat-vldb}. However, when users
+\textit{can} correctly specify their application correctness criteria
+and operations, they can maximize scalability without requiring
+expertise in the milieu of weak read/write isolation
+models~\cite{hat-vldb,adya-isolation}. We have also found that
+\iconfluence to be a useful design tool: studying specific
+combinations of invariants and operations can indicate the existence
+of more scalable algorithms~\cite{kohler-commutativity}.
+
+In summary, this paper offers the following high-level takeaways:
+\begin{introenumerate}
+
+% new item: Serializable transactions are sufficient for maintaining
+% application-level correctness criteria but always coordination
+% during conflicting read/write operations.
+
+% ACID transactions always satisfy correctness, but they do so at the
+% cost of always coordinating. By leveraging semantic knowledge about
+% application invariants, coordination can often be avoided, leading
+% to low-latency, high-availability, without sacrificing correctness.  
+
+\item Serializable transactions preserve application correctness at
+  the cost of always coordinating between conflicting reads and writes.
+
+\item Given knowledge of application transactions and correctness
+  criteria (e.g., invariants), it is often possible to avoid this
+  coordination (by executing some transactions without coordination,
+  thus providing availability, low latency, and excellent scalability)
+  while still preserving those correctness criteria.
+
+\item Invariant confluence offers a necessary and sufficient
+  condition for this correctness-preserving, coordination-free execution.
+
+\item Many common integrity constraints found in SQL and standardized
+  benchmarks are invariant confluent, allowing order-of-magnitude
+  performance gains over coordinated execution.
+
+\end{introenumerate}
+While coordination cannot always be avoided, this work evidences the
+power of application invariants in scalable and correct
+execution of modern applications on modern hardware. Application
+correctness does 
+not always require coordination, and \iconfluence analysis can explain 
+both when and why this is the case.
+
+\ifextended
+\minihead{Overview} The remainder of this paper proceeds as follows:
+Section~\ref{sec:motivation} describes and quantifies the costs of
+coordination. Section~\ref{sec:model} introduces our system model and
+Section~\ref{sec:bcc-theory} contains our primary theoretical
+result. Readers may skip to Section~\ref{sec:bcc-practice} for
+practical applications of \iconfluence to real-world
+invariant-operation combinations. Section~\ref{sec:evaluation}
+subsequently applies
+these combinations to real applications and presents an experimental
+case study of TPC-C. Section~\ref{sec:relatedwork} describes related
+work, while Section~\ref{sec:futurework} discusses possible extensions
+and Section~\ref{sec:conclusion} concludes.
+\else
+\minihead{Overview} The remainder of this paper proceeds as follows:
+Section~\ref{sec:motivation} describes and quantifies the costs of
+coordination. Section~\ref{sec:model} introduces our system model and
+Section~\ref{sec:bcc-theory} contains our primary theoretical
+result. Readers may skip to Section~\ref{sec:bcc-practice} for
+practical applications of \iconfluence to real-world
+invariant-operation combinations. Section~\ref{sec:evaluation}
+subsequently applies
+these combinations to real applications and presents an experimental
+case study of TPC-C. Section~\ref{sec:relatedwork} describes related
+work, and Section~\ref{sec:conclusion} concludes.
+\fi

@@ -1,0 +1,22 @@
+
+\begin{abstract}
+The strong semantics provided by traditional shared-memory and
+database systems come at a fundamental cost to scalability. Even on
+modern networks, worst-case access patterns for distributed operations
+incur harsh throughput limitations---the ``scalability wall''---of
+tens (over WAN) to low-digit thousands (over LAN) of operations per
+second---independent of implementation technique. Fortunately, while
+these strong semantics are sufficient for application-level
+correctness, they are not always necessary. In this talk, I will
+describe our recent and ongoing research that allow applications to
+coordinate only when provably necessary, effectively maximizing
+opportunities for scalability (even at single-object
+granularity). Core to this coordination avoidance is an increased
+knowledge of application semantics---in the form of invariants (e.g.,
+SQL integrity constraints)---and a formal understanding of which
+combinations of invariants and operations are achievable with
+coordination-free mechanisms (i.e., are invariant confluent). To
+demonstrate the utility of this analysis, I will demonstrate linear
+scalability of the TPC-C benchmark to over 1.6M transactions per
+second on 100 servers.
+\end{abstract}

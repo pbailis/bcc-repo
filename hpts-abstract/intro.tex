@@ -1,0 +1,34 @@
+
+In light of the apparent success of abstractions such as the relational model and the transaction programming concept, the database management systems community as a whole has paid little attention to how, in practice, such abstractions are actually used and deployed. For a community invested in ``Big Data,'' we see surprisingly few applications of data-intensive quantitative techniques in understanding the success of our systems in practice. This is a problem.
+
+\minihead{A brief example.} Consider the community's much-revered transaction concept. A casual reader of database conference proceedings (or an undergraduate enrolled in an upper-division database course) might easily draw the conclusion that serializable or Snapshot Isolated transactions are by far the norm in database systems deployments today. Yet, in practice, this is often far from the truth. To illustrate why, consider two simple questions: \begin{enumerateone}
+
+\item \textit{How many databases provide serializable isolation?} In a recent study of 18 commercial and open source OLTP databases~\cite{hat-vldb}, we found that almost all (15) default to a non-serializable guarantee, and many do not support serializability as an option at all.
+
+\item \textit{How often do programmers use the transaction abstraction?} In a recent study of 67 popular open source applications (averaging 26K LoC each)~\cite{feral-cc}, we found widespread evidence that many web programming applications do not use the transaction concept at all, opting for alternative mechanisms such as declarative invariants by a margin of over 30x.
+
+\end{enumerateone}
+Quantitatively, for a class of users of database systems (including the flagship open source and commercial offerings today) and for a class of developers (namely, web programmers), the serializable transaction concept is unsuccessful. Answering these questions with basic analysis techniques and publicly available data is not difficult yet had not been done for years, if ever. (For other classes of applications, the outcomes of these studies would undoubtedly differ. Yet, for these classes of users, we perceive a stark difference between this community's principles and reality in practice.)
+
+\minihead{A call towards empiricism.} The above highlights an opportunity to turn quantitative analysis inwards, towards a better understanding of the systems that we build: how well are the abstractions we pride ourselves on actually performing, and how can we improve them in service of our users? While these questions have driven the database systems research and development agenda for years, it is time that we use quantitative evidence to answer them. Specifically, there are several trends that enable more rigorous quantitative analysis today than in decades past, including:
+\begin{enumeratetwo}
+
+\item \textit{The proliferation of open source:} More code is open source than ever before. Today, GitHub alone hosts over 3.5 million projects, with over 8 million contributors. A substantial number of those projects are database-backed. While a large number are likely hobbyist efforts or side projects, a number of projects are commercially supported, with codebases numbering hundreds of thousands to millions of lines of code.
+
+\item\textit{The ubiquity of source control:} An SVN or Git repository contains a wealth of information compared to a simple tarball: multiple revisions of code, authorship information, and commit times and logs all enable a range of sophisticated analyses, including longitudinal analysis across a project's history and a programmer's career. We can easily ask and answer questions like ``what proportion of programmers are responsible for schema changes versus changes to the application logic?''
+
+\item\textit{The power of modern program analysis:} Program analysis is easier than ever. A range of programmer-friendly analysis tools are available and are especially powerful for high-level languages suitable for mid-tier application programming, including Java, PHP, and Python. With some creativity, simple \texttt{grep}, object reflection, and bytecode analysis can go a long ways.
+
+\item\textit{The availability of bug trackers:} Not only can one inspect the code itself, but one can often investigate the relevant bugs and issues that often lead to code changes. Was a unique index introduced on a whim, or was there a critical concurrency error that led to this outcome?\vspace{-.25em}
+\end{enumeratetwo}
+A preponderance of resources exists, and, as a community, we should leverage them. There are at least two positive outcomes:
+
+First, we can better understand trends in application development. Had we monitored the use of transactions or the structure of application schemas in the mid-2000s, could we have predicted the rise of NoSQL, eventual consistency, and semi-structured data management in JSON? Might we have better anticipated the rise of Hadoop and event sourcing (i.e., stream processing revisited)? Are we missing out on the next major trend in data management, and will we still be playing catch-up in five years?
+
+Second, we can build better systems. For example, if some of our users truly prefer invariants over transactions, we should build systems that use invariants as the basis for concurrency control. We can use existing code bases as a guideline for abstraction, system, and algorithm design as well as experimental evaluation. As database experts, we can help our users with their demonstrated pain points---even if our users may appear ``misguided'' according to conventional wisdom, we should heed uncontrovertible quantitative evidence and make data-driven design decisions.
+
+
+
+\minihead{Lessons for HPTS.} We can and should invest greater energy into quantitatively evaluating the systems and abstractions that this community prides itself upon. To neglect this opportunity is to fly blind, possibly missing the next trends in practical data management.
+
+\minihead{Why HPTS?} The HPTS venue affords the ability to stimulate a broader discussion about the evaluation of our systems both in academic research and in practice. Our conversations with practitioners today reveals a wide gap that should be the subject of broader community discourse. Vendors and systems operators can help, participating in the dialogue, sharing code and data, and releasing their own findings. We can do better than TPC-\{C, H, E\}, and our continued relevance is at stake.
