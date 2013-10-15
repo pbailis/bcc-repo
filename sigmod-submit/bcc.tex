@@ -1,0 +1,126 @@
+
+
+\documentclass{sig-alternate}
+\usepackage{subfigure, balance,array}
+
+\let\proof\relax
+\let\endproof\relax
+
+\usepackage{color, times, mathptmx, amsmath, amssymb, amsthm, verbatim, 
+  mdwlist, graphicx, footnote, multirow, xspace, tikz}
+
+
+%\usepackage{draftwatermarktop, draftwatermarkbottom}
+\usepackage{algorithm}% http://ctan.org/pkg/algorithms
+
+\usepackage[noend]{algpseudocode}% http://ctan.org/pkg/algorithmicx
+
+% Franklin, Alvaro, Conway, Venkataraman, Panda
+
+\setlength{\parskip}{3ex plus 2ex minus 2ex}
+
+\algrenewcommand{\alglinenumber}[1]{\small#1:}
+
+\theoremstyle{definition}
+\setlength{\textfloatsep}{1em}% Remove \textfloatsep
+
+\renewcommand\topfraction{0.85}
+\renewcommand\bottomfraction{0.85}
+\renewcommand\textfraction{0.1}
+\renewcommand\floatpagefraction{0.85}
+
+\newtheorem{invariant}{Invariant}
+\newtheorem{lemma}{Lemma}
+
+\makeatletter
+\def\thm@space@setup{\thm@preskip=.5em
+\thm@postskip=.5em}
+\makeatother
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{myproof}{Proof}
+\newtheorem{claim}{Claim}
+
+\theoremstyle{remark}
+
+\newtheorem{remark}{Remark}
+
+\usepackage{scrextend}
+\usepackage[hyphens]{url}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage{breakurl}
+
+\newcommand{\commentt}[1]{{\small\texttt{#1}}}
+
+\newcommand{\example}[1]{{\vspace{.25em}\noindent\textbf{#1.} }}
+\newcommand{\minihead}[1]{{\vspace{.4em}\noindent\textbf{#1.} }}
+\newcommand{\minidef}[1]{{\vspace{.25em}\noindent\textit{#1} }}
+
+\newcommand{\pbnote}[1]{{\color{red}{#1 ---P.B.}}}
+
+\newcommand{\ttf}[1]{\texttt{#1}\xspace}
+
+\newcommand{\rapl}{\ttf{RAMP-L}}
+\newcommand{\raps}{\ttf{RAMP-S}}
+\newcommand{\rapb}{\ttf{RAMP-B}}
+
+\newcommand{\lwlr}{\ttf{LWLR}}
+\newcommand{\lwsr}{\ttf{LWSR}}
+\newcommand{\lwnr}{\ttf{LWNR}}
+\newcommand{\nwnr}{\ttf{NWNR}}
+\newcommand{\mstr}{\ttf{MSTR}}
+
+\usepackage{etoolbox}
+\newcommand{\zerodisplayskips}{%
+  \setlength{\abovedisplayskip}{4pt}
+  \setlength{\belowdisplayskip}{4pt}
+  \setlength{\abovedisplayshortskip}{4pt}
+  \setlength{\belowdisplayshortskip}{4pt}}
+\appto{\normalsize}{\zerodisplayskips}
+\appto{\small}{\zerodisplayskips}
+\appto{\footnotesize}{\zerodisplayskips}
+
+\usepackage[T1]{fontenc}
+\renewcommand{\ttdefault}{fi4}
+
+\newenvironment{myitemize}
+{
+
+    \begin{list}{$\bullet$ }{}
+        \setlength{\topsep}{0em}
+        \setlength{\parskip}{0pt}
+        \setlength{\partopsep}{0pt}
+        \setlength{\parsep}{0pt}         
+        \setlength{\itemsep}{.5em} 
+        \setlength{\itemindent}{0em}
+}
+{
+    \end{list} 
+}
+
+\usepackage[leftmargin=0em]{quoting}
+
+\begin{document}
+%
+% --- Author Metadata here ---
+\conferenceinfo{XXX}{YYY}
+%\CopyrightYear{2007} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
+%\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
+% --- End of Author Metadata ---
+
+\title{Balanced Concurrency Control:\\As Little Coordination as Possible}
+
+%{\author{Peter Bailis, Alan Fekete{\fontsize{12}{14}$^\dagger$}, Ali Ghodsi, Joseph M. Hellerstein, Ion Stoica \\{\affaddr{UC Berkeley and {\fontsize{12}{14}$^\dagger$}University of Sydney}}}}
+\maketitle
+
+
+\input{abstract}
+
+\input{intro}
+
+\scriptsize
+\bibliography{bcc} \bibliographystyle{abbrv}
+
+
+\end{document}
