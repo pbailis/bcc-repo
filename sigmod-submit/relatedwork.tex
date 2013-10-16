@@ -1,0 +1,45 @@
+
+\section{Related Work}
+\label{sec:relatedwork}
+
+Invariant commutativity is closely related to Lamport's ``monotone assertions''~\cite{lamport-correctness}
+
+Degenerate form of Owecki-Gries ``interference freedom'', where each
+transaction's pre-condition and post-condition are the same:
+invariants are satisified. This is only possible because the database
+is free to abort transactions whose committing would violate integrity
+constraints. Accordingly, Owecki-Gries and related concurrent
+verification techniques may prove useful in \textit{proving} invariant
+commutativity but require modification to handle internal aborts and
+multi-statement transactions. We are actively investigating these
+techniques as we expand our BCC analysis.
+
+Long history spanning distributed databases, long-running
+transactions, and semantics-based concurrency control.
+
+While prior work on commutativity for data types (as exemplified by
+Weihl's thesis~\cite{weihl-thesis}) focuses on modular, reusable data
+structures, BCC invariants in effect turn each application's database
+into a new data structure with a custom set of commutativity
+conditions. While this is somewhat of an abuse of abstraction (and we
+view the use of invariants to be a worthwile contribution), it is
+interesting to consider this difference. Korth's predicatewise
+serializability requires~\cite{korth-serializability}
+
+Another important distinction between BCC and related work on
+increasing concurrency is that BCC analysis flags \textit{any}
+possible non-commutative operation for coordination. This is
+conservative---for example, two decrement operations may not actually
+cause a negative bank account balance---but, given the possibility of
+violation, replicas must coordinate. Prior research leveraged
+commutativity as a basis for increasing
+concurrency~\cite{herlihy-apologizing,
+  weihl-thesis,predicatewise-serializability} for individual
+transactions, requiring coordination (therefore sacrificing
+availability and low latency) but increasing concurrency nonetheless.
+
+parallelizing compilers~\cite{rinard-compiler}
+
+
+Alternatively, can apologize (Sagas).  Here, we enforce invariants
+without compensation code.

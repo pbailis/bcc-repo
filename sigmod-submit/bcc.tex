@@ -37,6 +37,7 @@
 \thm@postskip=.5em}
 \makeatother
 
+\newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
 \newtheorem{myproof}{Proof}
 \newtheorem{claim}{Claim}
@@ -54,6 +55,7 @@
 \newcommand{\commentt}[1]{{\small\texttt{#1}}}
 
 \newcommand{\example}[1]{{\vspace{.25em}\noindent\textbf{#1.} }}
+\newcommand{\miniheadnostop}[1]{{\vspace{.4em}\noindent\textit{#1.} }}
 \newcommand{\minihead}[1]{{\vspace{.4em}\noindent\textbf{#1.} }}
 \newcommand{\minidef}[1]{{\vspace{.25em}\noindent\textit{#1} }}
 
@@ -99,6 +101,25 @@
     \end{list} 
 }
 
+\newenvironment{introenumerate}
+{
+
+   \vspace{-.5em}
+   \newcounter{qdcounter}
+    \begin{list}{\arabic{qdcounter}.~}{\usecounter{qdcounter}\leftmargin=1em}
+        \setlength{\topsep}{0em}
+        \setlength{\parskip}{0pt}
+        \setlength{\partopsep}{0pt}
+        \setlength{\parsep}{0pt}         
+        \setlength{\itemsep}{.25em} 
+        \setlength{\itemindent}{0em}
+}
+{
+    \end{list} 
+    \vspace{-.5em}
+}
+
+
 \usepackage[leftmargin=0em]{quoting}
 
 \begin{document}
@@ -118,6 +139,18 @@
 \input{abstract}
 
 \input{intro}
+
+\input{motivation}
+
+\input{model}
+
+\input{bcc-theory}
+
+\input{bcc-practice}
+
+\input{evaluation}
+
+\input{relatedwork}
 
 \scriptsize
 \bibliography{bcc} \bibliographystyle{abbrv}

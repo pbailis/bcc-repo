@@ -1,0 +1,31 @@
+
+\section{Balanced Concurrency Control}
+\label{sec:bcc-theory}
+
+\subsection{Commutativity and Coordination}
+
+\begin{definition}[Invariant Commutativity]
+A set of stored procedures $P$ are invariant commutative under
+invariant $I$ if, for all database states $D$ and procedures $p_i, p_j
+\in P,$$ I(D) \wedge I(p_i(D)) \wedge I(p_j(D)) \Rightarrow I(p_i(D)
+\cup p_j(D))$.
+\end{definition}
+
+\miniheadnostop{A note on invariant commutativity} Our notion of
+commutativity differs from that of prior work: we directly incorporate
+a user's application-level invariants as part of transaction
+execution. We discuss specific trade-offs in
+Section~\ref{sec:relatedwork}, but we believe that invariant
+commutativity is more general than alternatives like state-based
+commutativity. As a simple example due to Lamport, in a banking
+application, the balance calculated by an audit transaction may change
+depending on whether a deposit transaction is executed before or after
+the audit. These two transactions are not commutative at the level of
+database state but \textit{do} commute with respect to the invariant
+that the database does not contain negative account balances.
+
+\subsection{Conflicts and Coordination}
+
+\begin{theorem}
+
+\end{theorem}

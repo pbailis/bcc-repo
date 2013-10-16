@@ -2,4 +2,136 @@
 \section{Introduction}
 \label{sec:intro}
 
+The past decade has seen increasing tumult in the landscape of
+mainstream distributed database design.  Faced with increasing scale
+and requirements for always-on operation, many service operators
+shifted away from traditional database designs and semantics. The gold
+standard in traditional database concurrency control---the
+serializable transaction, which guarantees ``single system
+programmability'' over arbitrary read-write operations---was provably
+unachievable under the Internet services' requirements for high
+availability and low latency. Instead, operators largely forfeited
+transactional semantics in favor of ``weak'' consistency models. As of
+2013, the long-term impact of this movement is unclear: we have
+recently seen a resurgence of interest in transactional models, with
+considerable debate as to which of these semantics---or possibly
+alternative semantics---will emerge victorious.
+
+These shifts nonetheless underscored a more fundamental divide in the
+design space of distributed databases: requirements for
+coordination. The introduction of the CAP Theorem in 2000 exposed many
+modern practitioners to the trade-offs between strength of semantic
+guarantees and coordination. On the one hand, ``strong'' data
+consistency (i.e., CAP ``CP'') models provide semantic guarantees that
+require coordination across replicas, leading to unavailability and
+increased latency. In contrast, ``weak consistency'' (i.e., CAP
+``AP'', or ``highly available'') models provide a subset of the
+semantic guarantees but do not require synchronous coordination and
+therefore do not suffer from unavailability or latency. The latter
+category of models (and many of their implementations) are perfectly
+scalable, even at the granularity of an individual database
+record---all coordination can be safely deferred until some future
+point (and, under some models, forever). However, in giving up
+semantic guarantees, weak isolation models sacrifice programmability.
+
+Data store users today must choose between two options: accept
+expensive coordination via strong semantics or, alternatively, reason
+about whether low-level weak consistency primitives are sufficient for
+their applications. As Gray and Reuter pithily summarize: ``engineers
+can build distributed systems, but few users know how to program them
+or have algorithms that use them.'' Programmers using modern, highly
+scalable data stores are not only frequently exposed to various
+isolation and data consistency anomalies but must, in many cases,
+effectively become distributed systems experts in order to reason
+about system behavior during communication delays, concurrency, and
+failures. Moreover, as evidenced by the proliferation of ``polyglot
+persistence'' and the introduction of optional linearizable operations
+in traditionally weakly consistent data stores, applications need a
+mix of strong and weak models. Managing this trade-off is in turn
+challenging: with too much strong consistency, scalability will
+unnecessarily suffer, while too little strong consistency may
+sacrifice correctness. In this paper, we seek an alternative: let
+users forego strong models like serializability when it is safe to do
+so, but maintain application correctness. Given a system that can only
+reason about arbitrary operations on opaque read/write registers, this
+is an impossible task. Instead, we require application writers to
+inform the database about their notions of correctness, allowing the
+database to perform the compilation from application-level concerns to
+distributed coordination mechanisms like linearizable test-and-set and
+eventually consistent writes.
+
+More specifically, in this paper, we address the question: how can
+database systems maintain application-level correctness with as little
+coordination as possible? We view database isolation and distributed
+data consistency as means towards maintaining application-level
+consistency \textit{invariants}---not ends in themselves. Accordingly,
+given a user's application procedures and her associated constraints,
+we seek the least coordination-intensive distributed query execution
+strategies that still maintain correctness. We can summarize this
+\textit{Balanced Concurrency Control} (BCC) philosophy in two
+high-level principles:
+\begin{introenumerate}
+\item \textit{Let concurrency safely flourish}: if a user's operations
+  commute with respect to her invariants, they can be executed on
+  separate copies of database state, without coordination.
+\item \textit{Minimize the distribution (both in space and time) of
+  conflicting operations}: if a user's operations do not commute,
+  execute the conflicting sections while involving as few servers and
+  with as short of a critical section as possible.
+\end{introenumerate}
+We rigorously justify these simple intuitions with theory. The first
+condition requires the notion of \textit{invariant commutativity},
+which we show is a necessary and sufficient condition for distributed
+execution without coordination. When operations are not invariant
+commutative, synchronous coordination is required, but this does not
+mean that the \textit{entire} transaction requires synchronous
+coordination. Rather, by analyzing conflicting operations within a
+transaction---which we perform via a symbolic variant of transaction
+chopping---and performing careful data layout, we can minimize
+coordination. We largely focus on distributed execution, but these
+techniques are also applicable to single-node databases (and their
+``weak isolation'' models).
+
+BCC exposes coordination requirements that are fundamental to a given
+application. If a BCC system coordinates, it is because application
+consistency \textit{cannot} be guaranteed without doing
+so. Accordingly, BCC analysis directly captures the scalability of a
+given application: an application without invariant conflicts can
+effectively scale infinitely with the addition of more machines, while
+the degree to which conflicts are distributed directly determines an
+application's ability to scale out and up. The use of scalable but
+weak isolation and data consistency models are often (and sometimes
+exclusively) considered in the context of applications that are
+naturally amenable to data inconsistency (e.g., ``low value'' data,
+Web services) and are typically considered separately from traditional
+OLTP scenarios. Here, we demonstrate that, in fact, these weak models
+are safe for many classic OLTP applications as well. As a
+proof-of-concept, we analyze and implement the TPCC benchmark on a BCC
+system prototype and achieve linear scalability to over 1.8 million
+transactions per second on a 100-node EC2 cluster (nearly four times
+the current record held by Oracle). Our prototype's competitive
+advantage is not due to bleeding-edge performance-oriented engineering
+but is instead due to theoretically-motivated, judicious use of
+coordination.
+
+This paper attempts to improve distributed database programmability by
+unifying industry trends with the collected wisdom of the database
+community. We recognize the scalability advantages of weakly
+consistent data stores but reconcile them with the programmability
+benefits of maintaining traditional ACID Consistency. In doing so, we
+place an additional burden on programmers, who must either provide the
+database with a complete and machine-interpretable specification of
+application-level invariants or otherwise must perform BCC analysis
+themselves and manually label their transactions. For programmers that
+wish to achieve their application's maximum scalability, we believe
+that both of these alternatives are far preferable to the
+state-of-the-art ad-hoc mapping from application-level ACID
+Consistency to distributed data consistency models performed today. We
+heavily leverage several decades-old concepts from semantics-based
+concurrency control and distributed concurrency control to provide a
+basis for analysis and optimization. We accordingly view this work as
+the first step in revisiting core database concepts like query
+optimization, failure recovery, and data layout in light of increased
+knowledge of application-level semantics.
+
 ~\cite{megastore}
