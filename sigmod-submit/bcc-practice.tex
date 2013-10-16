@@ -1,3 +1,91 @@
 
 \section{Theory to Practice}
 \label{sec:bcc-practice}
+
+---
+
+Conway's Law: combinations of operations and invariants commute: e.g., all write, no read, all read, no write
+
+----
+
+Applying analysis to systems:
+
+Building a custom language is exciting but ultimately has performance challenges
+
+Today, most immediate impact: programmers can manually reason about their application constraints without thinking about low-level models like causality and eventual consistency; also, smarter datatypes in the database like commutative counters and so on...
+
+Low bar for a ``BCC'' system: each sp invocation (transaction) comes annotated with labels for either commuting or, if not, next hop in cycle (it's possible to collapse hops, but not strictly necessary); DB still doesn't know anything about stored procedures or integrity constraints
+
+High bar for ``BCC'' system: all sp known in advance, all integrity contstraints know in advance
+
+Our prototype focuses on the low bar for now---the high bar ventures into the domain of specialized program analysis. As we discuss in FUTUREWORK, we've had success in building small languages to capture the requirements of EVALUATION but reserve a full discussion for future work.
+
+---
+
+Merge function
+
+There are some dumb answers: merge = nil; merge = LHS
+
+Some better answers:
+``bag'' semantics, expose all versions -- hard for the programmer, but effectively what ``immutability'' argument is all about
+
+---
+
+What commutes?
+
+for now, assume we have data types that are known in advance: blobs/strings, numbers, counters
+
+assume: PKEY, FKEY, UNIQUE, AUTOINCREMENT, NOGAP, !=, <, >
+
+COMMUTES: 
+
+counter.inc() and >
+counter.dec() and <
+
+any kind of !=
+FKEY
+
+with nonce, PKEY insert without specifying key
+AUTOINCREMENT not sequential
+
+CONFLICTS:
+
+AUTOINCREMENT with NOGAP (sequential)
+counter.inc() and <
+counter.dec() and >
+DELETE and insert into FKEY column
+
+
+DISCUSSION: not claiming completeness (at this point), but, for a
+simple SQL-like interface, this is actually pretty easy to enumerate
+and, for simple programs, check. recursive SQL and unbounded loops
+face the same problems, but, for the queries we've looked at, not
+horrible.
+
+---
+When are different models useful?
+
+Reads-from: FKey constraints
+Atomic multi-put: FKey constraints
+
+Uniqueness: nonce generators
+RYW: sticky available
+
+unavailability:
+recency guarantees: deadlines (in a HA sense)
+linearizability: breaking update cycles
+
+---
+How does this relate to more ad-hoc techniques?
+
+Escrow: similar to a rely-guarantee from those PL guys--amortize
+communication in exchange for unavailability during boundary
+conditions/rebalancing
+
+Immutability: makes merge trivial (if you solve the naming issue!);
+says Gray: reads are writes
+
+CRDTs/CALM: guarantee deterministic convergence to reasonable value;
+weak safety guarantees (e.g., garbage is not returned [cite THINAIR])
+but otherwise not safe for general purpose reads; Bloom\^L allows
+'peek' but violates monotonicity

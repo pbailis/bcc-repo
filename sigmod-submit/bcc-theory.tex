@@ -22,7 +22,10 @@ application, the balance calculated by an audit transaction may change
 depending on whether a deposit transaction is executed before or after
 the audit. These two transactions are not commutative at the level of
 database state but \textit{do} commute with respect to the invariant
-that the database does not contain negative account balances.
+that the database does not contain negative account balances. The use
+of invariants instead of states will allow us to specify a
+\textit{necessary} and sufficient condition (instead of simply a
+sufficient condition) for coordination.
 
 \subsection{Conflicts and Coordination}
 
