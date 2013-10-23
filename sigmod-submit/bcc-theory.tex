@@ -1,16 +1,13 @@
 
-\section{Balanced Concurrency Control}
+\section{Semantic Commutativity}
 \label{sec:bcc-theory}
-
-\subsection{Invariant Commutativity}
 
 To begin, we answer the question: under what conditions does an
 operation require synchronous replica communication? The answer will
 depend on the set of operations the database may be expected to
 perform as well as the integrity constraints that the database is
 required to maintain. Informally, if all operations commute with
-respect to the invariant, they can be executed without
-coordination. 
+respect to the invariant, they can be executed without coordination.
 
 Invariant commutativity ensures that if the effects of two separate
 procedures ($p_i$, $p_j$) that operate independently on the same copy
