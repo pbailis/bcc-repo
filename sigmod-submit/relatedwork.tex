@@ -15,16 +15,11 @@ explicit constraints in order to improve concurrency and database
 performance.
 
 A large subset of this work leverages application semantics as a means
-of reducing \textit{aborts} due to contention (often in the domain of
-long-running transactions): commutativity analysis is therefore used
-to validate concrete schedules of transactions at
-runtime~\cite{weihl-thesis,badrinath-semantics} (i.e., a
-\textit{serial dependency
-  relations}~\cite{herlihy-apologizing}). Further, program
-decomposition via techniques like chopping~\cite{chopping} (which is
-automatic) or nested atomic transactions~\cite{atomictransactions}
-(which are typically manual) can further reduce conflicts. This prior
-work is eminently useful when, indeed, conflicts are
+to reduce conflicts during validation or execution of concrete
+schedules of transactions (at
+runtime)~\cite{weihl-thesis,badrinath-semantics} (i.e., a
+\textit{serial dependency relations}~\cite{herlihy-apologizing}). This
+prior work is eminently useful when, indeed, conflicts are
 possible. However, as we have discussed, this validation (and
 detection) requires coordination on transaction commit; accordingly,
 to provide a lower bound on communication requirement, we
@@ -33,7 +28,13 @@ transactions.  It is possible to further decentralize this validation
 via the application of principles from the distributed systems
 literature on detection of global predicates (in this case, applied to
 replicas of database state)~\cite{globalpredicates}, which also reason
-about concrete execution traces.
+about concrete execution traces. Program decomposition via techniques
+like chopping~\cite{chopping} (which is automatic), nested atomic
+transactions~\cite{atomictransactions} (which are typically manual),
+and a range of alternate \textit{extended transaction}
+models~\cite{acta} can further reduce conflicts once it is established
+that conflicts can actually occur, which semantic commutativity
+formalizes.
 
 Semantic commutativity is closely linked to several prior database
 concepts. Garcia-Molina describes \textit{semantically consistent
@@ -42,7 +43,7 @@ a user's consistency predicate defines a valid schedule of transaction
 executions. However, given unknown schedules of transactions (Section
 3, point 1), he subsequently proposed labeling transaction steps via
 \textit{compatibility sets}---transactions that can safely be
-interleaved as a series of atomic steps. This work is generalized by
+interleaved as a series of atomic steps (as pioneered by SDD-1~\cite{sdd1}). This work is generalized by
 Bernstein and Lewis's \textit{Assertional Concurrency
   Control}~\cite{decomp-semantics}, which, leverages axiomatic program
 analysis to decompose transactions into a set of atomic steps (in the
@@ -138,4 +139,11 @@ related work on Red-Blue Consistency~\cite{redblue} aims to provide
 mixed eventually consistent and linearizable operations within a
 single store. We view this related work as complementary to CATs:
 here, we seek an understanding of \textit{when} a given model is
-useful rather than an optimal implementation of each model.
+useful rather than an optimal implementation of each model. As a
+complement to our work in a non-distributed but largely
+multi-processor setting, Johnson et al. have characterized the
+communication patterns of transaction synchronization as well as their
+impact on database design~\cite{shore-communication}. We currently
+focus on all-or-nothing communication requirements, but their
+observations form the basis of a more thorough treatment of
+non-commutative updates.
