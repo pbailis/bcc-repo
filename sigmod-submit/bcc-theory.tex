@@ -2,7 +2,21 @@
 \section{Balanced Concurrency Control}
 \label{sec:bcc-theory}
 
-\subsection{Commutativity and Coordination}
+\subsection{Invariant Commutativity}
+
+To begin, we answer the question: under what conditions does an
+operation require synchronous replica communication? The answer will
+depend on the set of operations the database may be expected to
+perform as well as the integrity constraints that the database is
+required to maintain. Informally, if all operations commute with
+respect to the invariant, they can be executed without
+coordination. 
+
+Invariant commutativity ensures that if the effects of two separate
+procedures ($p_i$, $p_j$) that operate independently on the same copy
+of valid database state ($I(D)$ holds) are valid ($I(p_i(D))$,
+$I(p_j(D))$ hold), the effects can safely be combined to produce a
+valid ``merged'' database state ($I(p_i(D) \cup p_j(D))$ holds):
 
 \begin{definition}[Invariant Commutativity]
 A set of stored procedures $P$ are invariant commutative under
@@ -10,6 +24,26 @@ invariant $I$ if, for all database states $D$ and procedures $p_i, p_j
 \in P,$$ I(D) \wedge I(p_i(D)) \wedge I(p_j(D)) \Rightarrow I(p_i(D)
 \cup p_j(D))$.
 \end{definition}
+
+Our forumulation of Invariant Commutativity will be familiar to users
+of fork-join programming models (e.g., Git). Invariant Commutativity
+allows users to ``check out'' a known good copy of database state
+($I(D)$) and perform modifications to the state in isolation---as long
+as these modifications are ``safe'' ($I(p_i(D))$ is true). Under
+Invariant Commutative operations, any concurrent modifications to
+database state can be safely ``merged'' to provide a valid database
+state ($I(p_i(D) \cup p_j(D))$ is true). As we have mentioned, the
+validity of a given merge depends on the semantics of each individual
+update: an experienced programmer can likely think of several
+operations and invariants that are not invariant commutative as well
+as many that are. For example, if $I=$no bank account has negative
+balance, then $P=\{$\textit{increment user A's balance by 100,
+  increment user A's balance by 50}$\}$ is invariant commutative, as
+is $P\cup\{$\textit{audit the database and store the sum of user
+  balances in the \textrm{audit} table} but not
+$P\cup\{$\textit{decrement user A's balance by 200}$\}$. For now, we
+defer a discussion of the space of operations until
+Section~\ref{sec:bcc-practice}.
 
 \miniheadnostop{A note on invariant commutativity} Our notion of
 commutativity differs from that of prior work: we directly incorporate
@@ -25,10 +59,116 @@ database state but \textit{do} commute with respect to the invariant
 that the database does not contain negative account balances. The use
 of invariants instead of states will allow us to specify a
 \textit{necessary} and sufficient condition (instead of simply a
-sufficient condition) for coordination.
+sufficient condition) for coordination. 
+
+Invariant commutativity is particularly useful because it is a
+necessary and sufficient condition for providing transactions with no
+replica coordination:
+
+\begin{theorem}
+\label{theorem:necessary}
+It is impossible to execute an application with stored procedures $P$ and
+invariant $I$ without replica coordination if and only if $P$ is
+invariant commutative under $I$.
+\end{theorem}
+
+Proving Theorem~\ref{theorem:necessary} is not particularly difficult
+and is largely a reformulation of Gilbert and Lynch's partitioning
+arguments. Informally, if invariant commutativity holds, each replica
+can simply check each transaction's modifications locally and replicas
+can simply merge independent modifications to guarantee
+convergence. For the converse, we construct a scenario under which a
+replica cannot determine whether or not a non-commutative update
+should be aborted without coordinating another replica.
+
+\begin{proof}
+($\Leftarrow$) We begin with the simpler proof, which is by
+  construction. For each transaction request a database replica
+  receives, it executes the transaction against a copy of its current
+  state and checks whether or not the resulting state is valid under
+  $I$ or not. If so, it commits the transaction. Replicas exchange
+  copies of their local states and union them. No replica produces an
+  invalid individual modification, and, because $P$ is invariant
+  commutative under $I$, the merge of two states is valid.
+
+($\Rightarrow$) Assume an algorithm A exists that can execute an
+  application with stored procedures $P$ and invariant $I$ without
+  replica coordination but $P$ is not invariant commutative under
+  $I$. Then there exists a database state $D$ and procedures $p_a,p_b
+  \in P'$ such that $I(D), I(p_a(D)) \wedge I(p_b(D))$ but $I(p_a(D)
+  \cup I(p_b(D))$ is false. Consider an execution $\alpha_0$ in which
+  one replica $R_1$ executes $p_a(D)$ and commits and a second
+  execution $\alpha_1$ in which a second replica executes
+  $p_b(D)$. Without synchronous communication, a third execution
+  $\alpha_2$ in which $\alpha_1 \dot \alpha_2$ $p_a$ is submitted to $R_1$ and $p_b$ is
+  submitted to $R_2$ is, from the perspective of $R_1$,
+  indistinguishable from $\alpha_1$, and, from the perspective of
+  $R_2$, indistinguishable from $\alpha_2$.
+\end{proof}
+
+Proof machinery aside, invariant commutativity captures a simple rule;
+informally: \textbf{Coordination is only required when a transaction's
+  actions can cause another transaction's actions to become invalid.}
+As a simpler rule: \textbf{Any two valid database states must be
+  mergeable into another database state.}
 
 \subsection{Conflicts and Coordination}
 
-\begin{theorem}
+If a set of stored procedures is not invariant commutative, then
+concurrently executing combination of the procedures might violate the
+given integrity constraint. This requires coordination--but how much?
 
-\end{theorem}
+At one extreme, it is sufficient to perform (serial) mutual exclusion
+between any possibly conflicting transactions. For instance, if
+procedures $p_1$ and $p_2$ could conflict, then a system could execute
+each under a serializable isolation level. This is expensive: for any
+\textit{possible} conflicts, transactions will have to coordinate and
+potentially block, even for operations in the transactions that do not
+conflict.
+
+We suggest an alternative: let transactions execute in isolation and
+produce outputs, and then use optimistic concurrency control to check
+whether any conflicting outputs were actually produced. This
+validation step is possibly expensive, as \textit{every} possible
+conflict must be checked. If $\delta_{i1}$ and $\delta_{j1}$ conflict,
+any transaction producing either of these outputs must contact a
+validator in order to check whether the corresponding conflicting
+action has been performed. If so, we have two options. In the basic
+case, the transaction must abort due to a would-be conflict of
+integrity constraints. We call these updates \textit{abortable
+  conflicts}. However, not all conflicts require aborting. For
+example, a transaction that enforces that \textit{some} doctor is on
+duty need not actually abort if an alternate doctor is actually on
+staff. We model these \textit{non-abortable conflicts} as
+mini-transactions---effectively, closures that operate atomically on
+database state. In the doctor case, the mini-transaction might check
+the table for an existing doctor and simply produce no new output. In
+a less trivial case, a user might autoincrement an ID counter when
+inserting a new row; conflicts require serialization, not aborts. Of
+course, this problem of reducing conflicting operations introduces a
+new set of challenges.
+
+Fortunately, the problem of minimizing conflicts is
+well-studied.\footnote{This problem is more traditional due to two
+  reasons. First, assumes a mechanism to execute several operations
+  atomically (serially), which requires coordination; here, we've
+  already determined that we require coordination. Second, typically
+  (but not exclusively) reasons about concrete transaction executions
+  rather than \textit{all} possible executions.} The most advanced
+techniques we have encountered are those of Bernstein and Lewis's
+``Assertional Concurrency Control'' protocols, which decompose
+transactions into minimally-sized atomic units that are subsequently
+executed as to avoid pre-condition invalidation (cf. \textit{maximally
+  reduced proofs} for non-modular transaction
+decomposition~\cite{decomp-semantics}). To do so, they require
+additional semantics about intermediate pre- and post-conditions for
+each operation: this brings this research into the realm of
+programming languages. We believe this is a worthwhile area for future
+work, but, due to programmer burden, do not further consider these
+techniques in this paper.
+
+As a compromise, we consider a modified form of serial execution,
+approximating that of the nested atomic transaction abstraction. We
+perform chopping on mini-transactions, replacing write-write conflicts
+with our conflict relation determined from invariant commutativity.
+

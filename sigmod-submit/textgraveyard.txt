@@ -1,0 +1,231 @@
+
+In this paper, we seek an alternative solution: allow the use of
+coordination-free protocols whenever they are safe and only require
+coordination when it is provably required to do so. Our goal is to let
+users forego strong models like serializability whenever possible but
+still maintain application correctness. Given a system that can only
+reason about arbitrary operations on opaque read/write registers, this
+is an impossible task: giving up serializability necessarily means
+that users will be exposed to a range of isolation \textit{anomalies},
+or artifacts due to concurrent data accesses. To understand which
+anomalies are acceptable, we require application writers to inform the
+database about their application's notions of correctness in the form
+of declarative integrity constraints. This in turn allows the database
+to perform the compilation from application-level concerns to
+distributed coordination mechanisms like linearizable test-and-set and
+eventually consistent writes.
+
+
+The past decade has seen increasing tumult in the landscape of
+mainstream distributed database design.  Faced with increasing scale
+and requirements for always-on operation, many service operators
+shifted away from traditional database designs and semantics. The gold
+standard in traditional database concurrency control---the
+serializable transaction, which guarantees ``single system
+programmability'' over arbitrary read-write operations---was provably
+unachievable under the Internet services' requirements for high
+availability and low latency. Instead, operators largely forfeited
+transactional semantics in favor of ``weak'' consistency models. As of
+2013, the long-term impact of this movement is unclear: we have
+recently seen a resurgence of interest in transactional models, with
+considerable debate as to which of these semantics---or possibly
+alternative semantics---will emerge victorious.
+
+These shifts nonetheless underscored a more fundamental divide in the
+design space of distributed databases: requirements for
+coordination. The introduction of the CAP Theorem in 2000 exposed many
+modern practitioners to the trade-offs between strength of semantic
+guarantees and coordination. On the one hand, ``strong'' data
+consistency (i.e., CAP ``CP'') models provide semantic guarantees that
+require coordination across replicas, leading to unavailability and
+increased latency. In contrast, ``weak consistency'' (i.e., CAP
+``AP'', or ``highly available'') models provide a subset of the
+semantic guarantees but do not require synchronous coordination and
+therefore do not suffer from unavailability or latency. The latter
+category of models (and many of their implementations) are perfectly
+scalable, even at the granularity of an individual database
+record---all coordination can be safely deferred until some future
+point (and, under some models, forever). However, in giving up
+semantic guarantees, weak isolation models sacrifice programmability.
+
+Data store users today must choose between two options: accept
+expensive coordination via strong semantics or, alternatively, reason
+about whether low-level weak consistency primitives are sufficient for
+their applications. As Gray and Reuter pithily summarize: ``engineers
+can build distributed systems, but few users know how to program them
+or have algorithms that use them.'' Programmers using modern, highly
+scalable data stores are not only frequently exposed to various
+isolation and data consistency anomalies but must, in many cases,
+effectively become distributed systems experts in order to reason
+about system behavior during communication delays, concurrency, and
+failures. Moreover, as evidenced by the proliferation of ``polyglot
+persistence'' and the introduction of optional linearizable operations
+in traditionally weakly consistent data stores, applications need a
+mix of strong and weak models. Managing this trade-off is in turn
+challenging: with too much strong consistency, scalability will
+unnecessarily suffer, while too little strong consistency may
+sacrifice correctness.
+
+
+
+
+We rigorously justify these simple intuitions with theory. The first
+condition requires the notion of \textit{invariant commutativity},
+which we show is a necessary and sufficient condition for distributed
+execution without coordination. Using this mechanism, if users provide
+the database with a set of stored procedures and declarative
+invariants over database state, we can provably determine when
+invariants might be violated. Unlike prior mechanisms, this only
+requires the user to provide a single set of invariants, without pre-
+and post-conditions for each transaction
+(Section~\ref{sec:relatedwork}). However, When operations are not invariant
+commutative, synchronous coordination is required, but this does not
+mean that the \textit{entire} transaction requires synchronous
+coordination. Rather, by analyzing conflicting operations within a
+transaction---which we perform via a symbolic variant of transaction
+chopping---and performing careful data layout, we can minimize
+coordination. We largely focus on distributed execution, but these
+techniques are also applicable to single-node databases (and their
+``weak isolation'' models).
+
+BCC exposes coordination requirements that are fundamental to a given
+application.
+
+
+
+
+, or commute---and providing
+\textit{countersteps} to define appropriate compensation logic. Our
+definition of semantic commutativity formalizes the notion of
+compatibility sets at the level of individual transactions and across
+replicas, with no requirement for users to specify countersteps. We
+require users to specify the space of transactions they wish to
+execute, obviating the need for user intervention via fine-grained
+labeling of transaction types. As a final important distinction, while
+Garcia-Molina assumes each transaction \textit{step} is executed
+atomically (linearizably), this requires coordination across replicas,
+so semantic commutativity explicitly accounts for (temporarily)
+divergent copies of database state.
+
+ Semantic commutativity
+generalizes this notion to include all possible interleavings of a
+known set of transactions. Garcia-Molina proposes the use of
+compatibility sets describe valid interleavings of individual, atomic
+(node-local) operations, while semantic commutativity analysis uses a
+single invariant to describe interleavings across multiple
+nodes. Garcia-Molina considers countersteps to roll back faulty
+transactions. No requirement here for internode consistency
+constraints. Open question: ``will performance really improve?'' here,
+we show definiteively yes.
+
+Degenerate form of Owecki-Gries ``interference freedom'', where each
+transaction's pre-condition and post-condition are the same:
+invariants are satisified. This is only possible because the database
+is free to abort transactions whose committing would violate integrity
+constraints. Accordingly, Owecki-Gries and related concurrent
+verification techniques may prove useful in \textit{proving} invariant
+commutativity but require modification to handle internal aborts and
+multi-statement transactions. We are actively investigating these
+techniques as we expand our BCC analysis.
+
+Long history spanning distributed databases, long-running
+transactions, and semantics-based concurrency control.
+
+
+Another important distinction between BCC and related work on
+increasing concurrency is that BCC analysis flags \textit{any}
+possible non-commutative operation for coordination. This is
+conservative---for example, two decrement operations may not actually
+cause a negative bank account balance---but, given the possibility of
+violation, replicas must coordinate. Prior research leveraged
+commutativity as a basis for increasing
+concurrency~\cite{herlihy-apologizing,
+  weihl-thesis,predicatewise-serializability} for individual
+transactions, requiring coordination (therefore sacrificing
+availability and low latency) but increasing concurrency nonetheless.
+
+parallelizing compilers~\cite{rinard-compiler}
+
+
+Alternatively, can apologize (Sagas).  Here, we enforce invariants
+without compensation code.
+
+``Local Verification of Global Integrity Constraints in Distributed
+Databases''
+
+closely related to detection of weak conjunctive global predicates
+(``possibly'', equivalent to $K_i$ local knowledge), symbolic variant
+of
+
+
+
+
+Slightly less expensive is to only execute potentially conflicting
+operations serially: any side effects that do not conflict can be
+applied. However, need to make sure that transaction does not cause
+abort. So, resolve conflicts then atomically apply all effects in
+transaction (via MAV/Read Atomic semantics), as in OCC.
+
+Now give the straw-man of having more semantic information between
+steps (i.e., non-modular decomposition).
+
+So far, have assumed that side effects are pre-determined, but many
+``conflicts'' can be avoided if executed serially. Consider
+AUTOINCREMENT. Really just needs to be executed atomically. So, in
+effect, just need to serialize those operations. Consider it a
+modification \textit{intent}: $intent(read\_set) \rightarrow
+\{\delta_1,\dots,\delta_n}$. Pretty straightforward now: can perform
+  transaction chopping on read, write sets at runtime. Steps become:
+  execute abortable updates, perform chopping, apply rest of the
+  updates. Note that this is expensive, but we do not attempt to find
+  an optimal solution (e.g., could coalesce the abortable updates with
+  the chopping state, although the ``abort'' case Chopping resolves
+  first). Instead, simply trying to find guidelines---practically
+  apply them in the next section.
+
+Of course, even chopping will be conservative, but the problem is
+that, within a transaction, you want to violate invariants. Therefore,
+two choices: be conservative or request more fine-grained assertional
+semantics from the end user. Here, we consider the former strategy but
+refer the interested reader to
+
+
+
+Modular: holds over all possible conflicts
+Non-modular: holds over transaction state; precondition goes beyond I
+
+Coalesce transactions to minimize *residual* interference; but don't want to over-coalesce
+Need to derive the ``weakest assertions''--find a ``maximally reduced proof'';
+assertional concurrency control scheme for system checks each transaction
+
+-----
+
+If a set of stored procedures is not invariant commutative, it does
+not necessarily mean that all procedures must be executed with
+coordination. If a subset of a procedure's outputs conflict, only
+those conflicts must be executed.
+
+We construct an invariant-conflict graph as follows:
+
+For each pair of procedures $p_1$, $p_2$ such that there exists a
+database state $D$ such that $I(p_1(D)\rightarrow \Delta_1)$ and
+$I(p_2(D)\rightarrow \Delta_2=\{\delta_{2,1},\dots\delta_{2,n}\})$ are
+true but $I(p_1(D) \cup p_2(D))$ is false, add an edge between
+$\delta_{1,i}$ and $\delta_{2,j}$ whenever $I(p_1(\Delta_1-\delta_{1,i})
+\cup \Delta_2-\delta_{2,j})$ is true.
+
+Conservative estimate: run all parts of transaction serially
+Less conservative estimate: run conflicting parts serially
+
+Even less conservative: distinguish between merges and aborts
+
+Abortable conflicts: resolve serially
+Mergeable conflict: resolve afterwards -- mutation as *intent*, not literal
+
+1.) resolve aborts
+2.) resolve mergeable conflicts
+3.) apply the rest of transactions
+
+\begin{theorem}
+
+\end{theorem}

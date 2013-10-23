@@ -1,3 +1,23 @@
 
 \section{Background}
 \label{sec:motivation}
+
+ As Gray and Reuter pithily
+summarize: ``engineers can build distributed systems, but few users
+know how to program them or have algorithms that use them.''
+
+Data store users today must choose between two options: accept
+expensive coordination via strong semantics or, alternatively, reason
+about whether low-level weak consistency primitives are sufficient for
+their applications.  Programmers using modern, highly
+scalable data stores are not only frequently exposed to various
+isolation and data consistency anomalies but must, in many cases,
+effectively become distributed systems experts in order to reason
+about system behavior during communication delays, concurrency, and
+failures. Moreover, as evidenced by the proliferation of ``polyglot
+persistence'' and the introduction of optional linearizable operations
+in traditionally weakly consistent data stores, applications need a
+mix of strong and weak models. Managing this trade-off is in turn
+challenging: with too much strong consistency, scalability will
+unnecessarily suffer, while too little strong consistency may
+sacrifice correctness.

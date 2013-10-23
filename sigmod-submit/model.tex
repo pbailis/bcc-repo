@@ -7,7 +7,10 @@ and coordination.
 
 \minihead{Transactions and Stored Procedures} In this paper, we
 consider a set of users accessing a shared database, which contains a
-versioned set of data items. Users submit requests to the database in
+versioned set of data items. In our initial formulation, we will
+represent database state as a set of mutations (much like a writeahead
+log), but we will consider other, more pragmatic representations in
+Section~\ref{sec:bcc-practice}. Users submit requests to the database in
 the form of transactions, or groups of operations on data items that
 should be executed together. Operations are often in the form of
 writes (which add a new version to the database) or reads (which
@@ -21,7 +24,7 @@ any specific assumptions about operations. A transaction can
 failure. As a pragmatic guarantee (not strictly required for our
 formalism), we will require that no transaction that commits observes
 the effects of aborted transactions, and, if a transaction commits,
-its effects should survive database failures.
+its effects should survive database failures. 
 
 We will assume that user's transactions are specified in advance as
 \textit{stored procedures}, though they may be parameterized (e.g., a
@@ -112,7 +115,14 @@ another equivalent set of replicas.
 
 A primary goal in the remainder of this paper will be to understand
 which combinations of invariants and stored procedures are achievable
-without coordination.
+without coordination. It is vacuously possible to maintain
+``consistent'' database states by letting replicas diverge: in
+distributed systems parlance, this guarantees \textit{safety} but not
+\textit{liveness}. To ensure that replicas eventually
+agree---reflecting a shared, common set of database state---we require
+that, in the absence of modifications to the database and, given a
+sufficiently long period without network partitions, database replicas
+will eventually agree on state.
 
 
 \miniheadnostop{A note on replicas} While most treatments of

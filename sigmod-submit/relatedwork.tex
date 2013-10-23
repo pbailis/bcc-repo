@@ -2,44 +2,140 @@
 \section{Related Work}
 \label{sec:relatedwork}
 
-Invariant commutativity is closely related to Lamport's ``monotone assertions''~\cite{lamport-correctness}
 
-Degenerate form of Owecki-Gries ``interference freedom'', where each
-transaction's pre-condition and post-condition are the same:
-invariants are satisified. This is only possible because the database
-is free to abort transactions whose committing would violate integrity
-constraints. Accordingly, Owecki-Gries and related concurrent
-verification techniques may prove useful in \textit{proving} invariant
-commutativity but require modification to handle internal aborts and
-multi-statement transactions. We are actively investigating these
-techniques as we expand our BCC analysis.
+The database literature has a long tradition of using semantic
+information in concurrency control.
 
-Long history spanning distributed databases, long-running
-transactions, and semantics-based concurrency control.
+\minihead{Semantics-based Commutativity} Our notion of semantic
+commutativity is influenced by many concepts from the
+literature. While serializability is often thought of as a means by
+which implicit integrity constraints are actually
+maintained~\cite{gray-virtues}, many techniques have leveraged
+explicit constraints in order to improve concurrency and database
+performance.
 
-While prior work on commutativity for data types (as exemplified by
-Weihl's thesis~\cite{weihl-thesis}) focuses on modular, reusable data
-structures, BCC invariants in effect turn each application's database
-into a new data structure with a custom set of commutativity
-conditions. While this is somewhat of an abuse of abstraction (and we
-view the use of invariants to be a worthwile contribution), it is
-interesting to consider this difference. Korth's predicatewise
-serializability requires~\cite{korth-serializability}
+A large subset of this work leverages application semantics as a means
+of reducing \textit{aborts} due to contention (often in the domain of
+long-running transactions): commutativity analysis is therefore used
+to validate concrete schedules of transactions at
+runtime~\cite{weihl-thesis,badrinath-semantics} (i.e., a
+\textit{serial dependency
+  relations}~\cite{herlihy-apologizing}). Further, program
+decomposition via techniques like chopping~\cite{chopping} (which is
+automatic) or nested atomic transactions~\cite{atomictransactions}
+(which are typically manual) can further reduce conflicts. This prior
+work is eminently useful when, indeed, conflicts are
+possible. However, as we have discussed, this validation (and
+detection) requires coordination on transaction commit; accordingly,
+to provide a lower bound on communication requirement, we
+(conservatively) reason about all \textit{possible} schedules of
+transactions.  It is possible to further decentralize this validation
+via the application of principles from the distributed systems
+literature on detection of global predicates (in this case, applied to
+replicas of database state)~\cite{globalpredicates}, which also reason
+about concrete execution traces.
 
-Another important distinction between BCC and related work on
-increasing concurrency is that BCC analysis flags \textit{any}
-possible non-commutative operation for coordination. This is
-conservative---for example, two decrement operations may not actually
-cause a negative bank account balance---but, given the possibility of
-violation, replicas must coordinate. Prior research leveraged
-commutativity as a basis for increasing
-concurrency~\cite{herlihy-apologizing,
-  weihl-thesis,predicatewise-serializability} for individual
-transactions, requiring coordination (therefore sacrificing
-availability and low latency) but increasing concurrency nonetheless.
+Semantic commutativity is closely linked to several prior database
+concepts. Garcia-Molina describes \textit{semantically consistent
+  schedules}~\cite{garciamolina-semantics}, where the satisfaction of
+a user's consistency predicate defines a valid schedule of transaction
+executions. However, given unknown schedules of transactions (Section
+3, point 1), he subsequently proposed labeling transaction steps via
+\textit{compatibility sets}---transactions that can safely be
+interleaved as a series of atomic steps. This work is generalized by
+Bernstein and Lewis's \textit{Assertional Concurrency
+  Control}~\cite{decomp-semantics}, which, leverages axiomatic program
+analysis to decompose transactions into a set of atomic steps (in the
+non-modular interference-free decomposition, requiring Hoare-style
+pre- and post-conditions for each step). Korth's predicate-wise
+serializability~\cite{korth-serializability} similarly defines
+single-copy database correctness via a conjunction of
+predicates. Semantic commutativity generalizes these ideas by
+considering \textit{all} possible interleavings of a set of
+\textit{known} transactions over separate (non-linearizably updated)
+copies of database state. By requiring only a single invariant from
+end-users, this obviates the need for manually labeling transaction
+types---which are still useful in reasoning about concrete schedules.
 
-parallelizing compilers~\cite{rinard-compiler}
+Another line of work on semantics-based concurency control for
+abstract data types (as exemplified by Weihl's
+thesis~\cite{weihl-thesis}) focuses on transactions over modular,
+reusable data structures. If operations commute, they can be executed
+concurrently. Semantic commutativity effectively considers each
+application's database to be a new data structure with a custom set of
+commutativity conditions. This is somewhat of an abuse of abstraction,
+and and we view the use of database-wide invariants to be a worthwile
+contribution.
 
+\minihead{State-based Commutativity} Related work often reasons about
+the commutativity of transaction \textit{outcomes}: for example, two
+transactions provide state-based commutativity if their return value
+is the same the the final state of the database is equivalent despite
+reordering~\cite{kohler-commutativity,weihl-thesis}. As we have
+discussed, this \textit{state-based commutativity} is a sufficient but
+not necessary condition for concurrent execution. Despite its
+conservativeness, these techniques have been successfully applied in
+diverse fields including both database concurrency control and,
+recently, operating systems design~\cite{kohler-commutativity}.
 
-Alternatively, can apologize (Sagas).  Here, we enforce invariants
-without compensation code.
+\minihead{Program analysis} The problem of maintaining correctness
+despite concurrent modification is well studied in the programming
+languages community. As Bernstein and Lewis
+demonstrate~\cite{decomp-semantics}, much of the programming language
+theory can be successfully applied to database systems. In particular,
+the semantic commutativity condition is closely related to the concept
+of \textit{interference freedom} due to Owicki and Gries~\cite{owickigries}, whereby
+concurrent operations cannot interfere with one another's
+preconditions for execution. Semantic commutativity is also closely
+related to Lamport's ``monotone
+assertions''~\cite{lamport-correctness}. However, in our experience,
+the program analysis community almost exclusively considers atomic
+update to shared state (as is reasonable on a multiprocessor system),
+so the techniques are not immediately portable to a model with
+replicated state.
+
+\minihead{Hoping and Apologizing} In this work, we have assumed that
+database state should \textit{always} be consistent with respect to
+application-level requirements. This is not strictly necessary for
+many applications. In fact, applications can often benefit from
+probabilistically or numerically-bounded deviations from consistent
+state~\cite{epsilon-divergence}. Similarly, users can execute
+compensating transactions to account for concurrent behavior (e.g.,
+Sagas~\cite{sagas}). These are worthwhile strategies if programmers
+are willing to reason about inconsistent state or otherwise write this
+compensatory code; here, we seek a solution that does not require this
+of programmers.
+
+\minihead{Liveness and Convergence} A promising line of future work
+reasons about deterministic outcomes during coordination-free
+application execution. In particular, Commutative Replicated Data Type
+(CRDT) objects~\cite{crdt} ensure that, once a database quiesces
+writes and all nodes exchange writes, the database will reflect all
+prior updates made to each CRDT. This is a useful \textit{liveness}
+guarantee---something good will happen---but does not prevent users
+from observing inconsistent database state---\textit{safety}, in the
+form of application-level integrity constraints. CRDTs are accordingly
+useful to ensure that merging CAT results is sensible but do not solve
+the problem of maintaining application-level consistency. Similarly,
+the CALM Theorem~\cite{calm} shows that monotonic logic results in deterministic
+program outcomes despite message re-ordering. Here, we wish to provide
+stronger guarantees \textit{during execution}. In doing so, we relax
+the requirement that quiescent database state be deterministic; we
+only require that it maintain the specified application-level
+invariants. It is possible to express a requirement for a
+deterministic outcome via semantic commutativity by fully specifying a
+desired end state, but this is likely not necessary.
+
+\minihead{High Availability and Scalability} A large class of systems
+seeks to provide availability, which, in the sense of Gilbert and
+Lynch's CAP Theorem~\cite{gilbert-cap}, is equivalent to CAT's goals
+of coordination-freedom. Highly Available Transactions recently
+classified a range of weak isolation and data consistency models
+according to high availability~\cite{hat-vldb}. A range of stores such
+as SwiftCloud~\cite{swift} often provide weak consistency in the form
+of causal consistency and forms of transactional isolation, while
+related work on Red-Blue Consistency~\cite{redblue} aims to provide
+mixed eventually consistent and linearizable operations within a
+single store. We view this related work as complementary to CATs:
+here, we seek an understanding of \textit{when} a given model is
+useful rather than an optimal implementation of each model.

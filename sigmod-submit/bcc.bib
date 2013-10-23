@@ -6,6 +6,57 @@
   year={1995},
 }
 
+@article{decomp-semantics,
+  title={Transaction decomposition using transaction semantics},
+  author={Bernstein, Arthur J and Lewis, Philip M},
+  journal={Distributed and Parallel Databases},
+  volume={4},
+  number={1},
+  pages={25--47},
+  year={1996},
+}
+
+@inproceedings{kohler-commutativity,
+ author = {Clements, Austin T. and Kaashoek, M. Frans and Zeldovich, Nickolai and Morris, Robert T. and Kohler, Eddie},
+ title = {The scalable commutativity rule: designing scalable software for multicore processors},
+ booktitle = {SOSP 2013}
+} 
+
+@article{badrinath-semantics,
+  title={Semantics-based concurrency control: Beyond commutativity},
+  author={Badrinath, BR and Ramamritham, Krithi},
+  journal={ACM TODS},
+  volume={17},
+  number={1},
+  pages={163--199},
+  year={1992},
+  publisher={Association for Computing Machinery}
+}
+
+@article{globalpredicates,
+ author = {Cooper, Robert and Marzullo, Keith},
+ title = {Consistent detection of global predicates},
+ journal = {SIGPLAN Not.},
+ issue_date = {Dec. 1991},
+ volume = {26},
+ number = {12},
+ month = dec,
+ year = {1991},
+ pages = {167--174},
+} 
+
+
+@article{owickigries,
+  title={An axiomatic proof technique for parallel programs I},
+  author={Owicki, Susan and Gries, David},
+  journal={Acta informatica},
+  volume={6},
+  number={4},
+  pages={319--340},
+  year={1976},
+  publisher={Springer}
+}
+
 @article{traiger-tods,
  author = {Traiger, Irving L. and Gray, Jim and Galtieri, Cesare A. and Lindsay, Bruce G.},
  title = {Transactions and consistency in distributed database systems},
@@ -272,11 +323,10 @@ year=2010}
 
 
 
-@inproceedings{swift,
-title={Geo-replication all the way to the edge},
-author = {Marek Zawirski and Annette Bieniusa and Valter Balegas and Nuno Preguica and Sergio Duarte and Marc Shapiro and Carlos Baquero},
-note = {Personal communication and draft under submission. \url{http://asc.di.fct.unl.pt/~nmp/swiftcomp/swiftcloud.html}},
-year = {2013}}
+@misc{swift,
+title={SwiftCloud: Fault-Tolerant Geo-Replication Integrated all the Way to the Client Machine},
+author = {Marek Zawirski and others},
+note={arXiv:1310.3107}}
 
 @inproceedings{deuteronomy,
   title={Deuteronomy: Transaction support for cloud data},
@@ -339,6 +389,11 @@ note =
   year={1976},
   institution={IBM}
 }
+
+@inproceedings{redblue,
+title={Making geo-replicated systems fast as possible, consistent when necessary},
+author={Cheng Li and others},
+booktitle={OSDI 2012}}
 
 @article{bloomfilter,
   title={Space/time trade-offs in hash coding with allowable errors},
@@ -426,6 +481,12 @@ note = {\url{http://thrift.apache.org} (2012)}}
  title = {Don't settle for eventual: scalable causal consistency for wide-area storage with {COPS}},
  booktitle = {SOSP 2011},
 } 
+
+@inproceedings{calm,
+  title={Consistency Analysis in Bloom: a CALM and Collected Approach},
+  author={Alvaro, Peter and Conway, Neil and Hellerstein, Joe and Marczak, William R},
+  booktitle={CIDR 2011}
+}
 
 @inproceedings{walter,
  author = {Sovran, Yair and Power, Russell and Aguilera, Marcos K. and Li, Jinyang},
@@ -517,6 +578,30 @@ month = {April},
 day = {12},
 title = {Twitter Developers: Counting Characters},
 note = {\url{https://dev.twitter.com/docs/counting-characters#General_Concepts}}}
+
+@inproceedings{gray-virtues,
+  title={The transaction concept: Virtues and limitations},
+  author={Gray, Jim},
+  booktitle={VLDB 1981},
+}
+
+@article{chopping,
+ author = {Shasha, Dennis and Llirbat, Francois and Simon, Eric and Valduriez, Patrick},
+ title = {Transaction chopping: algorithms and performance studies},
+ journal = {ACM TODS},
+ volume = {20},
+ number = {3},
+ month = sep,
+ year = {1995},
+ pages = {325--363},
+} 
+
+@book{atomictransactions,
+  title={Atomic Transactions: In Concurrent and Distributed Systems},
+  author={Lynch, Nancy A and Merritt, Michael and William Weihl and Alan Fekete},
+  year={1993},
+  publisher={Morgan Kaufmann Publishers Inc.}
+}
 
 
 @article{vc-lowerbound,
@@ -902,6 +987,21 @@ note={Strata 2011 \url{http://slidesha.re/hjMOui}}}
    year = {2006}
 }
 
+@article{garciamolina-semantics,
+ author = {Garcia-Molina, Hector},
+ title = {Using semantic knowledge for transaction processing in a distributed database},
+ journal = {ACM TODS},
+ issue_date = {June 1983},
+ volume = {8},
+ number = {2},
+ month = jun,
+ year = {1983},
+ issn = {0362-5915},
+ pages = {186--213},
+ numpages = {28},
+} 
+
+
 @inproceedings{replay,
  author = {Kim, Taesoo and Wang, Xi and Zeldovich, Nickolai and Kaashoek, M. Frans},
  title = {Intrusion recovery using selective re-execution},
@@ -1181,6 +1281,19 @@ key = {{$\!\!$}} ,
  title = {Measuring message propagation and social influence on {Twitter.com}},
  booktitle = {SocInfo 2010}}} 
 
+@inproceedings{sagas,
+ author = {Garcia-Molina, Hector and Salem, Kenneth},
+ title = {Sagas},
+ booktitle = {SIGMOD 1987}
+} 
+
+
+@inproceedings{epsilon-divergence,
+  title={Divergence control for epsilon-serializability},
+  author={Wu, Kun-Lung and Yu, Philip S and Pu, Calton},
+  booktitle={ICDE 1992}
+}
+
 @article{dunbar,
 title = {The Social Brain Hypothesis},
 author = {Robin I.M. Dunbar},
@@ -1233,6 +1346,14 @@ note = {Combination of all available comment datasets: \texttt{mefi}, \texttt{as
   title = {Leave a Reply: An Analysis of Weblog Comments},
   url = {http://www.blogpulse.com/www2006-workshop/papers/wwe2006-blogcomments.pdf},
   year = 2006
+}
+
+@techreport{crdt,
+  title={A comprehensive study of convergent and commutative replicated data types},
+  author={Shapiro, Marc and Pregui{\c{c}}a, Nuno and Baquero, Carlos and Zawirski, Marek and others},
+  number = {7506},
+  institution={INRIA},
+  year={2011}
 }
 
 @inproceedings{yano-blog-study,

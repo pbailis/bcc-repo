@@ -2,6 +2,119 @@
 \section{Theory to Practice}
 \label{sec:bcc-practice}
 
+Invariant commutativity as a basis for coordination exposes a
+trade-off between the operations a user wishes to perform and the
+semantic guarantees she wishes to guarantee about her data. At the
+extremes, with either all reads or all writes, a user can guarantee
+any invariant. However, the space between yields a spectrum of
+possible invariant commutative guarantees. In this section, we make
+this trade-off concrete via a simple language analysis, a discussion
+of system and merge function design, and a discussion of several
+related techniques through the lens of invariant commutativity.
+
+\subsection{\lang: A Simple Example Language}
+
+To illustrate the utility of invariant commutativity, we consider a
+simple, informal language modeled after simple SQL DDL and stored
+procedures, \lang. In \lang, users store data in collections of
+\textit{rows}, grouping rows with equivalent, pre-defined
+\textit{columns} into \textit{tables}. Each column can contain either
+\textit{string}, \textit{numeric}, or \textit{counter}
+datatype. Strings and numeric types contain arbitrary data (resp.,
+numbers) and support arbitrary modification, while counters contain
+numeric data and support algebraic operations (e.g.,
+\textit{increment}, \textit{decrement}). Users declare arbitrary
+functions over data in the form of \textit{procedures}, each of which
+consists of a variable number of \textit{statements}. Statements take
+the form of read (e.g., \textit{select}), write (e.g.,
+\textit{insert}), or update (e.g., \textit{update}, \textit{increment}
+for counters, \textit{delete}) operations.
+
+In the spirit of Balanced Concurrency Control, \lang also requires
+users to define \textit{invariants} over their tables that express
+application-level consistency requirements. Many of these are borrowed
+from SQL. First, a \textit{primary key} on columns $C_1 \dots C_n$ of
+table \textit{T} requires that, there should only be one row matching
+each distinct combination of possible values for the specified
+columns. Second, a \textit{autoincrement} constraint on a primary key
+of numeric type requires that numeric values be contiguous. Third, a
+\textit{foreign key} on numeric column $C_f$ of table $T_f$
+referencing another column $C_r$ (resident in a different table $T_r
+\neq T_f$) dictates that, for each row in $T_f$, there should be at
+least one row in $T_f$ whose value for $C_r$ matches that of
+$C_r$. Unlike SQL, \lang adds additional constraints to each column:
+\textit{not equals}, \textit{equals}, and, for numeric and counter
+datatypes, \textit{less than}, \textit{greater than}, and
+\textit{sum\_of} (the final representing an aggregate of multiple
+other numeric columns).
+
+
+\begin{table*}
+\begin{tabular}{|c|c|c|}
+\hline
+Constraint & Commutative Operations & Non-Commutative Operations \\\hline
+\texttt{PRIMARY KEY} & modifications without specified values & modification with values specified \\
+\texttt{AUTOINCREMENT} & - & insertion \\
+\texttt{FOREIGN KEY} & mutation with pairing & mutation without pairing, deletion\\
+\texttt{!=, ==} & all operations & - \\
+\texttt{<} & increment, modification & decrement \\
+\texttt{>} & decrement, modification & increment\\\hline
+
+\end{tabular}
+\caption{Invariant commutativity for \lang.}
+\label{table:invariants}
+\end{table*}
+
+With this simple (but expressive) language in mind, we can enumerate a
+set of invariant commutative and non-commutative operations. We do not
+claim that this enumeration is even near-complete or that \lang is
+sufficiently expressive for all applications. However, as we will see
+(Section~\ref{sec:evaluation}), it is surprisingly expressive for many.
+
+Several operations are invariant commutative: any operation on columns
+without constraints, increment (decrement) of counters without
+\textit{less than} (\textit{greater than}) constraints, modification
+of foreign key columns (provided $i.)$ a suitable remote data column
+is read as part of the same transaction or $ii.)$ a suitable remote
+data column is modified), and any (in-)equality constraints,
+\textit{sum\_of} (with the same caveat as foreign key
+constraints). Given cluster-wide unique ID generation (i.e., UUID or
+via cluster membership), insertion into primary key columns without
+autoincrement constraints (provided the columns are not specified by
+the end user---e.g., ``give me a new ID'' versus ``insert this new
+ID'') are also supported. In contrast, insertion of specified primary
+keys, use of autoincrement, and \textit{less than} and \textit{greater
+  than} for decrement and increment operations, respectively, are not
+invariant commutative. Perhaps not surprisingly, all of these rules
+can be checked by simple syntactic rules; we built a simple \lang
+analysis tool that identifies all of the above constructs in addition
+to limited support for conditional updates in several days.
+
+\subsection{Merge Functions}
+
+Thus far, we have assumed a simple set representation for database
+operations. This is convenient for proving properties about database
+state as well as reasoning about the behavior of merge functions, but,
+in practice, merges may be more complex. For example, for many
+applications, it is impractical to retain all versions ever written to
+the database. Instead, databases may wish to \textit{compact} these
+versions to limit storage requirements. A simple compaction policy is
+\textit{last writer wins}, whereby writes are assigned a timestamp and
+only the highest-timestamped write to each time is retained. However,
+improper use of last-writer wins can yield invariant-``consistent''
+but functionally inconsistent results: consider, for example, a user
+that wishes to ensure that no bank account has negative balance. If
+using a simple numeric register, if two users each withdraw \$60 from
+an account with \$100, a last-writer wins column might end up with
+\$40 total. This can be prevented by adding an additional invariant
+that states that account balances should reflect all additions and
+removals from each account, but this is an arguably non-trivial
+pitfall. Similar false negatives can be achieved with ``
+
+We propose the use of abstract datatypes to avoid anomalies such as
+the above. The bank account example is not technically incorrect, but
+it reflects an incomplete specification of invariants.
+
 ---
 
 Conway's Law: combinations of operations and invariants commute: e.g., all write, no read, all read, no write
@@ -30,6 +143,8 @@ Some better answers:
 ``bag'' semantics, expose all versions -- hard for the programmer, but effectively what ``immutability'' argument is all about
 
 ---
+
+SIMPLE LANGUAGE FOR ANALYSIS
 
 What commutes?
 
