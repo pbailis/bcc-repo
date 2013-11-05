@@ -2,19 +2,19 @@
 \section{CATs: Theory to Practice}
 \label{sec:bcc-practice}
 
-Semantic commutativity as a basis for coordination exposes a trade-off
-between the operations a user wishes to perform and the semantic
-guarantees she wishes to guarantee about her data. At the extremes,
-with either all reads or all writes, a user can guarantee any
-invariant. However, the space between yields a spectrum of possible
-invariant commutative guarantees. In this section, we make this
-trade-off concrete via a simple language analysis, a discussion of
-system and merge function design, and a discussion of several related
-techniques through the lens of invariant commutativity.
+Treating \iconfluence as a necessary and sufficient condition for
+coordination exposes a trade-off between the operations a user wishes
+to perform and the semantic guarantees she wishes to guarantee about
+her data. At the extremes, with either all reads or all writes, a user
+can guarantee any invariant. However, the space between yields a
+spectrum of possible \iconfluent guarantees. In this section, we make
+this trade-off concrete via a simple language analysis, a discussion
+of system and merge function design, and a discussion of several
+related techniques through the lens of \iconfluence.
 
 \subsection{\lang: A Simple Example Language}
 
-To illustrate the utility of invariant commutativity, we consider a
+To illustrate the utility of \iconfluence, we consider a
 simple, informal language modeled after simple SQL DDL and stored
 procedures, \lang. In \lang, users store data in collections of
 \textit{rows}, grouping rows with equivalent, pre-defined
@@ -52,7 +52,7 @@ other numeric columns).
 \begin{table*}
 \begin{tabular}{|c|c|c|}
 \hline
-Constraint & Commutative Operations & Non-Commutative Operations \\\hline
+Constraint & \iconfluent Operations & Non-\iconfluent Operations \\\hline
 \texttt{PRIMARY KEY} & modifications without specified values & modification with values specified \\
 \texttt{AUTOINCREMENT} & - & insertion \\
 \texttt{FOREIGN KEY} & mutation with pairing & mutation without pairing, deletion\\
@@ -61,41 +61,40 @@ Constraint & Commutative Operations & Non-Commutative Operations \\\hline
 \texttt{>} & decrement, modification & increment\\\hline
 
 \end{tabular}
-\caption{Invariant commutativity for \lang.}
+\caption{\iconfluence for \lang.}
 \label{table:invariants}
 \end{table*}
 
 With this simple (but expressive) language in mind, we can enumerate a
-set of invariant commutative and non-commutative operations. We do not
+set of \iconfluent and non-\iconfluent operations. We do not
 claim that this enumeration is even near-complete or that \lang is
 sufficiently expressive for all applications. However, as we will see
 (Section~\ref{sec:evaluation}), it is surprisingly expressive for many.
 
-Several operations are invariant commutative: any operation on columns
-without constraints, increment (decrement) of counters without
-\textit{less than} (\textit{greater than}) constraints, modification
-of foreign key columns (provided $i.)$ a suitable remote data column
-is read as part of the same transaction or $ii.)$ a suitable remote
-data column is modified), and any (in-)equality constraints,
-\textit{sum\_of} (with the same caveat as foreign key
-constraints). Given cluster-wide unique ID generation (i.e., UUID or
-via cluster membership), insertion into primary key columns without
-autoincrement constraints (provided the columns are not specified by
-the end user---e.g., ``give me a new ID'' versus ``insert this new
-ID'') are also supported. In contrast, insertion of specified primary
-keys, use of autoincrement, and \textit{less than} and \textit{greater
-  than} for decrement and increment operations, respectively, are not
-invariant commutative. Perhaps not surprisingly, all of these rules
-can be checked by simple syntactic rules; we built a simple \lang
-analysis tool that identifies all of the above constructs in addition
-to limited support for conditional updates in several days.
+Several operations are \iconfluent: any operation on columns without
+constraints, increment (decrement) of counters without \textit{less
+  than} (\textit{greater than}) constraints, modification of foreign
+key columns (provided $i.)$ a suitable remote data column is read as
+part of the same transaction or $ii.)$ a suitable remote data column
+is modified), and any (in-)equality constraints, \textit{sum\_of}
+(with the same caveat as foreign key constraints). Given cluster-wide
+unique ID generation (i.e., UUID or via cluster membership), insertion
+into primary key columns without autoincrement constraints (provided
+the columns are not specified by the end user---e.g., ``give me a new
+ID'' versus ``insert this new ID'') are also supported. In contrast,
+insertion of specified primary keys, use of autoincrement, and
+\textit{less than} and \textit{greater than} for decrement and
+increment operations, respectively, are not invariant
+commutative. Perhaps not surprisingly, all of these rules can be
+checked by simple syntactic rules; we built a simple \lang analysis
+tool that identifies all of the above constructs in addition to
+limited support for conditional updates in several days.
 
 \subsection{Dealing with Conflicts}
 
-
-If a set of stored procedures is not invariant commutative, then
-concurrently executing combination of the procedures might violate the
-given integrity constraint. This requires coordination--but how much?
+If a set of transactions is not \iconfluent, then concurrently
+executing combination of the transactions might violate the given
+integrity constraint. This requires coordination--but how much?
 
 At one extreme, it is sufficient to perform (serial) mutual exclusion
 between any possibly conflicting transactions. For instance, if
@@ -149,102 +148,71 @@ techniques in this paper.
 As a compromise, we consider a modified form of serial execution,
 approximating that of the nested atomic transaction abstraction. We
 perform chopping on mini-transactions, replacing write-write conflicts
-with our conflict relation determined from invariant commutativity.
+with our conflict relation determined by \iconfluence analysis.
 
 
 
 \subsection{Merge Functions}
 
-Thus far, we have assumed a simple set representation for database
+Thus far, we have assumed a simple bag representation for database
 operations. This is convenient for proving properties about database
-state as well as reasoning about the behavior of merge functions, but,
-in practice, merges may be more complex. For example, for many
-applications, it is impractical to retain all versions ever written to
-the database. Instead, databases may wish to \textit{compact} these
-versions to limit storage requirements. A simple compaction policy is
-\textit{last writer wins}, whereby writes are assigned a timestamp and
-only the highest-timestamped write to each time is retained. However,
-improper use of last-writer wins can yield invariant-``consistent''
-but functionally inconsistent results: consider, for example, a user
-that wishes to ensure that no bank account has negative balance. If
-using a simple numeric register, if two users each withdraw \$60 from
-an account with \$100, a last-writer wins column might end up with
-\$40 total. This can be prevented by adding an additional invariant
-that states that account balances should reflect all additions and
-removals from each account, but this is an arguably non-trivial
-pitfall. Similar false negatives can be achieved with ``
+state as well as simplifying any reasoning about the behavior of merge
+functions, but, in practice, merges may be more complex. For example,
+for many applications, it is impractical to retain all versions ever
+written to the database. Instead, databases may wish to
+\textit{compact} these versions to limit storage requirements. A
+simple compaction policy is \textit{last writer wins}, whereby writes
+are assigned a timestamp and only the highest-timestamped write to
+each time is retained. However, improper use of last-writer wins can
+yield invariant-``consistent'' but functionally inconsistent results:
+consider, for example, a user that wishes to ensure that no bank
+account has negative balance. If using a simple numeric register, if
+two users each withdraw \$60 from an account with \$100, a last-writer
+wins column might end up with \$40 total. This can be prevented by
+adding an additional invariant that states that account balances
+should reflect all additions and removals from each account, but this
+is an arguably non-trivial pitfall. Similar false negatives can be
+achieved with ``
 
 We propose the use of abstract datatypes to avoid anomalies such as
 the above. The bank account example is not technically incorrect, but
-it reflects an incomplete specification of invariants.
+it reflects an incomplete specification of invariants. In many
+real-world examples, users' successful operations should be reflected
+in any converged database state; by choosing merge functions that
+reflect this ``durability'' requirement, a database can avoid these
+odd anomalies. While many practitioners today must hand-code their own
+merge functions (a la Bayou or Dynamo conflict reconciliation), we
+advocate a model in which a \textit{library} of datatype-specific
+merge functions are presented to users. This approach---suggested by
+concurrency control for abstract data types~\cite{weihl-thesis} and,
+more recently, Commutative and Replicated Data
+Types~\cite{crdt}---simplifies the task of merging updates while also
+reducing the overheads of operations. Unlike this prior work, however,
+\iconfluence analysis \textit{also} guarantees the correctness of
+(specified) arbitrary transformations on these datatypes, thus
+eliminating the problem of Conway et al.'s \textit{scope
+  dilemma}~\cite{blooml}, whereby operations on individual data items
+are valid but their composition is not.
 
----
+\subsection{Application to Isolation}
 
-Conway's Law: combinations of operations and invariants commute: e.g., all write, no read, all read, no write
+Even if a constraint is achievable with coordination-freedom, it is
+not necessarily the case that any ``weak'' isolation level will be
+sufficient. For example, applying multi-item writes without
+concurrency control might result in a situation where readers observe
+some writes but not the others, possibly violating a declared foreign
+key constraint. Here, we briefly discuss how to translate
+application-level constraints to a handful of isolation models.
 
-----
+\minihead{Data dependencies}
 
-Applying analysis to systems:
+RAMP when you write multiple items.
 
-Building a custom language is exciting but ultimately has performance challenges
+Causal when you read then write.
 
-Today, most immediate impact: programmers can manually reason about their application constraints without thinking about low-level models like causality and eventual consistency; also, smarter datatypes in the database like commutative counters and so on...
+\minihead{Session guarantees}
 
-Low bar for a ``BCC'' system: each sp invocation (transaction) comes annotated with labels for either commuting or, if not, next hop in cycle (it's possible to collapse hops, but not strictly necessary); DB still doesn't know anything about stored procedures or integrity constraints
-
-High bar for ``BCC'' system: all sp known in advance, all integrity contstraints know in advance
-
-Our prototype focuses on the low bar for now---the high bar ventures into the domain of specialized program analysis. As we discuss in FUTUREWORK, we've had success in building small languages to capture the requirements of EVALUATION but reserve a full discussion for future work.
-
----
-
-Merge function
-
-There are some dumb answers: merge = nil; merge = LHS
-
-Some better answers:
-``bag'' semantics, expose all versions -- hard for the programmer, but effectively what ``immutability'' argument is all about
-
----
-
-SIMPLE LANGUAGE FOR ANALYSIS
-
-What commutes?
-
-for now, assume we have data types that are known in advance: blobs/strings, numbers, counters
-
-assume: PKEY, FKEY, UNIQUE, AUTOINCREMENT, NOGAP, !=, <, >
-
-COMMUTES: 
-
-counter.inc() and >
-counter.dec() and <
-
-any kind of !=
-FKEY
-
-with nonce, PKEY insert without specifying key
-AUTOINCREMENT not sequential
-
-CONFLICTS:
-
-AUTOINCREMENT with NOGAP (sequential)
-counter.inc() and <
-counter.dec() and >
-DELETE and insert into FKEY column
-
-
-DISCUSSION: not claiming completeness (at this point), but, for a
-simple SQL-like interface, this is actually pretty easy to enumerate
-and, for simple programs, check. recursive SQL and unbounded loops
-face the same problems, but, for the queries we've looked at, not
-horrible.
-
----
-When are different models useful?
-
-Reads-from: FKey constraints
-Atomic multi-put: FKey constraints
+\minihead{Staleness} Thus far we have not discussed
 
 Uniqueness: nonce generators
 RYW: sticky available
@@ -253,8 +221,9 @@ unavailability:
 recency guarantees: deadlines (in a HA sense)
 linearizability: breaking update cycles
 
----
-How does this relate to more ad-hoc techniques?
+\subsection{Beyond Confluence}
+
+--- How does this relate to more ad-hoc techniques?
 
 Escrow: similar to a rely-guarantee from those PL guys--amortize
 communication in exchange for unavailability during boundary

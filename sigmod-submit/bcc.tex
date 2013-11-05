@@ -9,6 +9,8 @@
 \usepackage{color, times, mathptmx, amsmath, amssymb, amsthm, verbatim, 
   mdwlist, graphicx, footnote, multirow, xspace, tikz}
 
+\DeclareMathAlphabet{\mathcal}{OMS}{cmsy}{m}{n}
+
 
 %\usepackage{draftwatermarktop, draftwatermarkbottom}
 \usepackage{algorithm}% http://ctan.org/pkg/algorithms
@@ -64,7 +66,17 @@
 
 \newcommand{\ttf}[1]{\texttt{#1}\xspace}
 
-\newcommand{\lang}{BCCQL\xspace}
+\newcommand{\cfree}{coordination-free\xspace}
+\newcommand{\cfreedom}{coordination-freedom\xspace}
+
+
+\newcommand{\fullnameconfluence}{invariant confluence\xspace}
+\newcommand{\iconfluent}{$\mathcal{I}$-confluent\xspace}
+\newcommand{\iconfluence}{$\mathcal{I}$-confluence\xspace}
+
+\newcommand{\lang}{CAQL\xspace}
+
+\newcommand{\ramp}{ANON\xspace}
 
 \newcommand{\rapl}{\ttf{RAMP-L}}
 \newcommand{\raps}{\ttf{RAMP-S}}
@@ -91,7 +103,7 @@
 
 \newenvironment{myitemize}
 {
-
+  \vspace{-.25em}
     \begin{list}{$\bullet$ }{}
         \setlength{\topsep}{0em}
         \setlength{\parskip}{0pt}
@@ -102,6 +114,7 @@
 }
 {
     \end{list} 
+    \vspace{-.25em}
 }
 
 \newenvironment{introenumerate}
@@ -133,7 +146,7 @@
 %\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
 % --- End of Author Metadata ---
 
-\title{Coordination-Avoiding Transactions}
+\title{Coordination-Avoiding Databases}
 
 %{\author{Peter Bailis, Alan Fekete{\fontsize{12}{14}$^\dagger$}, Ali Ghodsi, Joseph M. Hellerstein, Ion Stoica \\{\affaddr{UC Berkeley and {\fontsize{12}{14}$^\dagger$}University of Sydney}}}}
 \maketitle

@@ -1,110 +1,144 @@
 
-\section{Semantic Commutativity}
+\section{Freedom and \iconfluence}
 \label{sec:bcc-theory}
 
 To begin, we answer the question: under what conditions does an
 operation require synchronous replica communication? The answer will
 depend on the set of operations the database may be expected to
 perform as well as the integrity constraints that the database is
-required to maintain. Informally, if all operations commute with
-respect to the invariant, they can be executed without coordination.
+required to maintain.
 
-Invariant commutativity ensures that if the effects of two separate
-procedures ($p_i$, $p_j$) that operate independently on the same copy
-of valid database state ($I(D)$ holds) are valid ($I(p_i(D))$,
-$I(p_j(D))$ hold), the effects can safely be combined to produce a
-valid ``merged'' database state ($I(p_i(D) \cup p_j(D))$ holds):
+\fullnameconfluence (hereafter, \iconfluence) ensures that if the
+effects of two series of separate transactions ($T_i$, $T_j$) that
+operate independently on the same copy of valid database state are
+valid ($I(T_i(D))$, $I(T_j(D))$ hold), their effects can safely be
+combined to produce a valid ``merged'' database state ($I(p_i(D)
+\sqcup p_j(D))$ holds).
 
-\begin{definition}[Invariant Commutativity]
-A set of stored procedures $P$ are invariant commutative under
-invariant $I$ if, for all database states $D$ and procedures $p_i, p_j
-\in P,$$ I(D) \wedge I(p_i(D)) \wedge I(p_j(D)) \Rightarrow I(p_i(D)
-\cup p_j(D))$.
+We first define a valid sequence of transformations:
+
+\begin{definition}[Valid Sequence]
+Given invariant $I$, $T_i(D) = t_{i1}(\dots t_{in}(D))$ is an
+$I$-valid sequence of transactions in $T$ if each $t_{ij} \in T$ and
+each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
 \end{definition}
 
-Our forumulation of Invariant Commutativity will be familiar to users
-of fork-join programming models (e.g., Git). Invariant Commutativity
-allows users to ``check out'' a known good copy of database state
-($I(D)$) and perform modifications to the state in isolation---as long
-as these modifications are ``safe'' ($I(p_i(D))$ is true). Under
-Invariant Commutative operations, any concurrent modifications to
-database state can be safely ``merged'' to provide a valid database
-state ($I(p_i(D) \cup p_j(D))$ is true). As we have mentioned, the
-validity of a given merge depends on the semantics of each individual
-update: an experienced programmer can likely think of several
-operations and invariants that are not invariant commutative as well
-as many that are. For example, if $I=$no bank account has negative
-balance, then $P=\{$\textit{increment user A's balance by 100,
-  increment user A's balance by 50}$\}$ is invariant commutative, as
-is $P\cup\{$\textit{audit the database and store the sum of user
-  balances in the \textrm{audit} table} but not
+\begin{definition}[\iconfluence]
+Given invariant $I$, transactions $T$ are $I$-confluent, for all
+$I$-valid sequences $T_1$, $T_2$ of transactions in $T$, $I(T_1(D_0))
+\wedge I(T_2(D_0)) \Rightarrow I(T_1(D_0) \sqcup T_2(D_0))$.
+\end{definition}
+
+Informally, the \iconfluence property ensures that the set of valid
+sequences with a common ancestor are closed under merge. Even less
+formally, our forumulation of \iconfluence will be familiar to users
+of fork-join programming models (e.g., Git). \iconfluence allows users
+to ``check out'' a known good copy of database state ($I(D)$) and
+perform modifications to the state in isolation---as long as these
+modifications are ``safe'' ($I(T_i(D))$ is true). Under \iconfluent
+operations, any concurrent modifications to database state can be
+safely ``merged'' to provide a valid database state ($I(T_1(D) \cup
+T_2(D))$ is true). As we have alluded, the validity of a given merge
+depends on the semantics of each individual update: an experienced
+programmer can likely think of several operations and invariants that
+are not \iconfluent as well as many that are. For example, if $I=$no
+bank account has negative balance, then $P=\{$\textit{increment user
+  A's balance by 100, increment user A's balance by 50}$\}$ is
+\iconfluent, as is $P\cup\{$\textit{audit the database and store the
+  sum of user balances in the \textrm{audit} table} but not
 $P\cup\{$\textit{decrement user A's balance by 200}$\}$. For now, we
 defer a discussion of the space of operations until
-Section~\ref{sec:bcc-practice}.
+Section~\ref{sec:bcc-practice}. 
 
-\miniheadnostop{A note on invariant commutativity} Our notion of
-commutativity differs from that of prior work: we directly incorporate
-a user's application-level invariants as part of transaction
-execution. We discuss specific trade-offs in
-Section~\ref{sec:relatedwork}, but we believe that invariant
-commutativity is more general than alternatives like state-based
-commutativity. As a simple example due to Lamport, in a banking
-application, the balance calculated by an audit transaction may change
-depending on whether a deposit transaction is executed before or after
-the audit. These two transactions are not commutative at the level of
-database state but \textit{do} commute with respect to the invariant
-that the database does not contain negative account balances. The use
-of invariants instead of states will allow us to specify a
-\textit{necessary} and sufficient condition (instead of simply a
-sufficient condition) for coordination. 
+\miniheadnostop{A note on \iconfluence} Our notion of \iconfluence
+differs from that of prior work: we directly incorporate a user's
+application-level invariants as part of transaction execution. We
+discuss specific trade-offs in Section~\ref{sec:relatedwork}, but we
+believe that this definition is more general than alternatives like
+state-based commutativity or traditional Church-Rosser confluence. As
+a simple example due to Lamport, in a banking application, the balance
+calculated by an audit transaction may change depending on whether a
+deposit transaction is executed before or after the audit. These two
+transactions are not commutative at the level of database state but
+\textit{do} commute with respect to the invariant that the database
+does not contain negative account balances. The use of invariants
+instead of states will allow us to specify a \textit{necessary} and
+sufficient condition (instead of simply a sufficient condition) for
+coordination.
 
-Invariant commutativity is particularly useful because it is a
-necessary and sufficient condition for providing transactions with no
-replica coordination:
+\iconfluence is particularly useful because it is deeply connected to
+coordination-free execution:
 
 \begin{theorem}
 \label{theorem:necessary}
-It is impossible to execute an application with stored procedures $P$ and
-invariant $I$ without replica coordination if and only if $P$ is
-invariant commutative under $I$.
+An always valid system can guarantee an application with transactions
+$T$ and invariants $I$ with \cfreedom, transactional availability,
+convergence if and only if $T$ are $I$-confluent.
 \end{theorem}
 
 Proving Theorem~\ref{theorem:necessary} is not particularly difficult
 and is largely a reformulation of Gilbert and Lynch's partitioning
-arguments. Informally, if invariant commutativity holds, each replica
-can simply check each transaction's modifications locally and replicas
-can simply merge independent modifications to guarantee
-convergence. For the converse, we construct a scenario under which a
-replica cannot determine whether or not a non-commutative update
-should be aborted without coordinating another replica.
+arguments. Informally, if \iconfluence holds, each replica can simply
+check each transaction's modifications locally and replicas can simply
+merge independent modifications to guarantee convergence. For the
+converse, we construct a scenario under which a replica cannot
+determine whether or not a non-confluent update should be aborted
+without contacting another replica.
 
 \begin{proof}
 ($\Leftarrow$) We begin with the simpler proof, which is by
-  construction. For each transaction request a database replica
-  receives, it executes the transaction against a copy of its current
-  state and checks whether or not the resulting state is valid under
-  $I$ or not. If so, it commits the transaction. Replicas exchange
-  copies of their local states and union them. No replica produces an
-  invalid individual modification, and, because $P$ is invariant
-  commutative under $I$, the merge of two states is valid.
+  construction. Assume an invariant $I$ and set of transactions $I$
+  are $I$-confluent. Consider a system in which, for each transaction
+  that each database replica receives, it executes the transaction
+  against a copy of its current state and checks whether or not the
+  resulting state is valid under $I$ or not. If the resulting state is
+  valid, the replica commits the transaction. If not, the replica
+  aborts the transaction. Replicas exchange copies of their local
+  states and union them. No replica will contain an invalid
+  modification, and, because $T$ is $I$-confluent, the merge of any
+  two valid sequences (constructed above) is valid; therefore, the
+  converged database state will be confluent.
 
-($\Rightarrow$) Assume an algorithm A exists that can execute an
-  application with stored procedures $P$ and invariant $I$ without
-  replica coordination but $P$ is not invariant commutative under
-  $I$. Then there exists a database state $D$ and procedures $p_a,p_b
-  \in P'$ such that $I(D), I(p_a(D)) \wedge I(p_b(D))$ but $I(p_a(D)
-  \cup I(p_b(D))$ is false. Consider an execution $\alpha_0$ in which
-  one replica $R_1$ executes $p_a(D)$ and commits and a second
-  execution $\alpha_1$ in which a second replica executes
-  $p_b(D)$. Without synchronous communication, a third execution
-  $\alpha_2$ in which $\alpha_1 \dot \alpha_2$ $p_a$ is submitted to $R_1$ and $p_b$ is
-  submitted to $R_2$ is, from the perspective of $R_1$,
-  indistinguishable from $\alpha_1$, and, from the perspective of
-  $R_2$, indistinguishable from $\alpha_2$.
+($\Rightarrow$) Assume a system S exists that can guarantee always
+  valid operation for a set of transactions $T$ with \cfreedom,
+  transactional availability, and convergence, but $T$ is not
+  $I$-confluent. Then there exists valid sequences $T_1,T_2$ in $T$
+  such that $I(T_1(D_0)) \wedge I(T_2(D_0))$ but $I(T_1(D_0) \sqcup
+  I(T_2(D_0))$ is false. We now construct two executions of $S$ to
+  produce a contradiction. Consider an execution $\alpha_0$ in which
+  one replica $R_1$ executes the transactions from $T_1$ and a second
+  execution $\alpha_1$ in which a second replica $R_2$ executes the
+  transactions from $T_2$ and each replica initially contains the
+  initial state $D_0$. Without synchronous communication, a third
+  execution $\alpha_2$ in which $\alpha_1 \dot \alpha_2$---$T_1$ is
+  submitted to $R_1$ and $T_2$ is submitted to $R_2$ is, from the
+  perspective of $R_1$, indistinguishable from $\alpha_1$, and, from
+  the perspective of $R_2$, indistinguishable from $\alpha_2$. To
+  preserve availability, in $\alpha_1$ and $\alpha_2$, $R_1$ and $R_2$
+  cannot choose to abort any of $T_1$ or $T_2$, yet, in $\alpha_3$, if
+  $R_1$ and $R_2$ each commit their respective sequences, the merged
+  state will be invalid. Therefore, $R_1$ and $R_2$ must either give
+  up one of \cfreedom, transactional availability, or convergence, as
+  desired.
 \end{proof}
 
-Proof machinery aside, invariant commutativity captures a simple rule;
+Formalism aside, \iconfluence captures a simple rule;
 informally: \textbf{Coordination is only required when a transaction's
-  actions can cause another transaction's actions to become invalid.}
-As a simpler rule: \textbf{Any two valid database states must be
-  mergeable into another database state.}
+  actions cannot be reconciled with concurrent actions.}
+Alternatively (and much less formally): \textbf{Any two valid database
+  states must be mergeable into another database state.}
+
+\minihead{Revisiting Payroll} With \iconfluence in hand, we can
+revisit our payroll example. As we showed by counterexample,
+uniqueness of arbitrary values is not \iconfluent: $\{$Stan:5$\}$ and
+$\{$Mary:5$\}$ are both valid states that can be reached by valid
+sequences (starting at $\{\}$) but their merge---$\{$Stan:5,
+Mary:5$\}$ is not valid. Therefore, insertion of arbitrary values is
+not $I$-confluent for $I=\{$unique IDs$\}$. However, deletion of
+employees \textit{is} $I$-confluent: removing items from a bag of
+unique values cannot introduce duplicates. We can repeat the same
+exercise for foreign key constraints: inserting new records with valid
+department IDs cannot in fact introduce merge conflicts. The salary
+constraint is similarly easily validated for simple insert
+statements. In the next section, we will expand this analysis to a
+full SQL dialect.

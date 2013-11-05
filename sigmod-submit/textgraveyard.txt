@@ -1,3 +1,94 @@
+\miniheadnostop{Why specify stored procedures?} Much of the database
+literature assumes a model in which users execute arbitrary queries
+composed of arbitrary groupings of operations that are not known in
+advance. While this model is well suited to the manual traditional
+data processing and data entry tasks envisioned by early database
+pioneers (i.e., users sit at terminals and type in transactions one by
+one), there are at least two reasons why stored procedures are an
+appropriate choice today. First, the large query volumes driving
+today's distributed database designs are overwhelmingly created by
+machines, not humans. Indeed, individual procedure invocations may
+differ, but the overall structure of a queries at scale are often
+known in advance, whether encoded in SQL or, alternatively,
+application logic in an application server or ORM system. Second,
+eliminating humans from transaction processing loop reduces execution
+time and therefore the impact of critical sections. Several well-known
+serializable systems such as H-Store and VoltDB, Calvin, and Granola
+all exploit this a-priori knowledge to great effect. It \textit{is}
+possible to support general purpose read/write transactions on opaque
+registers in our formalism, but the results are not likely to be
+useful.\vspace{.5em}
+
+In the case of partially
+replicated databases, whereby no one server contains an entire copy of
+database state, we say that a database does not require coordination
+if, whenever a transaction can access a replica for each of its
+operations, those replicas guarantee transactional availability for
+the transaction without contacting another equivalent set of replicas.
+
+
+---
+
+Conway's Law: combinations of operations and invariants commute: e.g., all write, no read, all read, no write
+
+----
+
+Applying analysis to systems:
+
+Building a custom language is exciting but ultimately has performance challenges
+
+Today, most immediate impact: programmers can manually reason about their application constraints without thinking about low-level models like causality and eventual consistency; also, smarter datatypes in the database like commutative counters and so on...
+
+Low bar for a ``BCC'' system: each sp invocation (transaction) comes annotated with labels for either commuting or, if not, next hop in cycle (it's possible to collapse hops, but not strictly necessary); DB still doesn't know anything about stored procedures or integrity constraints
+
+High bar for ``BCC'' system: all sp known in advance, all integrity contstraints know in advance
+
+Our prototype focuses on the low bar for now---the high bar ventures into the domain of specialized program analysis. As we discuss in FUTUREWORK, we've had success in building small languages to capture the requirements of EVALUATION but reserve a full discussion for future work.
+
+---
+
+Merge function
+
+There are some dumb answers: merge = nil; merge = LHS
+
+Some better answers:
+``bag'' semantics, expose all versions -- hard for the programmer, but effectively what ``immutability'' argument is all about
+
+---
+
+SIMPLE LANGUAGE FOR ANALYSIS
+
+What commutes?
+
+for now, assume we have data types that are known in advance: blobs/strings, numbers, counters
+
+assume: PKEY, FKEY, UNIQUE, AUTOINCREMENT, NOGAP, !=, <, >
+
+COMMUTES: 
+
+counter.inc() and >
+counter.dec() and <
+
+any kind of !=
+FKEY
+
+with nonce, PKEY insert without specifying key
+AUTOINCREMENT not sequential
+
+CONFLICTS:
+
+AUTOINCREMENT with NOGAP (sequential)
+counter.inc() and <
+counter.dec() and >
+DELETE and insert into FKEY column
+
+
+DISCUSSION: not claiming completeness (at this point), but, for a
+simple SQL-like interface, this is actually pretty easy to enumerate
+and, for simple programs, check. recursive SQL and unbounded loops
+face the same problems, but, for the queries we've looked at, not
+horrible.
+
 
 In this paper, we seek an alternative solution: allow the use of
 coordination-free protocols whenever they are safe and only require

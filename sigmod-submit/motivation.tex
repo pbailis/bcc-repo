@@ -7,13 +7,14 @@
 As repositories for application state, databases are tasked with the
 challenging goals of maintaining correct, durable data despite
 concurrency, failures, and, often, distribution. Core to the utility
-of a database system is its ability to provide applications with
-\textit{consistent} data---that is, data that is well-formed according
-to application semantics. Traditionally, this application-level
-consistency can be expressed as a declarative set of constraints on
-database state that the database system promises to maintain. By
-entrusting databases with their data, applications are freed from the
-requirement to manually manage this correctness.
+of a database system is its ability to maintain application data that
+is \textit{consistent}---that is, data that is well-formed according
+to application semantics. By entrusting databases with their data,
+applications are freed from the requirement to manually manage this
+correctness. Maintaining consistency inherently requires reasoning
+about and often controlling concurrent access to data: in this
+section, we discuss this trade-off and describe classic, conservative
+approaches to maintaining consistency.
 
 % traditional programmability: serializability; isolation is means
 % towards achieving consistency
@@ -27,7 +28,12 @@ ordering between them. As long as each transaction leaves the database
 in a consistent state, serializable transactions ensure database
 consistency. That is, traditional database systems treat isolation
 between concurrently executing transactions as a \textit{means}
-towards achieving data consistency.
+towards achieving data consistency. Serializable transactions are a
+\textit{sufficient} mechanism for ensuring consistency but are not
+strictly \textit{necessary}: as a classic example due to Lamport in
+1976, an ``audit'' transaction over shared bank account balances need
+not observe serializable state as long as no bank account balance is
+negative.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -39,9 +45,10 @@ on concurrent accesses to data items, resulting in aborts due to
 deadlocks and decreased throughput due to contention. The costs of
 serializability in a distributed environment are even more
 expensive---as we will shortly discuss, it is well known to be
-provably unachievable with high availability---due to the possibility
-of network partitions and millisecond-or-higher cross-server latencies
-(up to hundreds of milliseconds across datacenters).
+provably unachievable without synchronous coordination between
+replicas---due to the possibility of network partitions and
+millisecond-or-higher cross-server latencies (up to hundreds of
+milliseconds across datacenters).
 
 % spectrum of models; actually infinitely many of them
 % not necessarily even easy to program
@@ -83,7 +90,7 @@ Section~\ref{sec:model}, but, informally, we say that a database is
 user's operations can always proceed safely without contacting (or
 otherwise stalling) other users of the database. This requirement has
 been captured in the distributed systems community as
-\textit{availability}, or ``always-on'' operation: an availabile
+\textit{availability}, or ``always-on'' operation: an available
 distributed system can perform operations on any non-failed server,
 despite arbitrary partitioning between individual servers. This focus
 on worst-case behavior yields benefits during normal operation as
@@ -108,10 +115,10 @@ resource in a system grow beyond that of a single computer, another
 computer can be added to the system. The additional computer and the
 original (set of) computer(s) need not synchronously coordinate, so
 adding more computers results in a linear increase that can be
-repeated indefinitely. While ``scalability'' is often badly abused,
-coordination-freedom captures the essential property of a perfect
-scale-out system, even for single-record operations.  Unfortunately,
-not all models are achievable with coordination
+repeated indefinitely. While the term ``scalability'' is often badly
+abused, coordination-freedom captures the essential property of a
+perfect scale-out system, even for single-record operations.
+Unfortunately, not all models are achievable with coordination
 freedom. Serializability is provably at odds with availability, as are
 useful models like linearizability---which provides real-time
 guarantees on single data items---and Snapshot Isolation---a common
@@ -167,3 +174,39 @@ reads and writes (as provided by most distributed isolation models).
 % here, consider a model where stored procedures are declared in
 % advance, invariants are given to the database; goal will be to
 % minimize synchronize coordination
+
+
+\minihead{A simple example} As a running, motivating example, we will
+consider a simple payroll application, with employees and
+departments. We consider three aspects of the payroll database:
+\begin{myitemize}
+\item\textbf{Employee IDs:} Employees are assigned ID numbers that
+  should be unique with respect to all other assigned IDs (i.e., a
+  primary key constraint).
+\item\textbf{Departments:} Employees should belong to exactly one of a
+  (currently pre-declared, fixed) set of departments (i.e., a foreign
+  key constraint). Employees can migrate departments at will by
+  updating their department assignment.
+\item\textbf{Salaries:} Employees have salaries, and no employee
+  should have salary greater than $\$50,000$.
+\end{myitemize}
+Even without further consideration of query language or data layout,
+there are several interesting properties of this application. Some
+properties, such as ID uniqueness, may be violated in the event of
+arbitrary updates: if Stan is assigned ID number $5$ and Mary is
+simultaneously assigned ID number $5$, then application-level
+consistency will be compromised. In this case, any replicas performing
+insertions for a specific ID should coordinate. Other properties, such
+as the department constraint, cannot be violated by simple insertion:
+so long as the employee's department field corresponds to an existing
+department, it appears (and, indeed, we will later prove) that
+concurrent insertions can safely proceed. However, arbitrary
+operations, like deletions, \textit{can} compromise the department
+constraint.
+
+Our payroll example demonstrates the trade-off between transaction
+expressivity and invariant strength: some combinations of transactions
+and invariants are not achievable without coordination, whereas others
+appear to be. The remainder of this paper will formalize this
+trade-off and state an application-agnostic property for deciding
+whether or not coordination is required.

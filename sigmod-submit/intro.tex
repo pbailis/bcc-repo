@@ -3,73 +3,73 @@
 \label{sec:intro}
 
 The past decade has seen increased tumult in the landscape of
-mainstream distributed database design.  Faced with increasing scale
-and requirements for always-on operation, many service operators
-shifted away from traditional database designs and semantics. This
-trend belies a \textit{fundamental} divide in the design space of
-distributed databases: the need for synchronous coordination. On the
-one hand, ``strong'' data consistency (i.e., CAP ``CP'') models such
-as the gold standard of traditional database concurrency control---the
-serializable transaction, guaranteeing ``single system image''
-behavior---provide semantic guarantees that are useful for
-programmers. However, these ``strong'' models require synchronous
-coordination across replicas in order to provide a safe response,
-provably leading to unavailability and increased latency. In contrast,
-``weak consistency'' (i.e., CAP ``AP'', or ``highly available'')
-models provide a subset of the semantic guarantees but do not require
-synchronous coordination and therefore do not suffer from
+distributed database design: faced with increasing scale and
+requirements for always-on operation, many service operators shifted
+away from traditional database designs and semantics and towards
+alternatives offering greater scalability, availability, and
+performance. This trend belies a \textit{fundamental} divide in the
+design space of distributed databases: the need for synchronous
+coordination. On the one hand, ``strong'' data consistency (i.e., CAP
+``CP'') models such as the gold standard of traditional database
+concurrency control---the serializable transaction, guaranteeing
+``single system image'' behavior---provide semantic guarantees that
+are useful for programmers. However, these ``strong'' models require
+synchronous coordination across replicas in order to provide a safe
+response, leading to provable unavailability and increased latency. In
+contrast, ``weak consistency'' (i.e., CAP ``AP'', or ``highly
+available'') models provide a subset of the semantic guarantees but do
+not require synchronous coordination and therefore do not suffer from
 unavailability or latency. The latter category of models (and many of
-their implementations) are perfectly scalable, even at the granularity
-of an individual database record---all coordination can be safely
-deferred until some future point (and, under some models,
-forever). However, in giving up semantic guarantees, weak isolation
-models sacrifice programmability.
+their implementations) defer coordination until some future point and
+are therefore are perfectly scalable, even at the granularity of an
+individual database record. However, in giving up semantic guarantees,
+weak isolation models sacrifice intuitive programmability.
 
 This provable trade-off between semantics and coordination leads
 programmers to a difficult choice. On the one hand, many applications
 cannot operate correctly without serializable or Snapshot Isolation
 guarantees. However, on the other hand, many applications---whether
 running on newfangled stores providing weak data consistency or under
-traditional ``weak isolation''---can tolerate weaker
-guarantees. Ideally, users could choose the weakest possible set of
+traditional ``weak isolation'' guarantees---seem to tolerate weaker
+guarantees. Ideally, users can choose the weakest possible set of
 semantics and still maintain correctness, but this is no easy task:
 programmers today must manually map their application-level
 consistency concerns to low-level constructs like admissible traces of
 reads and writes. This in turn requires developers to become experts
 in distributed data consistency, weak isolation, and replication
-protocols.
+protocols~\cite{consistency-borders}.
 
 In this paper, we seek an alternative approach that allows users to
 determine when it is provably \textit{necessary} to employ distributed
-coordination in order to maintain application-level
-correctness. Foregoing synchronous coordination (and therefore
-serializability) necessarily means that users will be exposed to
-isolation \textit{anomalies} resulting from concurrent
-access. Determining which of these anomalies matter to an
-application's consistency is impossible under a model in which a
-database has no knowledge of the application. Accordingly, we adopt a
-model in which users explicitly provide the database with
-\textit{integrity constraints}, or predicates representing
-application-level consistency that should always be satisfied by the
-database state. Given these constraints and a set of stored procedures
-comprising the application, the database can determine which
-procedures will require synchronous coordination and, often, which
-data consistency and isolation level each procedure requires. We prove
-the \textit{semantic commutativity} property---the ability to re-order
-transaction execution without violating constraints---as a necessary
-and sufficient condition for executing without synchronous
-coordination. We believe that, as stated, this is the first necessary
-and sufficient condition for execution without coordination (and
-therefore \textit{transactional availability}). Nonetheless, our
+coordination in order to maintain application-level correctness. This
+in turn allows the development of \textit{coordination-avoiding}
+concurrency control: ensuring consistency with minimal coordination
+and maximum scalability. Foregoing synchronous coordination (and
+therefore serializability) necessarily means that users will be
+exposed to isolation \textit{anomalies} resulting from concurrent
+access. Determining which anomalies matter to an application is
+impossible under a model in which a database has no knowledge of the
+application. Accordingly, we adopt a model in which users explicitly
+provide the database with \textit{integrity constraints}, or
+predicates representing application-level consistency that should
+always be satisfied by the database state. Given these constraints,
+the database can determine which procedures will require synchronous
+coordination and, often, which read/write data consistency and
+isolation level each procedure requires. We prove that the
+\textit{\fullnameconfluence} property (\iconfluence)---the ability to
+merge isolated transaction executions without violating
+constraints---is a necessary and sufficient condition for executing
+with \cfreedom. While we believe that this is the first necessary and
+sufficient condition for availability without coordination, our
 results leverage several decades-old concepts from the database
 literature, including semantics-based concurrency control,
 synchronization for abstract data types, and nested atomic
 transactions (Section~\ref{sec:relatedwork}).
 
-This semantic commutativity provides a theoretical foundation for
-Coordination-Avoiding Transactions (CATs): transactions that
-coordinate only when necessary.  If a CAT coordinates, it is because
-application consistency \textit{cannot} be guaranteed without doing
+This theory provides a foundation for Coordination-Avoiding
+Transactions (CATs): transactions that coordinate only when necessary.
+If a CAT database system coordinates, it is because application
+consistency \textit{cannot} be guaranteed without doing
 so. Accordingly, CAT analysis directly captures the scalability of a
 given application: an application with semantic commutativity can
 effectively scale infinitely with the addition of more machines, while
@@ -85,31 +85,32 @@ philosophy of CAT Concurrency Control via two high-level principles:
   execute the conflicting sections while involving as few servers and
   with as short of a critical section as possible.
 \end{introenumerate}
-To illustrate the utility of these principles, we embody semantic
-commutativity analysis in a tiny language, \lang, and analyze several
-applications for semantic commutativity. We demonstrate that, in fact,
-these weak models are safe for many classic OLTP applications as
-well. As a proof-of-concept, we analyze and implement the TPCC
-benchmark on a BCC system prototype and achieve linear scalability to
-over 1.8 million transactions per second on a 100-node EC2 cluster
-(nearly four times the current record held by Oracle). Our prototype's
-competitive advantage is not due to bleeding-edge performance-oriented
-engineering but is instead due to theoretically-motivated, judicious
-use of coordination.
+To illustrate the utility of these principles, we embody \iconfluence
+analysis in a tiny language, \lang, and analyze several applications
+for semantic commutativity. We demonstrate that, in fact, these weak
+models are safe for many classic OLTP applications as well. As a
+proof-of-concept, we analyze and implement the TPCC benchmark on a BCC
+system prototype and achieve linear scalability to over 1.8 million
+transactions per second on a 100-node EC2 cluster (nearly four times
+the current record held by Oracle). Our prototype's competitive
+advantage is not due to bleeding-edge performance-oriented engineering
+but is instead due to theoretically-motivated, judicious use of
+coordination.
 
 This paper attempts to improve distributed database programmability by
 unifying industry trends with the collected wisdom of the database
 community. We recognize the scalability advantages of weakly
 consistent data stores but reconcile them with the programmability
-benefits of maintaining traditional ACID Consistency. In doing so, we
-place an additional burden on programmers, who must either provide the
-database with a complete and machine-interpretable specification of
-application-level invariants or otherwise must perform BCC analysis
-themselves and manually label their transactions. For programmers that
-wish to achieve their application's maximum scalability, we believe
-that both of these alternatives are far preferable to the
-state-of-the-art ad-hoc mapping from application-level ACID
-Consistency to distributed data consistency models performed today. We
-accordingly view this work as the first step in revisiting core
-database concepts like query optimization, failure recovery, and data
-layout in light of increased knowledge of application-level semantics.
+benefits of maintaining traditional ACID Consistency on behalf of
+application designers. In doing so, we place an additional burden on
+programmers, who must either provide the database with a complete and
+machine-interpretable specification of application-level invariants or
+otherwise must perform analysis themselves and manually label their
+transactions. For programmers that wish to achieve their application's
+maximum scalability, we believe that both of these alternatives are
+far preferable to the state-of-the-art ad-hoc mapping from
+application-level ACID Consistency to distributed data consistency
+models performed today. We accordingly view this work as the first
+step in revisiting core database concepts like query optimization,
+failure recovery, and data layout in light of increased knowledge of
+application-level semantics.

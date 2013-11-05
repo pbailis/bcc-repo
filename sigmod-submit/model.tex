@@ -5,83 +5,53 @@
 In this section, we present our model for transactions, invariants,
 and coordination.
 
-\minihead{Transactions and Stored Procedures} In this paper, we
-consider a set of users accessing a shared database, which contains a
-versioned set of data items. In our initial formulation, we will
-represent database state as a set of mutations (much like a writeahead
-log), but we will consider other, more pragmatic representations in
-Section~\ref{sec:bcc-practice}. Users submit requests to the database in
-the form of transactions, or groups of operations on data items that
-should be executed together. Operations are often in the form of
-writes (which add a new version to the database) or reads (which
-return a specific version--or set of versions--from the database), but
-operations can also operate on abstract data types, such as
-incrementing a counter item or adding an item to a set item. When
-required---and certainly in future sections of this paper---we will
-discuss specific operation types, but, in general, we will not make
-any specific assumptions about operations. A transaction can
-\textit{commit}, signaling success, or \textit{abort}, signaling
+\minihead{Transactions} In this paper, we consider a set of users
+accessing a shared database, which contains a versioned set of data
+items. In our initial formulation, we will represent database state as
+a bag of mutations (much like a write-ahead log), but we will consider
+other, more pragmatic representations in
+Section~\ref{sec:bcc-practice}; we assume that the database is
+initially populated by an initial state $D_0$. Users submit requests
+to the database in the form of transactions, or groups of operations
+on data items that should be executed together. Operations are often
+in the form of writes (which add a new version to the database) or
+reads (which return a specific version--or set of versions--from the
+database), but operations can also operate on abstract data types,
+such as incrementing a counter item or adding an item to a set
+item. When required---and certainly in future sections of this
+paper---we will discuss specific operation types, but, in general, we
+will not make any specific assumptions about operations. A transaction
+can \textit{commit}, signaling success, or \textit{abort}, signaling
 failure. As a pragmatic guarantee (not strictly required for our
 formalism), we will require that no transaction that commits observes
 the effects of aborted transactions, and, if a transaction commits,
-its effects should survive database failures. 
+its effects should survive database failures. We define a transaction
+$T$ as a transformation on state with side effects: $T: DB \rightarrow
+DB$.
 
-We will assume that user's transactions are specified in advance as
-\textit{stored procedures}, though they may be parameterized (e.g., a
-procedure may take an integer as a parameter and increment a specific
-counter by the integer amount). As a matter of formalism, we will
-refer to specific parametrized procedures as separate procedures
-(i.e., there may be infinitely many procedures) and individual
-invocations of a stored procedure as transactions.  We define a stored
-procedure $P$ as a transformation on state with side effects: $P: DB
-\rightarrow DB$.
+\minihead{Invariants} We consider a model where users specify
+invariants over arbitrary database state that determine whether a
+given state is valid. For example, an invariant might express the
+requirement that only one user in a database has a given ID.  We model
+invariants as binary predicates on database state: $I: DB \rightarrow
+\{true, false\}$. Given a set of invariants $I_s$, we say that the
+database is \textit{valid} under $I_s$ if all invariants in $I_s$
+evaluate to true. Invariants directly capture the notion of ACID
+Consistency~\cite{bernstein-book}.
 
-\miniheadnostop{Why specify stored procedures?} Much of the database
-literature assumes a model in which users execute arbitrary queries
-composed of arbitrary groupings of operations that are not known in
-advance. While this model is well suited to the manual traditional
-data processing and data entry tasks envisioned by early database
-pioneers (i.e., users sit at terminals and type in transactions one by
-one), there are at least two reasons why stored procedures are an
-appropriate choice today. First, the large query volumes driving
-today's distributed database designs are overwhelmingly created by
-machines, not humans. Indeed, individual procedure invocations may
-differ, but the overall structure of a queries at scale are often
-known in advance, whether encoded in SQL or, alternatively,
-application logic in an application server or ORM system. Second,
-eliminating humans from transaction processing loop reduces execution
-time and therefore the impact of critical sections. Several well-known
-serializable systems such as H-Store and VoltDB, Calvin, and Granola
-all exploit this a-priori knowledge to great effect. It \textit{is}
-possible to support general purpose read/write transactions on opaque
-registers in our formalism, but the results are not likely to be
-useful.\vspace{.5em}
-
-\minihead{Invariants} In BCC, users also specify invariants over
-arbitrary database state that dictate whether or not the database
-state reflects a valid application state. For example, an invariant
-might express the requirement that only one user in a database has a
-given ID.  We model invariants as binary predicates on database state:
-$I: DB \rightarrow \{true, false\}$. Given a set of invariants $I_s$,
-we say that the database is \textit{valid} under $I_s$ if all
-invariants in $I_s$ evaluate to true. Invariants directly capture the
-notion of ACID Consistency~\cite{bernstein-book}. The goal of BCC is
-to maintain these invariants while limiting the amount of
-synchronization.
-
-\miniheadnostop{Why specify invariants?} The majority of existing work on
-database concurrency control assumes a model whereby ``the [set of
+\miniheadnostop{Why specify invariants?} The majority of existing work
+on database concurrency control assumes a model whereby ``the [set of
   invariants] is generally not known to the system but is embodied in
 the structure of the transaction''~\cite{traiger-tods}. Indeed,
 Eswaran et al.'s seminal paper on the topic of consistency argues that
 ``a complete set of assertions would no doubt be as large as the
 system istself''~\cite{eswaran-consistency}. Nevertheless, since 1976,
-databases have introduced support for a finite set of invariants~\cite{korth-serializability} in
-the form of primary key and foreign key, uniqueness, and row-level
-``check'' constraints. We expand this set of invariants in
-Section~\ref{sec:bcc-practice} and argue that a small set of
-invariants adds sufficient expressive power for many applications. As
-with stored procedures, it is possible to perform a conservative
+databases have introduced support for a finite set of
+invariants~\cite{korth-serializability} in the form of primary key and
+foreign key, uniqueness, and row-level ``check'' constraints. We
+expand this set of invariants in Section~\ref{sec:bcc-practice} and
+demonstrate that a small set of invariants adds sufficient expressive
+power for many applications. It is possible to perform a conservative
 analysis if a complete specification of invariants is missing, but
 this will result in less useful results. One consolation is that,
 unlike more general forms of axiomatic logic (e.g., Hoare triples),
@@ -90,40 +60,37 @@ is applied for every transaction.\vspace{.5em}
 
 \minihead{Coordination} In this paper, we are concerned with
 synchronization and coordination between multiple transactions. We
-consider a model where there are multiple, replicated copies of
+consider a system model with are multiple, replicated copies of
 database state (\textit{replicas}) located in separate processes
 (\textit{servers}) that can each respond to transaction requests.  To
 prevent the system from unnecessarily aborting transactions in order
-to provide a response, we say thata system provides transactional
-availability (liveness) if transactions either eventually commit or
-otherwise abort themselves~\cite{hat-vldb}. When each replica contains
-an entire copy of the database, we say that a transaction does not
-require \textit{synchronous replica coordination} (informally,
-coordination) if any replica guarantees transactional availability
-without contacting another replica.\footnote{As Bailis et
+to provide a response, we say that a system provides
+\textit{transactional availability} (liveness) if, whenever a client
+executing a transaction $T$ can access at least one replica for each
+item in $T$, $T$ eventually commits or otherwise aborts itself either
+due to an \textit{abort} operation in $T$ or due to a violation of a
+declared integrity constraint~\cite{hat-vldb}.\footnote{As Bailis et
   al. note~\cite{hat-vldb}, this definition precludes multi-server
   fault tolerance (durability). However, we can consider multi-server
   durability by extending this definition to include coordination with
   a finite number of servers. This does not greatly affect scalability
-  because, as more replicas are added, coordination is constant.}  In
-the case of partially replicated databases, whereby no one server
-contains an entire copy of database state, we say that a database does
-not require coordination if, whenever a transaction can access a
-replica for each of its operations, those replicas guarantee
-transactional availability for the transaction without contacting
-another equivalent set of replicas.
+  because, as more replicas are added, coordination is constant.} We
+say that a system is \textit{always valid} if all replicas always
+contain valid state. To capture the effect of network partitions but
+also to capture linear scalability, we say that a system is
+\textit{\cfree} if replicas do not communicate in order to execute a
+transaction.
 
 A primary goal in the remainder of this paper will be to understand
-which combinations of invariants and stored procedures are achievable
-without coordination. It is vacuously possible to maintain
+which combinations of invariants and transactions are achievable with
+\cfreedom and availability. It is vacuously possible to maintain
 ``consistent'' database states by letting replicas diverge: in
 distributed systems parlance, this guarantees \textit{safety} but not
 \textit{liveness}. To ensure that replicas eventually
-agree---reflecting a shared, common set of database state---we require
-that, in the absence of modifications to the database and, given a
-sufficiently long period without network partitions, database replicas
-will eventually agree on state.
-
+agree---reflecting a shared, common set of database state---we will
+say that a system is \textit{convergent} if, in the absence of new
+transactions and in the absence of indefinite communication delays,
+all replicas eventually contain the same state
 
 \miniheadnostop{A note on replicas} While most treatments of
 distributed databases (including this one) often treat replicas as
