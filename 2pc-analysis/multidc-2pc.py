@@ -116,4 +116,4 @@ xlabel("Participating Datacenters (+VA)")
 ylabel("Maximum Throughput (txn/s)")
 title("Multi-Datacenter Throughput")
 
-savefig("multidc-twopc.pdf",  transparent=False, bbox_inches='tight', pad_inches=.1)
+savefig("multidc-twopc.png",  bbox_inches='tight', pad_inches=.1)
