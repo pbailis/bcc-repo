@@ -23,11 +23,11 @@ and increased latency~\cite{pacelc}. In contrast, ``weak consistency''
 provide a subset of the semantic guarantees but do not require
 synchronous coordination and therefore do not suffer from
 unavailability or latency~\cite{hat-vldb}. The latter category of
-models (and many of their implementations) defer coordination until
-some future point and are therefore are perfectly scalable, even at
-the granularity of an individual database record. However, in giving
-up semantic guarantees, weak isolation models sacrifice intuitive
-programmability.
+models (and many of their implementations~\cite{swift}) defer
+coordination until some future point~\cite{calm,consistency-borders}
+and are therefore are perfectly scalable, even at the granularity of
+an individual database record. However, in giving up semantic
+guarantees, weak isolation models sacrifice intuitive programmability.
 
 This provable trade-off between semantics and coordination leads
 programmers to a difficult choice. On the one hand, many applications
@@ -45,12 +45,10 @@ isolation, and replication protocols~\cite{consistency-borders}.
 
 In this paper, we seek an alternative approach that allows users to
 determine when it is provably \textit{necessary} to employ distributed
-coordination in order to maintain application-level correctness. This
-in turn allows the development of \textit{coordination-avoiding}
-concurrency control: ensuring consistency with minimal coordination
-and maximum scalability. Foregoing synchronous coordination (and
-therefore serializability) necessarily means that users will be
-exposed to isolation \textit{anomalies} resulting from concurrent
+coordination in order to maintain application-level
+correctness. Foregoing synchronous coordination (and therefore
+serializability) necessarily means that users will be exposed to
+isolation \textit{anomalies} resulting from concurrent
 access. Determining which anomalies matter to an application is
 impossible under a model in which a database has no knowledge of the
 application. Accordingly, we adopt a model in which users explicitly
@@ -74,16 +72,16 @@ types~\cite{herlihy-apologizing,weihl-thesis}, and nested atomic
 transactions~\cite{atomictransactions}
 (Section~\ref{sec:relatedwork}).
 
-This theory provides a foundation for Coordination-Avoiding
-Transactions (CATs): transactions that coordinate only when necessary.
-If a CAT database system coordinates, it is because application
-consistency \textit{cannot} be guaranteed without doing
-so. Accordingly, CAT analysis directly captures the scalability of a
-given application: an application with \cfreedom can
+This theory provides a foundation for \textit{coordination-avoiding
+  databases}: systems that coordinate only when necessary.  If a
+coordination-avoiding database system coordinates, it is because
+application consistency \textit{cannot} be guaranteed without doing
+so. Accordingly, coordination-avoidance analysis directly captures the
+scalability of a given application: an application with \cfreedom can
 effectively scale infinitely with the addition of more machines, while
 the degree to which conflicts are distributed directly determines an
 application's ability to scale out and up. We pithily summarize the
-philosophy of CAT Concurrency Control via two high-level principles:
+philosophy of coordination-avoidance via two high-level principles:
 \begin{introenumerate}
 \item \textit{Let concurrency safely flourish}: if a user's operations
   are \iconfluent, they should be executed on separate copies of
@@ -94,15 +92,13 @@ philosophy of CAT Concurrency Control via two high-level principles:
   with as short of a critical section as possible.
 \end{introenumerate}
 To illustrate the utility of these principles, we embody \iconfluence
-analysis in a tiny language, \lang, and analyze several applications
-for \cfreedom. We demonstrate that, in fact, these weak models are
-safe for many classic OLTP applications as well. As a
-proof-of-concept, we analyze and implement the TPCC benchmark on a
-coordination-avoiding database prototype and achieve linear
-scalability to over 1.8 million transactions per second on a 100-node
-EC2 cluster (nearly four times the current record held by Oracle). Our
-prototype's competitive advantage is not due to bleeding-edge
-performance-oriented engineering but is instead due to
+analysis in a tiny language, \lang, and analyze applications for
+\cfreedom. As a proof of concept, we analyze and implement the TPC-C
+New-Order on a coordination-avoiding database prototype and achieve
+linear scalability to over 1.8 million transactions per second on a
+100-node EC2 cluster (nearly four times the current record held by
+Oracle). Our prototype's competitive advantage is not due to
+bleeding-edge performance-oriented engineering but is instead due to
 theoretically-motivated, judicious use of coordination.
 
 Overall, this paper attempts to improve distributed database

@@ -1,5 +1,5 @@
 
-\section{CATs: Theory to Practice}
+\section{From Theory to Practice}
 \label{sec:bcc-practice}
 
 Treating \iconfluence as a necessary and sufficient condition for
@@ -65,10 +65,11 @@ Constraint & \iconfluent Operations & Non-\iconfluent Operations \\\hline
 \end{table*}
 
 With this simple (but expressive) language in mind, we can enumerate a
-set of \iconfluent and non-\iconfluent operations. We do not
-claim that this enumeration is even near-complete or that \lang is
-sufficiently expressive for all applications. However, as we will see
-(Section~\ref{sec:evaluation}), it is surprisingly expressive for many.
+set of \iconfluent and non-\iconfluent operations. We do not claim
+that this enumeration is complete or that \lang is sufficiently
+expressive for all applications. However, as we will see
+(Section~\ref{sec:evaluation}), it is surprisingly expressive for
+many.
 
 Several operations are \iconfluent: any operation on columns without
 constraints, increment (decrement) of counters without \textit{less
@@ -144,13 +145,6 @@ each operation: this brings this research into the realm of
 programming languages. We believe this is a worthwhile area for future
 work, but, due to programmer burden, do not further consider these
 techniques in this paper.
-
-As a compromise, we consider a modified form of serial execution,
-approximating that of the nested atomic transaction abstraction. We
-perform chopping on mini-transactions, replacing write-write conflicts
-with our conflict relation determined by \iconfluence analysis.
-
-
 
 \subsection{Merge Functions}
 

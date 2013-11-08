@@ -6,10 +6,11 @@
 
 As repositories for application state, databases are tasked with the
 challenging goals of maintaining correct, durable data despite
-concurrency, failures, and, often, distribution. Core to the utility
-of a database system is its ability to maintain application data that
-is \textit{consistent}---that is, data that is well-formed according
-to application semantics~\cite{gray-virtues}. By entrusting databases
+concurrency, failures, and, often,
+distribution~\cite{bernstein-book}. Core to the utility of a database
+system is its ability to maintain application data that is
+\textit{consistent}---that is, data that is well-formed according to
+application semantics~\cite{gray-virtues}. By entrusting databases
 with their data, applications are freed from the requirement to
 manually manage this correctness. Maintaining consistency inherently
 requires reasoning about and often controlling concurrent access to
@@ -34,7 +35,8 @@ transactions are a \textit{sufficient} mechanism for ensuring
 consistency but are not strictly \textit{necessary}: as a classic
 example due to Lamport in 1976~\cite{lamport-audit}, an ``audit''
 transaction over shared bank account balances need not observe
-serializable state as long as no bank account balance is negative.
+serializable state as long as no bank account balance it reads is
+negative.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -44,13 +46,13 @@ abstraction, it is accompanied by a hefty price tag. The requirement
 that transaction execution conform to a serial order imposes penalties
 on concurrent accesses to data items, resulting in aborts due to
 deadlocks and decreased throughput due to
-contention~\cite{bernstein-book,gray-virtues}. The costs of
+contention~\cite{bernstein-book,gray-book,gray-virtues}. The costs of
 serializability in a distributed environment are even more
 expensive---as we will shortly discuss, it is well known to be
 provably unachievable without synchronous coordination between
 replicas---due to the possibility of network partitions and
 millisecond-or-higher cross-server latencies (up to hundreds of
-milliseconds across datacenters).
+milliseconds across datacenters)~\cite{hat-vldb,bobtail}.
 
 % spectrum of models; actually infinitely many of them
 % not necessarily even easy to program
@@ -59,9 +61,10 @@ Given the cost of serializability, many database designs and systems
 operators opt for weaker models that offer higher performance, lower
 latency, and fewer aborts. On a single-node database, these models are
 often in the form of ``weak isolation'' such as Read Committed and
-Repeatable Read isolation. Modern distributed databases offer a range
-of data consistency models such as eventual consistency and regular
-register semantics.\footnote{To prevent confusion, we refer to
+Repeatable Read isolation~\cite{adya-isolation}. Modern distributed
+databases offer a range of data consistency models such as eventual
+consistency and regular register
+semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we refer to
   distributed systems consistency models such as linearizability as
   \textit{isolation models} (or, more simply, \textit{models}) and
   reserve the use of \textit{consistency} for referring to
@@ -75,11 +78,12 @@ behavior that could not have arisen in a serial execution. These
 anomalies make reasoning about application-level consistency
 challenging; as Gray and Reuter pithily summarize: ``engineers can
 build distributed systems, but few users know how to program them or
-have algorithms that use them.''  Users wishing to adopt one of these
-weaker models must manually map their application-level consistency
-criteria to the low-level read/write traces that define each
-alternative level---an error-prone and laborious process, particularly
-for the non-specialist developer.
+have algorithms that use them''~\cite{gray-book}. Users wishing to
+adopt one of these weaker models must manually map their
+application-level consistency criteria to the low-level read/write
+traces that define each alternative level---an error-prone and
+laborious process, particularly for the non-specialist
+developer~\cite{consistency-borders}.
 
 % dividing line: coordination---define them
 
@@ -90,20 +94,20 @@ without coordination. We formally define coordination in
 Section~\ref{sec:model}, but, informally, we say that a database is
 \textit{coordination-free} if, given a copy of database state, a
 user's operations can always proceed safely without contacting (or
-otherwise stalling) other users of the database. This requirement has
-been captured in the distributed systems community as
-\textit{availability}, or ``always-on'' operation: an available
-distributed system can perform operations on any non-failed server,
-despite arbitrary partitioning between individual servers. This focus
-on worst-case behavior yields benefits during normal operation as
-well; systems that do not require coordination can provide low
-latency: to serve a request, a server need not contact any
-others. Over wide-area networks, this can correspond to hundreds of
-milliseconds lower latency. In contrast, a system that requires
-synchronous coordination risks unavailability in the presence of
-network partitions and partial failures, and, during normal operation,
-incurs higher latency due to communication delays and, possibly,
-resource contention.
+otherwise stalling) other replicas or other users concurrently
+accessing shared state. This requirement has been captured in the
+distributed systems community as \textit{availability}, or
+``always-on'' operation: an available distributed system can perform
+operations on any non-failed server, despite arbitrary partitioning
+between individual servers~\cite{gilbert-cap}. This focus on
+worst-case behavior yields benefits during normal operation as well;
+systems that do not require coordination can provide low latency: to
+serve a request, a server need not contact any others~\cite{pacelc}. Over wide-area
+networks, this can correspond to hundreds of milliseconds lower
+latency~\cite{hat-vldb}. In contrast, a system that requires synchronous coordination
+risks unavailability in the presence of network partitions and partial
+failures, and, during normal operation, incurs higher latency due to
+communication delays and, possibly, resource contention.
 
 % cost of coordination? unavailability, latency, stalls : focus on
 % worst-case behavior yields average-case benefits
@@ -142,15 +146,15 @@ coupled with deployments of strongly consistent counterparts (e.g.,
 Riak, Redis, and Postgres in a single web service stack). While this
 ``polyglot persistence'' is influenced by many factors including data
 model and persistence format, availability and scalability are
-frequenly mentioned as deciding criteria. Second, many databases today
-run at non-serializable isolation by default and often as the
-strongest level offered; even strongly consistent stores like PNUTS
-have added options for weaker isolation. On the opposite side of the
-spectrum, databases geared towards high availability have begun to add
-stronger semantics (e.g., Riak and Cassandra independently added
-support for compare-and-swap; a critical building block for mutual
-exclusion and higher-level functionality like lock-based concurrency
-control).
+frequenly mentioned as deciding criteria~\cite{polyglot}. Second, many
+databases today run at non-serializable isolation by default and often
+as the strongest level offered~\cite{hat-vldb}; even strongly
+consistent stores like PNUTS have added options for weaker
+isolation~\cite{pnuts-update}. On the opposite side of the spectrum,
+databases geared towards high availability have begun to add stronger
+semantics (e.g., Riak and Cassandra independently added support for
+compare-and-swap; a critical building block for mutual exclusion and
+higher-level functionality like lock-based concurrency control).
 %https://blog.heroku.com/archives/2010/7/20/nosql
 
 This use of mixed isolation models leads to the question: when is it
@@ -179,9 +183,10 @@ reads and writes (as provided by most distributed isolation models).
 % minimize synchronize coordination
 
 
-\minihead{A simple example} As a running, motivating example, we will
-consider a simple payroll application, with employees and
-departments. We consider three aspects of the payroll database:
+\minihead{A simple example} As a running motivating example, we will
+consider a simple payroll application managing information about
+employees and departments. We consider three aspects of the payroll
+database:
 \begin{myitemize}
 \item\textbf{Employee IDs:} Employees are assigned ID numbers that
   should be unique with respect to all other assigned IDs (i.e., a
@@ -200,16 +205,16 @@ arbitrary updates: if Stan is assigned ID number $5$ and Mary is
 simultaneously assigned ID number $5$, then application-level
 consistency will be compromised. In this case, any replicas performing
 insertions for a specific ID should coordinate. Other properties, such
-as the department constraint, cannot be violated by simple insertion:
+as the department constraint, appear safe under concurrent insertions:
 so long as the employee's department field corresponds to an existing
 department, it appears (and, indeed, we will later prove) that
-concurrent insertions can safely proceed. However, arbitrary
-operations, like deletions, \textit{can} compromise the department
-constraint.
+concurrent insertions can saefly proceed independently. However,
+arbitrary operations like deletions \textit{can} compromise the
+department constraint.
 
-Our payroll example demonstrates the trade-off between transaction
-expressivity and invariant strength: some combinations of transactions
-and invariants are not achievable without coordination, whereas others
-appear to be. The remainder of this paper will formalize this
-trade-off and state an application-agnostic property for deciding
-whether or not coordination is required.
+This example demonstrates a trade-off between transaction expressivity
+and invariant strength: some combinations of transactions and
+invariants appear unsafe without coordination, whereas others appear
+to be resilient to independent access and update. The remainder of this paper
+will formalize this trade-off and state a general
+property for deciding whether or not coordination is required.

@@ -8,26 +8,26 @@ and coordination.
 \minihead{Transactions} In this paper, we consider a set of users
 accessing a shared database, which contains a versioned set of data
 items. In our initial formulation, we will represent database state as
-a bag of mutations (much like a write-ahead log), but we will consider
-other, more pragmatic representations in
+a bag of mutations (much like a write-ahead log~\cite{gray-book}), but
+we will consider other, more pragmatic representations in
 Section~\ref{sec:bcc-practice}; we assume that the database is
-initially populated by an initial state $D_0$. Users submit requests
-to the database in the form of transactions, or groups of operations
-on data items that should be executed together. Operations are often
-in the form of writes (which add a new version to the database) or
-reads (which return a specific version--or set of versions--from the
-database), but operations can also operate on abstract data types,
-such as incrementing a counter item or adding an item to a set
-item. When required---and certainly in future sections of this
-paper---we will discuss specific operation types, but, in general, we
-will not make any specific assumptions about operations. A transaction
-can \textit{commit}, signaling success, or \textit{abort}, signaling
-failure. As a pragmatic guarantee (not strictly required for our
-formalism), we will require that no transaction that commits observes
-the effects of aborted transactions, and, if a transaction commits,
-its effects should survive database failures. We define a transaction
-$T$ as a transformation on state with side effects: $T: DB \rightarrow
-DB$.
+initially populated by an initial state $D_0$ (typically but not
+necessarily empty). Users submit requests to the database in the form
+of transactions, or groups of operations on data items that should be
+executed together. Operations are often in the form of writes (which
+add a new version to the database) or reads (which return a specific
+version--or set of versions--from the database), but operations can
+also operate on abstract data types, such as incrementing a counter
+item or adding an item to a set item. When required---and certainly in
+future sections of this paper---we will discuss specific operation
+types, but, in general, we will not make any specific assumptions
+about operations. A transaction can \textit{commit}, signaling
+success, or \textit{abort}, signaling failure. As a pragmatic
+guarantee (not strictly required for our formalism), we will require
+that no transaction that commits observes the effects of aborted
+transactions, and, if a transaction commits, its effects should
+survive database failures. We define a transaction $T$ as a
+transformation on state with side effects: $T: DB \rightarrow DB$.
 
 \minihead{Invariants} We consider a model where users specify
 invariants over arbitrary database state that determine whether a
@@ -36,8 +36,9 @@ requirement that only one user in a database has a given ID.  We model
 invariants as binary predicates on database state: $I: DB \rightarrow
 \{true, false\}$. Given a set of invariants $I_s$, we say that the
 database is \textit{valid} under $I_s$ if all invariants in $I_s$
-evaluate to true. Invariants directly capture the notion of ACID
-Consistency~\cite{bernstein-book}.
+evaluate to true and w require that $D_0$ be valid. Invariants
+directly capture the notion of ACID
+Consistency~\cite{bernstein-book,gray-virtues}.
 
 \miniheadnostop{Why specify invariants?} The majority of existing work
 on database concurrency control assumes a model whereby ``the [set of
@@ -54,9 +55,10 @@ demonstrate that a small set of invariants adds sufficient expressive
 power for many applications. It is possible to perform a conservative
 analysis if a complete specification of invariants is missing, but
 this will result in less useful results. One consolation is that,
-unlike more general forms of axiomatic logic (e.g., Hoare triples),
-there is only one (set of) invariant(s) defined per application that
-is applied for every transaction.\vspace{.5em}
+unlike more general forms of axiomatic logic (e.g., Hoare-style
+triples~\cite{decomp-semantics}), there is only one (set of)
+invariant(s) defined per application that is applied for every
+transaction.\vspace{.5em}
 
 \minihead{Coordination} In this paper, we are concerned with
 synchronization and coordination between multiple transactions. We
@@ -78,34 +80,35 @@ declared integrity constraint~\cite{hat-vldb}.\footnote{As Bailis et
 say that a system is \textit{always valid} if all replicas always
 contain valid state. To capture the effect of network partitions but
 also to capture linear scalability, we say that a system is
-\textit{\cfree} if replicas do not communicate in order to execute a
-transaction.
+\textit{\cfree} if replicas do not communicate in order to execute
+transactions.
 
 A primary goal in the remainder of this paper will be to understand
 which combinations of invariants and transactions are achievable with
 \cfreedom and availability. It is vacuously possible to maintain
 ``consistent'' database states by letting replicas diverge: in
 distributed systems parlance, this guarantees \textit{safety} but not
-\textit{liveness}. To ensure that replicas eventually
-agree---reflecting a shared, common set of database state---we will
-say that a system is \textit{convergent} if, in the absence of new
-transactions and in the absence of indefinite communication delays,
-all replicas eventually contain the same state
+\textit{liveness}~\cite{lamport-safety}. To ensure that replicas
+eventually agree---reflecting a shared, common set of database
+state---we will say that a system is \textit{convergent} if, in the
+absence of new transactions and in the absence of indefinite
+communication delays, all replicas eventually contain the same
+state~\cite{vogels-defs}.
 
 \miniheadnostop{A note on replicas} While most treatments of
 distributed databases (including this one) often treat replicas as
 individual servers, even a non-replicated database can provide users
 with an interface that exposes multiple ``replicas''. In fact, a
-multi-versioned database system effectively provides each user with a
-copy of database state, even in the presence of concurrent access and
-modification. The specific concurrency control mechanism will dictate
-which transactions commit or not, but a set of invariants and stored
-procedures that are achievable without coordination can also be
-executed in parallel on a single-site system without aborts due to
-concurrent operations or other isolation anomalies.  In fact, our
-current prototype transaction model (Section~\ref{sec:evaluation}) is
-based on multi-versioning and snapshot reads (``logical replicas'')
-rather than actual multi-master replication. Similar analogies can be
-drawn to general-purpose optimistic methods (but not as much to
-lock-based schemes, which largely limit concurrency), although we do
-not consider them here.
+multi-versioned database system~\cite{bernstein-book} effectively
+provides each user with a copy of database state, even in the presence
+of concurrent access and modification. The specific concurrency
+control mechanism will dictate which transactions commit or not, but a
+set of invariants and stored procedures that are achievable without
+coordination can also be executed in parallel on a single-site system
+without aborts due to concurrent operations or other isolation
+anomalies.  In fact, our current prototype transaction model
+(Section~\ref{sec:evaluation}) is based on multi-versioning and
+snapshot reads (``logical replicas'') rather than actual multi-master
+replication. Similar analogies can be drawn to general-purpose
+optimistic methods (but not as much to lock-based schemes, which
+largely limit concurrency), although we do not consider them here.
