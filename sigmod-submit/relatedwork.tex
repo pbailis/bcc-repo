@@ -2,53 +2,85 @@
 \section{Related Work}
 \label{sec:relatedwork}
 
+The research literature has a long tradition of using semantic
+information in concurrency control for improved performance,
+scalability, and availability.
 
-The database literature has a long tradition of using semantic
-information in concurrency control.
-
-\minihead{Semantics-based Commutativity} Our notion of \iconfluence is
-influenced by many concepts from the literature. While serializability
-is often thought of as a means by which implicit integrity constraints
+\minihead{Semantics-based Commutativity} While serializability is
+often thought of as a means by which implicit integrity constraints
 are actually maintained~\cite{gray-virtues}, many techniques have
-leveraged explicit constraints in order to improve concurrency and
-database performance.
+leveraged explicit application-level constraints in order to improve
+concurrency and database performance.
 
-A large subset of this work leverages application semantics as a means
-to reduce conflicts during validation or execution of concrete
-schedules of transactions (at
-runtime)~\cite{weihl-thesis,badrinath-semantics} (i.e., a
-\textit{serial dependency relations}~\cite{herlihy-apologizing}). This
-prior work is eminently useful when, indeed, conflicts are
-possible. However, as we have discussed, this validation (and
-detection) requires coordination on transaction commit; accordingly,
-to provide a lower bound on communication requirement, we
-(conservatively) reason about all \textit{possible} schedules of
-transactions.  It is possible to further decentralize this validation
-via the application of principles from the distributed systems
-literature on detection of global predicates (in this case, applied to
-replicas of database state)~\cite{globalpredicates}, which also reason
-about concrete execution traces. Program decomposition via techniques
-like chopping~\cite{chopping} (which is automatic), nested atomic
+A large subset of this work uses application semantics as a means to
+reduce conflicts during validation or execution of concrete schedules
+of transactions (at runtime)~\cite{weihl-thesis,badrinath-semantics}
+(i.e., a \textit{serial dependency
+  relations}~\cite{herlihy-apologizing}). This prior work is eminently
+useful when, indeed, conflicts are possible. However, as we have
+discussed, this validation (and detection) requires coordination on
+transaction commit; accordingly, to provide a lower bound on
+communication requirement, \iconfluence analysis (conservatively)
+reasons about all \textit{possible} schedules of transactions.  It is
+possible to further decentralize this validation via the application
+of principles from the distributed systems literature on detection of
+global predicates (in this case, applied to replicas of database
+state)~\cite{globalpredicates}, which also reason about concrete
+execution traces. Program decomposition via techniques like
+chopping~\cite{chopping} (which is automatic), nested atomic
 transactions~\cite{atomictransactions} (which are typically manual),
 and a range of alternate \textit{extended transaction}
 models~\cite{acta} can further reduce conflicts once it is established
-that conflicts can actually occur, which \iconfluence
-formalizes.
+that conflicts can actually occur, which \iconfluence formalizes.
 
-\iconfluence is closely linked to several prior database
-concepts. Garcia-Molina describes \textit{semantically consistent
-  schedules}~\cite{garciamolina-semantics}, where the satisfaction of
-a user's consistency predicate defines a valid schedule of transaction
-executions. However, given unknown schedules of transactions (Section
-3, point 1), he subsequently proposed labeling transaction steps via
-\textit{compatibility sets}---transactions that can safely be
-interleaved as a series of atomic steps (as pioneered by
-SDD-1~\cite{sdd1}). This work is generalized by Bernstein and Lewis's
-\textit{Assertional Concurrency Control}~\cite{decomp-semantics},
-which, leverages axiomatic program analysis to decompose transactions
-into a set of atomic steps (in the non-modular interference-free
-decomposition, requiring Hoare-style pre- and post-conditions for each
-step). Korth's predicate-wise
+Our use of \iconfluence is directly inspired by the literature on term
+rewriting and constraint programming, whereby the term (used
+interchangably with the term \textit{observable confluence}) is used
+to refer to rewrite systems that, despite arbitrary application of
+rules, the final state of a model obeys a given
+invariant~\cite{obs-confluence}. This constraint-based \iconfluence is
+a useful generalization of traditional Church-Rosser confluence, which
+ensures that any series of rewrites results in the \textit{same}
+output~\cite{termrewriting}. While the constraint programming
+literature is not directly applicable to our use of \iconfluence, for
+the interested reader, a valid mapping between the two uses might
+treat transactions as rewrite rules, the initial state of the database
+as the initial constraint state, and the database merge operator as a
+constraint \textit{join} operator that can always be applied to (i.e.,
+is defined for) all database states (i.e., we assume local
+\iconfluence). The majority of the theory surrounding confluence and
+\iconfluence in the constraint literature is useful but not
+immediately applicable because, in our \cfreedom analysis, we reason
+about finite but arbitrarily long sequences of transactions: our
+``derivations'' are not finite as long as new transactions can be
+introduced. Nonetheless, we have found this literature to be a useful
+grounding for our own formalism and see this (nascent) concept of
+\iconfluence in rewriting systems as an interesting starting point for
+future theoretical analysis. Similar concepts---including
+confluence---have been successfully integrated into database systems
+under the moniker \textit{active databases}~\cite{activedb-book}
+(e.g., triggers and rule processing), although we are not familiar
+with a concept analogous to \iconfluence or our \cfreedom analysis.
+
+\iconfluence is closely linked to several existing database
+concepts. Garcia-Molina defines the concept of \textit{semantically
+  consistent schedules}~\cite{garciamolina-semantics}, where the
+satisfaction of a user's consistency predicate defines a valid
+schedule of transaction executions; thus, a set of transactions whose
+interleaving yields only semantically consistent schedules are
+\iconfluent. However, Garcia-Molina assumes \textit{arbitrary}
+schedules of transactions and subsequently proposes manual labeling of
+transaction steps via \textit{compatibility sets}---transactions that
+can safely be interleaved as a series of \textit{atomic} steps (as
+pioneered by SDD-1~\cite{sdd1}). \iconfluence reasons about
+distributed, divergent executions on multiple replicas but could be
+used to produce these compatibility sets. These foundational concepts
+were generalized by Bernstein and Lewis's \textit{Assertional
+  Concurrency Control}~\cite{decomp-semantics}, which, leverages
+axiomatic program analysis to decompose transactions into a set of
+atomic steps (i.e., again, single-site operations; via non-modular
+interference-free decomposition, requiring Hoare-style pre- and
+post-conditions for each step). Korth's predicate-wise
 serializability~\cite{korth-serializability} similarly defines
 single-copy database correctness via a conjunction of
 predicates. \iconfluence generalizes these ideas by considering
@@ -63,37 +95,41 @@ abstract data types (as exemplified by Weihl's
 thesis~\cite{weihl-thesis}) focuses on transactions over modular,
 reusable data structures. If operations commute, they can be executed
 concurrently. \iconfluence effectively considers each application's
-database to be a new data structure with a custom set of commutativity
-conditions. This is somewhat of an abuse of abstraction, and and we
-view the use of database-wide invariants to be a worthwile
-contribution.
+database to be a new data structure with a custom set of
+``commutativity'' conditions. We view the use of database-wide
+invariants to be a worthwile contribution.
 
 \minihead{State-based Commutativity} Related work often reasons about
 the commutativity of transaction \textit{outcomes}: for example, two
 transactions provide state-based commutativity if their return value
 is the same the the final state of the database is equivalent despite
-reordering~\cite{kohler-commutativity,weihl-thesis}. As we have
-discussed, this \textit{state-based commutativity} is a sufficient but
-not necessary condition for concurrent execution. Despite its
-conservativeness, these techniques have been successfully applied in
-diverse fields including both database concurrency control and,
-recently, operating systems design~\cite{kohler-commutativity}.
+reordering~\cite{weihl-data,weihl-thesis}. This \textit{state-based
+  commutativity} is a sufficient but not necessary condition for
+concurrent execution. Despite its conservativeness, these techniques
+have been successfully applied in diverse fields including both
+database concurrency control and, recently, operating systems
+design~\cite{kohler-commutativity}. As a consolation, state-based
+commutativity analysis does not require the specification of
+application-level invariants.
 
 \minihead{Program analysis} The problem of maintaining correctness
 despite concurrent modification is well studied in the programming
-languages community. As Bernstein and Lewis
-demonstrate~\cite{decomp-semantics}, much of the programming language
-theory can be successfully applied to database systems. In particular,
-the \cfreedom condition is closely related to the concept of
-\textit{interference freedom} due to Owicki and
-Gries~\cite{owickigries}, whereby concurrent operations cannot
+languages community. In particular, the \cfreedom condition is closely
+related to the concept of \textit{interference freedom} due to Owicki
+and Gries~\cite{owickigries}, whereby concurrent operations cannot
 interfere with one another's preconditions for execution. \iconfluence
 is also closely related to Lamport's ``monotone
-assertions''~\cite{lamport-correctness}. However, in our experience,
-the program analysis community almost exclusively considers atomic
-update to shared state (as is reasonable on a multiprocessor system),
-so the techniques are not immediately portable to a model with
-replicated state.
+assertions''~\cite{lamport-correctness}. As Bernstein and
+Lewis~\cite{decomp-semantics} and Agrawal et
+al.~\cite{agarwal-consistency} demonstrate, much of this programming
+language theory on axomatic decomposition of concurrent programs can
+be successfully applied to transaction schedules, particularly when
+users specify guard pre-conditions on each transaction's
+operations. However, the program analysis community almost exclusively
+considers atomic update to shared state (as is reasonable on a
+multiprocessor system), so the techniques are not immediately portable
+to a model with replicated state that may diverge, as in
+lazily-replicated systems.
 
 \minihead{Hoping and Apologizing} In this work, we have assumed that
 database state should \textit{always} be consistent with respect to
@@ -118,40 +154,38 @@ from observing inconsistent database state---\textit{safety}, in the
 form of application-level integrity constraints. CRDTs are accordingly
 useful to ensure that merging CAT results is sensible but do not solve
 the problem of maintaining application-level consistency. Similarly,
-the CALM Theorem~\cite{calm} shows that monotonic logic results in
-deterministic program outcomes despite message re-ordering. Here, we
-wish to provide stronger guarantees \textit{during execution}. In
-doing so, we relax the requirement that quiescent database state be
-deterministic; we only require that it maintain the specified
-application-level invariants. It is possible to express a requirement
-for a deterministic outcome via \iconfluence by fully specifying a
-desired end state, but this is likely not necessary.
+the CALM Theorem~\cite{ameloot-calm,calm} shows that monotonic logic
+results in deterministic program outcomes despite message
+re-ordering. Here, we wish to provide stronger guarantees
+\textit{during execution}. In doing so, we relax the requirement that
+quiescent database state be deterministic; we only require that it
+maintain the specified application-level invariants. It is possible to
+express a requirement for a deterministic outcome via \iconfluence by
+fully specifying a desired end state, but this is likely not
+necessary.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability, which, in the sense of Gilbert and
 Lynch's CAP Theorem~\cite{gilbert-cap}, is equivalent to CAT's goals
 of coordination-freedom. Highly Available Transactions recently
 classified a range of weak isolation and data consistency models
-according to high availability~\cite{hat-vldb}. A range of stores such
-as SwiftCloud~\cite{swift} often provide weak consistency in the form
-of causal consistency and forms of transactional isolation, while
-related work on Red-Blue Consistency~\cite{redblue} aims to provide
-mixed eventually consistent and linearizable operations within a
-single store. We view this related work as complementary to CATs:
-here, we seek an understanding of \textit{when} a given model is
-useful rather than an optimal implementation of each model. As a
-complement to our work in a non-distributed but largely
-multi-processor setting, Johnson et al. have characterized the
-communication patterns of transaction synchronization as well as their
-impact on database design~\cite{shore-communication}. We currently
-focus on all-or-nothing communication requirements, but their
-observations form the basis of a more thorough treatment of
-non-commutative updates.
+according to their availability via a range of proof-of-concept and
+informal, per-model proofs~\cite{hat-vldb}. While we are inspired by
+this prior work, it did not consider conditions for achieving
+application-level consistency and instead focused on low-level
+read/write isolation anomalies. Towards more practical systems, a
+range of stores such as SwiftCloud~\cite{swift} often provide weak
+consistency in the form of causal consistency and forms of
+transactional isolation, while related work on Red-Blue
+Consistency~\cite{redblue} aims to provide mixed eventually consistent
+and linearizable operations within a single store. We view this
+related work as complementary to ours: here, we seek an understanding
+of \textit{when} a given model is useful rather than an optimal
+implementation of each. As a complement to our work in a
+non-distributed but largely multi-processor setting, Johnson et
+al. have characterized the communication patterns of transaction
+synchronization as well as their impact on database
+design~\cite{shore-communication}. We currently focus on
+all-or-nothing communication requirements, but their observations form
+the basis of a more thorough treatment of non-commutative updates.
 
-
-Active database systems: concerned with confluence, maintaining
-reules, etc. need to cite, but not necessarily useful.
-
-Observable Confluence for Constraint Handling Rules: augments
-confluent rewriting systems with invariants; invariant must hold over
-confluent state BUT invariant doesn't necessarily hold during rewrites

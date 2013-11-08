@@ -9,12 +9,12 @@ challenging goals of maintaining correct, durable data despite
 concurrency, failures, and, often, distribution. Core to the utility
 of a database system is its ability to maintain application data that
 is \textit{consistent}---that is, data that is well-formed according
-to application semantics. By entrusting databases with their data,
-applications are freed from the requirement to manually manage this
-correctness. Maintaining consistency inherently requires reasoning
-about and often controlling concurrent access to data: in this
-section, we discuss this trade-off and describe classic, conservative
-approaches to maintaining consistency.
+to application semantics~\cite{gray-virtues}. By entrusting databases
+with their data, applications are freed from the requirement to
+manually manage this correctness. Maintaining consistency inherently
+requires reasoning about and often controlling concurrent access to
+data: in this section, we discuss this trade-off and describe classic,
+conservative approaches to maintaining consistency.
 
 % traditional programmability: serializability; isolation is means
 % towards achieving consistency
@@ -22,18 +22,19 @@ approaches to maintaining consistency.
 \minihead{Transactions and Isolation} The ACID transaction concept
 pioneered by System R relieved programmers of the requirement to
 explicitly specify their consistency constraints by encouraging the
-use of serializable transactions. Under serialiable isolation, the
-execution of a set of transactions is equivalent to some serial
-ordering between them. As long as each transaction leaves the database
-in a consistent state, serializable transactions ensure database
-consistency. That is, traditional database systems treat isolation
-between concurrently executing transactions as a \textit{means}
-towards achieving data consistency. Serializable transactions are a
-\textit{sufficient} mechanism for ensuring consistency but are not
-strictly \textit{necessary}: as a classic example due to Lamport in
-1976, an ``audit'' transaction over shared bank account balances need
-not observe serializable state as long as no bank account balance is
-negative.
+use of serializable transactions~\cite{gray-virtues}. Under
+serialiable isolation, the execution of a set of transactions is
+equivalent to some serial ordering between
+them~\cite{bernstein-book}. As long as each transaction leaves the
+database in a consistent state, serializable transactions ensure
+database consistency. That is, traditional database systems treat
+isolation between concurrently executing transactions as a
+\textit{means} towards achieving data consistency. Serializable
+transactions are a \textit{sufficient} mechanism for ensuring
+consistency but are not strictly \textit{necessary}: as a classic
+example due to Lamport in 1976~\cite{lamport-audit}, an ``audit''
+transaction over shared bank account balances need not observe
+serializable state as long as no bank account balance is negative.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -42,7 +43,8 @@ While serializability provides a remarkably powerful and convenient
 abstraction, it is accompanied by a hefty price tag. The requirement
 that transaction execution conform to a serial order imposes penalties
 on concurrent accesses to data items, resulting in aborts due to
-deadlocks and decreased throughput due to contention. The costs of
+deadlocks and decreased throughput due to
+contention~\cite{bernstein-book,gray-virtues}. The costs of
 serializability in a distributed environment are even more
 expensive---as we will shortly discuss, it is well known to be
 provably unachievable without synchronous coordination between
@@ -119,10 +121,11 @@ repeated indefinitely. While the term ``scalability'' is often badly
 abused, coordination-freedom captures the essential property of a
 perfect scale-out system, even for single-record operations.
 Unfortunately, not all models are achievable with coordination
-freedom. Serializability is provably at odds with availability, as are
-useful models like linearizability---which provides real-time
+freedom. Serializability is provably at odds with
+availability~\cite{davidson-survey}, as are useful models like
+linearizability~\cite{gilbert-cap}---which provides real-time
 guarantees on single data items---and Snapshot Isolation---a common
-(weaker) replacement for serializability.
+(weaker) replacement for serializability~\cite{hat-vldb}.
 
 % evidence for mixed models: polyglot persistence, adding support for
 % CAS, basis for lock manager, etc.

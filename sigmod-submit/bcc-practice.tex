@@ -30,23 +30,22 @@ the form of read (e.g., \textit{select}), write (e.g.,
 \textit{insert}), or update (e.g., \textit{update}, \textit{increment}
 for counters, \textit{delete}) operations.
 
-In the spirit of Balanced Concurrency Control, \lang also requires
-users to define \textit{invariants} over their tables that express
-application-level consistency requirements. Many of these are borrowed
-from SQL. First, a \textit{primary key} on columns $C_1 \dots C_n$ of
-table \textit{T} requires that, there should only be one row matching
-each distinct combination of possible values for the specified
-columns. Second, a \textit{autoincrement} constraint on a primary key
-of numeric type requires that numeric values be contiguous. Third, a
-\textit{foreign key} on numeric column $C_f$ of table $T_f$
-referencing another column $C_r$ (resident in a different table $T_r
-\neq T_f$) dictates that, for each row in $T_f$, there should be at
-least one row in $T_f$ whose value for $C_r$ matches that of
-$C_r$. Unlike SQL, \lang adds additional constraints to each column:
-\textit{not equals}, \textit{equals}, and, for numeric and counter
-datatypes, \textit{less than}, \textit{greater than}, and
-\textit{sum\_of} (the final representing an aggregate of multiple
-other numeric columns).
+To allow \cfreedom analysis, \lang also requires users to define
+\textit{invariants} over their tables that express application-level
+consistency requirements. Many of these are borrowed from SQL. First,
+a \textit{primary key} on columns $C_1 \dots C_n$ of table \textit{T}
+requires that, there should only be one row matching each distinct
+combination of possible values for the specified columns. Second, a
+\textit{autoincrement} constraint on a primary key of numeric type
+requires that numeric values be contiguous. Third, a \textit{foreign
+  key} on numeric column $C_f$ of table $T_f$ referencing another
+column $C_r$ (resident in a different table $T_r \neq T_f$) dictates
+that, for each row in $T_f$, there should be at least one row in $T_f$
+whose value for $C_r$ matches that of $C_r$. Unlike SQL, \lang adds
+additional constraints to each column: \textit{not equals},
+\textit{equals}, and, for numeric and counter datatypes, \textit{less
+  than}, \textit{greater than}, and \textit{sum\_of} (the final
+representing an aggregate of multiple other numeric columns).
 
 
 \begin{table*}
@@ -91,6 +90,7 @@ tool that identifies all of the above constructs in addition to
 limited support for conditional updates in several days.
 
 \subsection{Dealing with Conflicts}
+\label{sec:conflicts}
 
 If a set of transactions is not \iconfluent, then concurrently
 executing combination of the transactions might violate the given
