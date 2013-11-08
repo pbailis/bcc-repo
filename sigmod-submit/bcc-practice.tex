@@ -194,45 +194,6 @@ eliminating the problem of Conway et al.'s \textit{scope
   dilemma}~\cite{blooml}, whereby operations on individual data items
 are valid but their composition is not.
 
-\subsection{Application to Isolation}
+\input{isolation-subsec}
 
-Even if a constraint is achievable with coordination-freedom, it is
-not necessarily the case that any ``weak'' isolation level will be
-sufficient. For example, applying multi-item writes without
-concurrency control might result in a situation where readers observe
-some writes but not the others, possibly violating a declared foreign
-key constraint. Here, we briefly discuss how to translate
-application-level constraints to a handful of isolation models.
-
-\minihead{Data dependencies}
-
-RAMP when you write multiple items.
-
-Causal when you read then write.
-
-\minihead{Session guarantees}
-
-\minihead{Staleness} Thus far we have not discussed
-
-Uniqueness: nonce generators
-RYW: sticky available
-
-unavailability:
-recency guarantees: deadlines (in a HA sense)
-linearizability: breaking update cycles
-
-\subsection{Beyond Confluence}
-
---- How does this relate to more ad-hoc techniques?
-
-Escrow: similar to a rely-guarantee from those PL guys--amortize
-communication in exchange for unavailability during boundary
-conditions/rebalancing
-
-Immutability: makes merge trivial (if you solve the naming issue!);
-says Gray: reads are writes
-
-CRDTs/CALM: guarantee deterministic convergence to reasonable value;
-weak safety guarantees (e.g., garbage is not returned [cite THINAIR])
-but otherwise not safe for general purpose reads; Bloom\^L allows
-'peek' but violates monotonicity
+\input{confluence-subsec}

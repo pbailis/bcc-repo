@@ -71,15 +71,15 @@ Transactions (CATs): transactions that coordinate only when necessary.
 If a CAT database system coordinates, it is because application
 consistency \textit{cannot} be guaranteed without doing
 so. Accordingly, CAT analysis directly captures the scalability of a
-given application: an application with semantic commutativity can
+given application: an application with \cfreedom can
 effectively scale infinitely with the addition of more machines, while
 the degree to which conflicts are distributed directly determines an
 application's ability to scale out and up. We pithily summarize the
 philosophy of CAT Concurrency Control via two high-level principles:
 \begin{introenumerate}
 \item \textit{Let concurrency safely flourish}: if a user's operations
-  commute with respect to her invariants, they should be executed on
-  separate copies of database state, without coordination.
+  are \iconfluent, they should be executed on separate copies of
+  database state, without coordination.
 \item \textit{Minimize the distribution (both in space and time) of
   conflicting operations}: if a user's operations do not commute,
   execute the conflicting sections while involving as few servers and
@@ -87,30 +87,30 @@ philosophy of CAT Concurrency Control via two high-level principles:
 \end{introenumerate}
 To illustrate the utility of these principles, we embody \iconfluence
 analysis in a tiny language, \lang, and analyze several applications
-for semantic commutativity. We demonstrate that, in fact, these weak
-models are safe for many classic OLTP applications as well. As a
-proof-of-concept, we analyze and implement the TPCC benchmark on a BCC
-system prototype and achieve linear scalability to over 1.8 million
-transactions per second on a 100-node EC2 cluster (nearly four times
-the current record held by Oracle). Our prototype's competitive
-advantage is not due to bleeding-edge performance-oriented engineering
-but is instead due to theoretically-motivated, judicious use of
-coordination.
+for \cfreedom. We demonstrate that, in fact, these weak models are
+safe for many classic OLTP applications as well. As a
+proof-of-concept, we analyze and implement the TPCC benchmark on a
+coordination-avoiding database prototype and achieve linear
+scalability to over 1.8 million transactions per second on a 100-node
+EC2 cluster (nearly four times the current record held by Oracle). Our
+prototype's competitive advantage is not due to bleeding-edge
+performance-oriented engineering but is instead due to
+theoretically-motivated, judicious use of coordination.
 
-This paper attempts to improve distributed database programmability by
-unifying industry trends with the collected wisdom of the database
-community. We recognize the scalability advantages of weakly
-consistent data stores but reconcile them with the programmability
-benefits of maintaining traditional ACID Consistency on behalf of
-application designers. In doing so, we place an additional burden on
-programmers, who must either provide the database with a complete and
-machine-interpretable specification of application-level invariants or
-otherwise must perform analysis themselves and manually label their
-transactions. For programmers that wish to achieve their application's
-maximum scalability, we believe that both of these alternatives are
-far preferable to the state-of-the-art ad-hoc mapping from
-application-level ACID Consistency to distributed data consistency
-models performed today. We accordingly view this work as the first
-step in revisiting core database concepts like query optimization,
-failure recovery, and data layout in light of increased knowledge of
-application-level semantics.
+Overall, this paper attempts to improve distributed database
+programmability by unifying industry trends with the collected wisdom
+of the database community. We recognize the scalability advantages of
+weakly consistent data stores but reconcile them with the
+programmability benefits of maintaining traditional ACID Consistency
+on behalf of application designers. In doing so, we place an
+additional burden on programmers, who must either provide the database
+with a complete and machine-interpretable specification of
+application-level invariants or otherwise must perform analysis
+themselves and manually label their transactions. For programmers that
+wish to achieve their application's maximum scalability, we believe
+that both of these alternatives are far preferable to the
+state-of-the-art ad-hoc mapping from application-level ACID
+Consistency to distributed data consistency models performed today. We
+accordingly view this work as the first step in revisiting core
+database concepts like query optimization, failure recovery, and data
+layout in light of increased knowledge of application-level semantics.

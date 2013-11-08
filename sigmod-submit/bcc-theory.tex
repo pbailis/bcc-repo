@@ -24,9 +24,9 @@ each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
 \end{definition}
 
 \begin{definition}[\iconfluence]
-Given invariant $I$, transactions $T$ are $I$-confluent, for all
-$I$-valid sequences $T_1$, $T_2$ of transactions in $T$, $I(T_1(D_0))
-\wedge I(T_2(D_0)) \Rightarrow I(T_1(D_0) \sqcup T_2(D_0))$.
+Given invariant $I$, transactions $T$ are $I$-confluent if, for all
+$I$-valid sequences $T_1(D_0)$, $T_2(D_0)$ of transactions in $T$,
+$I(T_1(D_0) \sqcup T_2(D_0))$ is $I$-valid.
 \end{definition}
 
 Informally, the \iconfluence property ensures that the set of valid
