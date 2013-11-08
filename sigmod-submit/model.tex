@@ -83,17 +83,43 @@ also to capture linear scalability, we say that a system is
 \textit{\cfree} if replicas do not communicate in order to execute
 transactions.
 
-A primary goal in the remainder of this paper will be to understand
-which combinations of invariants and transactions are achievable with
-\cfreedom and availability. It is vacuously possible to maintain
-``consistent'' database states by letting replicas diverge: in
-distributed systems parlance, this guarantees \textit{safety} but not
+It is vacuously possible to maintain ``consistent'' database states by
+letting replicas diverge: in distributed systems parlance, this
+guarantees \textit{safety} but not
 \textit{liveness}~\cite{lamport-safety}. To ensure that replicas
 eventually agree---reflecting a shared, common set of database
 state---we will say that a system is \textit{convergent} if, in the
 absence of new transactions and in the absence of indefinite
-communication delays, all replicas eventually contain the same
-state~\cite{vogels-defs}.
+communication delays, all replicas eventually contain the same state
+(i.e., via \textit{anti-entropy} processes)~\cite{vogels-defs}. To
+capture the process of reconciling divergent copies of database state,
+we introduce a \textit{merge} operator (denoted $\sqcup$) that, given
+two copies of database state, produces a single copy of database state
+representing the two divergent states. For our initial presentation,
+our merge operator will be simple set union, but we discuss
+alternative merge operators in Section~\ref{sec:merge}. We make no
+assumptions about merge except that it be commutative, associative,
+and idempotent~\cite{calm,crdt}.
+
+Figure~\ref{fig:replicas} depicts a coordination-free execution of two
+transactions $T_1$ and $T_2$ on two separate replicas of (complete)
+database state. Each transaction commits on its local replica, which
+subsequently forwards the new database state to the other replica in
+the background. By applying the merge operator of set union, each
+replica contains the same database state.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.85\columnwidth]{figs/replicas.pdf}
+\end{center}
+\caption{An example coordination-free execution of two transactions,
+  $T_1$ and $T_2$ on two replicas of database state. Each transaction
+  commits on a replica, then, after commit, the replicas exchange
+  their new writes asynchronously and converge on a common database
+  state ($D_3$).}
+\label{fig:replicas}
+\end{figure}
+
 
 \miniheadnostop{A note on replicas} While most treatments of
 distributed databases (including this one) often treat replicas as

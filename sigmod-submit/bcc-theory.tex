@@ -8,16 +8,17 @@ depend on the set of operations the database may be expected to
 perform as well as the integrity constraints that the database is
 required to maintain.
 
-\textbf{TODO: talk about $\sqcup$}
+As a preliminary, we first introduce the concept of invariant
+confluence (hereafter, \iconfluence). The \iconfluence property
+ensures that if the effects of two series of separate transactions
+($T_i$, $T_j$) that operate independently on the same copy of valid
+database state are valid ($I(T_i(D))$, $I(T_j(D))$ hold), their
+effects can safely be combined to produce a valid ``merged'' database
+state ($I(p_i(D) \sqcup p_j(D))$ holds).
 
-Invariant confluence (hereafter, \iconfluence) ensures that if the
-effects of two series of separate transactions ($T_i$, $T_j$) that
-operate independently on the same copy of valid database state are
-valid ($I(T_i(D))$, $I(T_j(D))$ hold), their effects can safely be
-combined to produce a valid ``merged'' database state ($I(p_i(D)
-\sqcup p_j(D))$ holds).
-
-We first define a valid sequence of transformations:
+We first define a valid sequence of transformations, which represents
+a single sequence of transaction applications on a copy of database
+state that transitions the database from one valid state to another:
 
 \begin{definition}[Valid Sequence]
 Given invariant $I$, $T_i(D) = t_{i1}(\dots t_{in}(D))$ is an
@@ -25,16 +26,19 @@ $I$-valid sequence of transactions in $T$ if each $t_{ij} \in T$ and
 each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
 \end{definition}
 
+Using the concept of valid sequences, we can formalize the
+\iconfluence property, which ensures that the set of valid sequences
+with a common ancestor are valid under merge:
+
 \begin{definition}[\iconfluence]
 Given invariant $I$, transactions $T$ are $I$-confluent if, for all
 $I$-valid sequences $T_1(D_0)$, $T_2(D_0)$ of transactions in $T$,
 $I(T_1(D_0) \sqcup T_2(D_0))$ is $I$-valid.
 \end{definition}
 
-Informally, the \iconfluence property ensures that the set of valid
-sequences with a common ancestor are closed under merge. Even less
-formally, our formulation of \iconfluence will be familiar to users of
-fork-join programming models CITE (e.g., Git). \iconfluence allows
+Figure~\ref{fig:iconfluence} depicts an \iconfluent execution: less
+formally, this formulation of \iconfluence will be familiar to users
+of fork-join programming models CITE (e.g., Git). \iconfluence allows
 users to ``check out'' a known good copy of database state ($I(D)$)
 and perform modifications to the state in isolation---as long as these
 modifications are ``safe'' ($I(T_i(D))$ is true). Under \iconfluent
@@ -51,6 +55,18 @@ bank account has negative balance, then $P=\{$\textit{increment user
 $P\cup\{$\textit{decrement user A's balance by 200}$\}$. For now, we
 defer a discussion of the space of operations until
 Section~\ref{sec:bcc-practice}.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\columnwidth]{figs/icommute.pdf}
+\end{center}
+\caption{The \iconfluence property illustrated via a diamond
+  diagram. If a set of transactions $T$ is \iconfluent, then all
+  database states ($D_{in}$, $D_{jm}$) resulting from a sequence of
+  $I$-valid transformations on the initial database state ($D_0$) must
+  be mergeable ($\sqcup$) into an $I$-valid database state.}
+\label{fig:iconfluence}
+\end{figure}
 
 \miniheadnostop{A note on \iconfluence} Our notion of \iconfluence
 differs from that of prior work: we directly incorporate a user's
