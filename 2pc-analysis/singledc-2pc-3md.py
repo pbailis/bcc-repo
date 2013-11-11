@@ -80,4 +80,4 @@ for model in MODELS:
 ylabel("Maximum Throughput (txns/s)")
 xlabel("Number of Servers in 2PC")
 legend(loc="upper right")
-savefig("3md-thrus.png", transparent=False, bbox_inches='tight', pad_inches=.1)
+savefig("3md-thrus.pdf", transparent=False, bbox_inches='tight', pad_inches=.1)
