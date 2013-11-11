@@ -12,7 +12,7 @@ def parse(input_file):
     # table declaration parsing
     comment = ("#" + restOfLine).suppress()
 
-    begin_declare_table = Suppress( CaselessLiteral( "DECLARE TABLE" ) ) + calder_name.setResultsName("name")
+    begin_declare_table = Suppress( CaselessLiteral( "DECLARE TABLE" ) ) + calder_name.setResultsName("table_name")
     end_declare_table = Suppress( CaselessLiteral( "END TABLE" ) )
     unique = Literal("UNIQUE")
     sequential = Literal("SEQUENCE")
@@ -30,7 +30,7 @@ def parse(input_file):
     constraint = ( unique | sequential | gt | lt | fk | agg )
     column_type = oneOf("STRING NUMBER REFERENCE").setResultsName("type")
     column = column_type + calder_name.setResultsName("name") + Optional(constraint).setResultsName("constraint")
-    primary_key = ( CaselessLiteral("PRIMARY KEY") + delimitedList( Group( calder_name.setResultsName("name") ) ).setResultsName("columns") )
+    primary_key = ( CaselessLiteral("PRIMARY KEY") + delimitedList( calder_name.setResultsName("name") ).setResultsName("columns") )
     tabledeclaration = ( begin_declare_table + 
                          Optional( primary_key ).setResultsName("pkey") +
                          OneOrMore( Group ( column ) ).setResultsName("columns")

@@ -81,7 +81,7 @@ class Table:
 def get_tables(toks):
     tables = []
     for table_toks in toks.tables:
-        tname = table_toks.name
+        tname = table_toks.table_name
         columns = []
         if table_toks.pkey:
             pkey = [col for col in table_toks.pkey.columns]
@@ -143,9 +143,9 @@ class ConditionalIncrement:
         self.else_statement = else_statement
 
 class SelectStatement:
-    def __init__(self, table, column, predicate):
+    def __init__(self, table, columns, predicate):
         self.table = table
-        self.column = column
+        self.columns = columns
         self.predicate = predicate
 
 class InsertStatement:
@@ -159,9 +159,9 @@ class DeleteStatement:
         self.predicate = predicate
 
 class VariableDefinition:
-    def __init__(self, name, assign_statement):
+    def __init__(self, name, creation_statement):
         self.name = name
-        self.creation_statement = assign_statement
+        self.creation_statement = creation_statement
 
 class StoredProcedure:
     def __init__(self, name, parameters, statements):
@@ -201,8 +201,6 @@ def create_arithmetic_expression(expr_toks):
 def create_statement(statement_toks):
     tname = statement_toks.table
     cname = statement_toks.column
-    print statement_toks
-        
     if statement_toks.predicate:
         predicate = create_matching_predicate(statement_toks.predicate)
     if statement_toks[0] == "INSERT INTO":
@@ -224,27 +222,25 @@ def create_statement(statement_toks):
                                       create_arithmetic_expression(statement_toks.expression),
                                       predicate)
     elif statement_toks[0] == "SELECT":
+        print statement_toks
         return SelectStatement(tname, 
-                               cname,
+                               statement_toks.columns,
                                predicate)
     elif statement_toks[0] == "var":
         return VariableDefinition(statement_toks.name,
                                   SelectStatement(tname,
-                                                  cname,
+                                                  statement_toks.columns,
                                                   predicate))
     elif statement_toks[0] == "IF":
         predicate = create_matching_predicate(statement_toks.conditional_predicate)
         if_statement = create_statement(statement_toks.if_body)
         else_statement = create_statement(statement_toks.else_body)
-        print statement_toks
         return ConditionalIncrement(predicate, if_statement, else_statement)    
 
 def get_storedprocedures(toks):
     procs = []
     parameters = []
     for proc_toks in toks.storedprocedures:
-        print proc_toks
-            
         proc_name = proc_toks.name
         statements = []
 

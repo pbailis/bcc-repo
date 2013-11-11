@@ -20,9 +20,9 @@ BEGIN PROCEDURE neworder
 
   var curstock = SELECT stock FROM warehouse WHERE blah = foo;
   if curstock < 30:
-    UPDATE warehouse DECREMENT stock BY ocount WHERE did = district;
+    UPDATE stock DECREMENT count BY ocount WHERE did = district;
   else:
-    UPDATE warehouse INCREMENT stock BY curstock-ocount WHERE did = district;
+    UPDATE stock INCREMENT count BY curstock-ocount WHERE did = district;
 
   UPDATE warehouse INCREMENT stock BY 500 WHERE did = district;
 END PROCEDURE
