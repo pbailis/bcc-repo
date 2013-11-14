@@ -33,17 +33,16 @@ public class NewOrder extends TPCCProcedure {
 	
 	public final SQLStmt  stmtUpdateDistSQL =
             // lock_key d_w_id d_id d_w_id d_id snowflake_id assigned_o_id d_w_id d_id
-            /*
             new SQLStmt("SELECT pg_advisory_xact_lock(?); with newid as ( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
                         "d_next_o_id + 1 WHERE d_w_id = ? AND d_id = ? RETURNING d_next_o_id ) " +
                         "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid)); COMMIT;");
-	        */
 
+            /*
             // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
             new SQLStmt("with newid as ( SELECT d_next_o_id + 1 AS d_next_o_id FROM " + TPCCConstants.TABLENAME_DISTRICT + " WHERE d_w_id = ? AND d_id = ? FOR UPDATE ) " +
                          "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid));"+
                          "UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = (SELECT d_next_o_id FROM newid) WHERE d_w_id = ? AND d_id = ?; COMMIT;");
-
+            */
 
 	public final SQLStmt  stmtInsertOOrderSQL = new SQLStmt("INSERT INTO " + TPCCConstants.TABLENAME_OPENORDER
 			+ " (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)"
@@ -330,7 +329,10 @@ public class NewOrder extends TPCCProcedure {
 			stmtUpdateStock.executeBatch();
 
 
-                        // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
+
+            /*
+            //IMPLEMENTATION TWO
+            // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
 
             stmtUpdateDist.setInt(1, w_id);
             stmtUpdateDist.setInt(2, d_id);
@@ -339,6 +341,20 @@ public class NewOrder extends TPCCProcedure {
             stmtUpdateDist.setLong(5, d_next_o_id_snowflake);
             stmtUpdateDist.setInt(6, w_id);
             stmtUpdateDist.setInt(7, d_id);
+            */
+
+            //IMPLEMENTATION ONE
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id d_w_id d_id
+
+            stmtUpdateDist.setLong(1, 10*(w_id+1)+d_id);
+            stmtUpdateDist.setInt(2, w_id);
+            stmtUpdateDist.setInt(3, d_id);
+            stmtUpdateDist.setInt(4, w_id);
+            stmtUpdateDist.setInt(5, d_id);
+            stmtUpdateDist.setLong(6, d_next_o_id_snowflake);
+            stmtUpdateDist.setInt(7, w_id);
+            stmtUpdateDist.setInt(8, d_id);
+
 
             stmtUpdateDist.addBatch();
             stmtUpdateDist.executeBatch();
