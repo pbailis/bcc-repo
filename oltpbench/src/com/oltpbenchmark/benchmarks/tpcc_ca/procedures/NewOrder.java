@@ -32,12 +32,19 @@ public class NewOrder extends TPCCProcedure {
 	public final SQLStmt  stmtInsertNewOrderSQL = new SQLStmt("INSERT INTO "+ TPCCConstants.TABLENAME_NEWORDER + " (no_o_id, no_d_id, no_w_id) VALUES ( ?, ?, ?)");
 	
 	public final SQLStmt  stmtUpdateDistSQL =
-            // TODO: advisory locking
-            // d_w_id d_id d_w_id d_id snowflake_id assigned_o_id d_w_id d_id
-            new SQLStmt("with newid as ( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id assigned_o_id d_w_id d_id
+            /*
+            new SQLStmt("SELECT pg_advisory_xact_lock(?); with newid as ( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
                         "d_next_o_id + 1 WHERE d_w_id = ? AND d_id = ? RETURNING d_next_o_id ) " +
-                        "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid))");
-	
+                        "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid)); COMMIT;");
+	        */
+
+            // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
+            new SQLStmt("with newid as ( SELECT d_next_o_id + 1 FROM " + TPCCConstants.TABLENAME_DISTRICT + " WHERE d_w_id = ? AND d_id = ? FOR UPDATE ) " +
+                         "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid));"+
+                         "UPDATE " + TPCCConstants.TABLENAME_DISTRICT + "SET d_next_o_id = (SELECT d_next_o_id FROM newid)) WHERE d_w_id = ? AND d_id = ?; COMMIT;");
+
+
 	public final SQLStmt  stmtInsertOOrderSQL = new SQLStmt("INSERT INTO " + TPCCConstants.TABLENAME_OPENORDER
 			+ " (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)"
 			+ " VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -323,20 +330,17 @@ public class NewOrder extends TPCCProcedure {
 			stmtUpdateStock.executeBatch();
 
 
+                        // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
+
             stmtUpdateDist.setInt(1, w_id);
             stmtUpdateDist.setInt(2, d_id);
             stmtUpdateDist.setInt(3, w_id);
             stmtUpdateDist.setInt(4, d_id);
             stmtUpdateDist.setLong(5, d_next_o_id_snowflake);
+            stmtUpdateDist.setInt(6, w_id);
+            stmtUpdateDist.setInt(7, d_id);
 
-            int result = stmtUpdateDist.executeUpdate();
-            System.out.println(result);
-            if (result == 0) {
-                throw new RuntimeException(
-                        "Error!! Cannot update next_order_id on district for D_ID="
-                                + d_id + " D_W_ID=" + w_id);
-
-            }
+            stmtUpdateDist.executeBatch();
 
 			total_amount *= (1 + w_tax + d_tax) * (1 - c_discount);
 		} catch(UserAbortException userEx)
