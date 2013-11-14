@@ -340,6 +340,7 @@ public class NewOrder extends TPCCProcedure {
             stmtUpdateDist.setInt(6, w_id);
             stmtUpdateDist.setInt(7, d_id);
 
+            stmtUpdateDist.addBatch();
             stmtUpdateDist.executeBatch();
 
 			total_amount *= (1 + w_tax + d_tax) * (1 - c_discount);
