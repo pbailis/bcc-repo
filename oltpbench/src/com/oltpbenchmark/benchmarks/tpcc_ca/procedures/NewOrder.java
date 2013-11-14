@@ -32,8 +32,9 @@ public class NewOrder extends TPCCProcedure {
 	public final SQLStmt  stmtInsertNewOrderSQL = new SQLStmt("INSERT INTO "+ TPCCConstants.TABLENAME_NEWORDER + " (no_o_id, no_d_id, no_w_id) VALUES ( ?, ?, ?)");
 	
 	public final SQLStmt  stmtUpdateDistSQL =
-            // lock_key d_w_id d_id d_w_id d_id snowflake_id assigned_o_id d_w_id d_id
-            new SQLStmt("SELECT pg_advisory_xact_lock(?); with newid as ( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id
+            new SQLStmt("SELECT pg_advisory_xact_lock(?); with newid as " +
+                        "( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
                         "d_next_o_id + 1 WHERE d_w_id = ? AND d_id = ? RETURNING d_next_o_id ) " +
                         "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid)); COMMIT;");
 
@@ -326,7 +327,7 @@ public class NewOrder extends TPCCProcedure {
 			} // end-for
 
 			stmtInsertOrderLine.executeBatch();
-			stmtUpdateStock.executeBatch();
+			stmtUpdateStock.execute();
 
 
 
@@ -344,7 +345,7 @@ public class NewOrder extends TPCCProcedure {
             */
 
             //IMPLEMENTATION ONE
-            // lock_key d_w_id d_id d_w_id d_id snowflake_id d_w_id d_id
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id
 
             stmtUpdateDist.setLong(1, 10*(w_id+1)+d_id);
             stmtUpdateDist.setInt(2, w_id);
@@ -352,19 +353,19 @@ public class NewOrder extends TPCCProcedure {
             stmtUpdateDist.setInt(4, w_id);
             stmtUpdateDist.setInt(5, d_id);
             stmtUpdateDist.setLong(6, d_next_o_id_snowflake);
-            stmtUpdateDist.setInt(7, w_id);
-            stmtUpdateDist.setInt(8, d_id);
-
 
             stmtUpdateDist.addBatch();
-            stmtUpdateDist.executeBatch();
+            stmtUpdateDist.execute();
 
 			total_amount *= (1 + w_tax + d_tax) * (1 - c_discount);
 		} catch(UserAbortException userEx)
 		{
 		    LOG.debug("Caught an expected error in New Order");
 		    throw userEx;
-		}
+		} catch (RuntimeException ex) {
+            System.out.println("EXCEPTION" + ex);
+            throw ex;
+        }
 	    finally {
             if (stmtInsertOrderLine != null)
                 stmtInsertOrderLine.clearBatch();
