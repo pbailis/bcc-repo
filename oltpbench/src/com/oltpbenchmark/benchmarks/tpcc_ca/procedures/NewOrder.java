@@ -42,7 +42,7 @@ public class NewOrder extends TPCCProcedure {
             // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
             new SQLStmt("with newid as ( SELECT d_next_o_id + 1 AS d_next_o_id FROM " + TPCCConstants.TABLENAME_DISTRICT + " WHERE d_w_id = ? AND d_id = ? FOR UPDATE ) " +
                          "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid));"+
-                         "UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = (SELECT d_next_o_id FROM newid)) WHERE d_w_id = ? AND d_id = ?; COMMIT;");
+                         "UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = (SELECT d_next_o_id FROM newid) WHERE d_w_id = ? AND d_id = ?; COMMIT;");
 
 
 	public final SQLStmt  stmtInsertOOrderSQL = new SQLStmt("INSERT INTO " + TPCCConstants.TABLENAME_OPENORDER
