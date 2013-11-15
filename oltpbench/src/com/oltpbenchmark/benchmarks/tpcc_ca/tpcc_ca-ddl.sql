@@ -42,6 +42,14 @@ CREATE TABLE district (
   PRIMARY KEY (d_w_id,d_id)
 );
 
+DROP TABLE IF EXISTS district_snowflake_to_oid;
+CREATE TABLE district_snowflake_to_oid (
+  d_w_id int NOT NULL,
+  d_id int NOT NULL,
+  d_snowflake_id bigint NOT NULL,
+  d_assigned_o_id int NOT NULL
+);
+
 -- TODO: h_date ON UPDATE CURRENT_TIMESTAMP
 DROP TABLE IF EXISTS history;
 CREATE TABLE history (
@@ -69,8 +77,7 @@ DROP TABLE IF EXISTS new_order;
 CREATE TABLE new_order (
   no_w_id int NOT NULL,
   no_d_id int NOT NULL,
-  no_o_id int NOT NULL,
-  PRIMARY KEY (no_w_id,no_d_id,no_o_id)
+  no_o_id bigint NOT NULL
 );
 
 -- TODO: o_entry_d  ON UPDATE CURRENT_TIMESTAMP
@@ -78,29 +85,26 @@ DROP TABLE IF EXISTS oorder;
 CREATE TABLE oorder (
   o_w_id int NOT NULL,
   o_d_id int NOT NULL,
-  o_id int NOT NULL,
+  o_id bigint NOT NULL,
   o_c_id int NOT NULL,
   o_carrier_id int DEFAULT NULL,
   o_ol_cnt decimal(2,0) NOT NULL,
   o_all_local decimal(1,0) NOT NULL,
-  o_entry_d timestamp NOT NULL,
-  PRIMARY KEY (o_w_id,o_d_id,o_id),
-  UNIQUE (o_w_id,o_d_id,o_c_id,o_id)
+  o_entry_d timestamp NOT NULL
 );
 
 DROP TABLE IF EXISTS order_line;
 CREATE TABLE order_line (
   ol_w_id int NOT NULL,
   ol_d_id int NOT NULL,
-  ol_o_id int NOT NULL,
+  ol_o_id bigint NOT NULL,
   ol_number int NOT NULL,
   ol_i_id int NOT NULL,
   ol_delivery_d timestamp,
   ol_amount decimal(6,2) NOT NULL,
   ol_supply_w_id int NOT NULL,
   ol_quantity decimal(2,0) NOT NULL,
-  ol_dist_info char(24) NOT NULL,
-  PRIMARY KEY (ol_w_id,ol_d_id,ol_o_id,ol_number)
+  ol_dist_info char(24) NOT NULL
 );
 
 DROP TABLE IF EXISTS stock;

@@ -25,14 +25,26 @@ public class NewOrder extends TPCCProcedure {
 			+ " AND c_d_id = ? AND c_id = ?");
     
     public final SQLStmt stmtGetDistSQL = new SQLStmt(
-    		"SELECT d_next_o_id, d_tax FROM " + TPCCConstants.TABLENAME_DISTRICT
-					+ " WHERE d_w_id = ? AND d_id = ? FOR UPDATE"
+    		"SELECT d_tax FROM " + TPCCConstants.TABLENAME_DISTRICT
+					+ " WHERE d_w_id = ? AND d_id = ?"
     				);
     
 	public final SQLStmt  stmtInsertNewOrderSQL = new SQLStmt("INSERT INTO "+ TPCCConstants.TABLENAME_NEWORDER + " (no_o_id, no_d_id, no_w_id) VALUES ( ?, ?, ?)");
 	
-	public final SQLStmt  stmtUpdateDistSQL = new SQLStmt("UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = d_next_o_id + 1 WHERE d_w_id = ? AND d_id = ?");
-	
+	public final SQLStmt  stmtUpdateDistSQL =
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id
+            new SQLStmt("SELECT pg_advisory_xact_lock(?); with newid as " +
+                        "( UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = " +
+                        "d_next_o_id + 1 WHERE d_w_id = ? AND d_id = ? RETURNING d_next_o_id ) " +
+                        "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid)); COMMIT;");
+
+            /*
+            // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
+            new SQLStmt("with newid as ( SELECT d_next_o_id + 1 AS d_next_o_id FROM " + TPCCConstants.TABLENAME_DISTRICT + " WHERE d_w_id = ? AND d_id = ? FOR UPDATE ) " +
+                         "INSERT INTO "+TPCCConstants.TABLENAME_SNOWFLAKE+ " VALUES (?, ?, ?, (SELECT d_next_o_id FROM newid));"+
+                         "UPDATE " + TPCCConstants.TABLENAME_DISTRICT + " SET d_next_o_id = (SELECT d_next_o_id FROM newid) WHERE d_w_id = ? AND d_id = ?; COMMIT;");
+            */
+
 	public final SQLStmt  stmtInsertOOrderSQL = new SQLStmt("INSERT INTO " + TPCCConstants.TABLENAME_OPENORDER
 			+ " (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)"
 			+ " VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -41,7 +53,7 @@ public class NewOrder extends TPCCProcedure {
 
 	public final SQLStmt  stmtGetStockSQL = new SQLStmt("SELECT s_quantity, s_data, s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
 			+ "       s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10"
-			+ " FROM " + TPCCConstants.TABLENAME_STOCK + " WHERE s_i_id = ? AND s_w_id = ? FOR UPDATE");
+			+ " FROM " + TPCCConstants.TABLENAME_STOCK + " WHERE s_i_id = ? AND s_w_id = ?");
 	
 	public final SQLStmt  stmtUpdateStockSQL = new SQLStmt("UPDATE " + TPCCConstants.TABLENAME_STOCK + " SET s_quantity = ? , s_ytd = s_ytd + ?, s_order_cnt = s_order_cnt + 1, s_remote_cnt = s_remote_cnt + ? "
 			+ " WHERE s_i_id = ? AND s_w_id = ?");
@@ -60,6 +72,8 @@ public class NewOrder extends TPCCProcedure {
 	private PreparedStatement stmtGetStock = null;
 	private PreparedStatement stmtUpdateStock = null;
 	private PreparedStatement stmtInsertOrderLine = null;
+
+    private Random random = new Random();
 	
     
     public ResultSet run(Connection conn, Random gen,
@@ -124,7 +138,8 @@ public class NewOrder extends TPCCProcedure {
 			int[] supplierWarehouseIDs, int[] orderQuantities, Connection conn, TPCCWorker w)
 			throws SQLException {
 		float c_discount, w_tax, d_tax = 0, i_price;
-		int d_next_o_id, o_id = -1, s_quantity;
+		int s_quantity;
+        long o_id = -1, d_next_o_id_snowflake;
 		String c_last = null, c_credit = null, i_name, i_data, s_data;
 		String s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05;
 		String s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10, ol_dist_info = null;
@@ -161,27 +176,20 @@ public class NewOrder extends TPCCProcedure {
 				throw new RuntimeException("D_ID=" + d_id + " D_W_ID=" + w_id
 						+ " not found!");
 			}
-			d_next_o_id = rs.getInt("d_next_o_id");
+
+			d_next_o_id_snowflake = random.nextLong();
 			d_tax = rs.getFloat("d_tax");
 			rs.close();
 			rs = null;
-			o_id = d_next_o_id;
+			o_id = d_next_o_id_snowflake;
 
 
-			stmtInsertNewOrder.setInt(1, o_id);
+			stmtInsertNewOrder.setLong(1, o_id);
 			stmtInsertNewOrder.setInt(2, d_id);
 			stmtInsertNewOrder.setInt(3, w_id);
 			stmtInsertNewOrder.executeUpdate();
 
-			stmtUpdateDist.setInt(1, w_id);
-			stmtUpdateDist.setInt(2, d_id);
-			int result = stmtUpdateDist.executeUpdate();
-			if (result == 0)
-				throw new RuntimeException(
-						"Error!! Cannot update next_order_id on district for D_ID="
-								+ d_id + " D_W_ID=" + w_id);
-
-			stmtInsertOOrder.setInt(1, o_id);
+			stmtInsertOOrder.setLong(1, o_id);
 			stmtInsertOOrder.setInt(2, d_id);
 			stmtInsertOOrder.setInt(3, w_id);
 			stmtInsertOOrder.setInt(4, c_id);
@@ -305,7 +313,7 @@ public class NewOrder extends TPCCProcedure {
 					break;
 				}
 
-				stmtInsertOrderLine.setInt(1, o_id);
+				stmtInsertOrderLine.setLong(1, o_id);
 				stmtInsertOrderLine.setInt(2, d_id);
 				stmtInsertOrderLine.setInt(3, w_id);
 				stmtInsertOrderLine.setInt(4, ol_number);
@@ -319,14 +327,45 @@ public class NewOrder extends TPCCProcedure {
 			} // end-for
 
 			stmtInsertOrderLine.executeBatch();
-			stmtUpdateStock.executeBatch();
+			stmtUpdateStock.execute();
+
+
+
+            /*
+            //IMPLEMENTATION TWO
+            // d_w_id d_id d_w_id d_id d_w_id d_id snowflake
+
+            stmtUpdateDist.setInt(1, w_id);
+            stmtUpdateDist.setInt(2, d_id);
+            stmtUpdateDist.setInt(3, w_id);
+            stmtUpdateDist.setInt(4, d_id);
+            stmtUpdateDist.setLong(5, d_next_o_id_snowflake);
+            stmtUpdateDist.setInt(6, w_id);
+            stmtUpdateDist.setInt(7, d_id);
+            */
+
+            //IMPLEMENTATION ONE
+            // lock_key d_w_id d_id d_w_id d_id snowflake_id
+
+            stmtUpdateDist.setLong(1, 10*(w_id+1)+d_id);
+            stmtUpdateDist.setInt(2, w_id);
+            stmtUpdateDist.setInt(3, d_id);
+            stmtUpdateDist.setInt(4, w_id);
+            stmtUpdateDist.setInt(5, d_id);
+            stmtUpdateDist.setLong(6, d_next_o_id_snowflake);
+
+            stmtUpdateDist.addBatch();
+            stmtUpdateDist.execute();
 
 			total_amount *= (1 + w_tax + d_tax) * (1 - c_discount);
 		} catch(UserAbortException userEx)
 		{
 		    LOG.debug("Caught an expected error in New Order");
 		    throw userEx;
-		}
+		} catch (RuntimeException ex) {
+            System.out.println("EXCEPTION" + ex);
+            throw ex;
+        }
 	    finally {
             if (stmtInsertOrderLine != null)
                 stmtInsertOrderLine.clearBatch();
