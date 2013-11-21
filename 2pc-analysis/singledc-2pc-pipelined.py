@@ -8,7 +8,7 @@ matplotlib.rcParams['lines.linewidth'] = 1
 
 TRIALS = 10000
 MIN_NODES=2
-MAX_NODES = 20
+MAX_NODES = 21
 
 
 ms=6
@@ -112,7 +112,7 @@ for model in MODELS:
             time = gen2pc_decent(nodes, model)
         thrus.append(float(TRIALS)/time*1000)
 
-    plot([i+1 for i in NODELIST], thrus,  's-', color="green", markeredgecolor="green", markerfacecolor='None', label="2 delays", markersize=ms)
+    plot([i for i in NODELIST], thrus,  's-', color="green", markeredgecolor="green", markerfacecolor='None', label="2 delays", markersize=ms)
 
     thrus = []
 
@@ -124,7 +124,7 @@ for model in MODELS:
         print nodes, time
         thrus.append(float(TRIALS)/time*1000)
 
-    plot([i+1 for i in NODELIST], thrus,'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="3 delays", markersize=ms)
+    plot([i for i in NODELIST], thrus,'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="3 delays", markersize=ms)
 
 
 ylabel("Maximum Throughput (txns/s)")
