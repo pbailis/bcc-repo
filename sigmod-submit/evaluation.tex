@@ -2,69 +2,88 @@
 \section{Minding the Gap}
 \label{sec:evaluation}
 
-We have established a necessary and sufficient condition for \cfreedom
-that, if achievable, enables scalability limited to that of available
-hardware: namely, server and network capacity. This raises two
-important questions: what is the cost of foregoing
-coordination-freedom, and how commonly can \cfreedom be achieved? In
-this section, we begin to answer both of these questions via both
-simple modeling and via a real-world, proof-of-concept implementation
-of what is traditionally considered a challenging OLTP benchmark. The
-former is the realm of traditional concurrency control, while the
-latter is a first glimpse at what is attainable via \cfree algorithms
-and their appropriate application (Section~\ref{sec:futurework})
+\cfreedom, if achievable, enables scalability limited to that of
+available hardware: namely, server and network capacity. This is
+fairly powerful: a \cfree application can scale out without
+sacrificing correctness, latency, or availability. However, this
+raises two important questions: what happens if \cfreedom is not
+possible (i.e., \iconfluence is not present), and how commonly can
+\cfreedom be achieved? In this section, we begin to answer both of
+these questions via both simple modeling and via a real-world,
+proof-of-concept implementation of what is traditionally considered a
+challenging OLTP benchmark. The former is the realm of traditional
+concurrency control, while the latter offers a glimpse at what is
+attainable via coordination-avoiding database systems.
 
 \subsection{Costs of Coordination}
 
 When an application is \iconfluent and therefore executable with
-\cfreedom, performance is largely uninteresting: there is no
-fundamental reason why the application cannot attain indefinite
-scalability. We will shortly quantify these benefits in a real-world
-system, but, for now, we evaluate the alternative: what are the
-scalability bottlenecks for non-\cfree applications?
-
+\cfreedom, scalability is effectively guaranteed: given an appropriate
+execution plan, there is no fundamental reason why the application
+cannot attain indefinite scale-out. We will shortly quantify these
+benefits in a real-world system, but, for now, we evaluate the
+alternative: what happens if a system must coordinate?
 
 \begin{figure}
-\begin{center}
-\includegraphics[width=\columnwidth]{figs/singledc-twopc.pdf}
-\includegraphics[width=\columnwidth]{figs/multidc-twopc.pdf}
-\end{center}
-\caption{Atomic committment as an upper bound on throughput over LAN
-  and WAN.}
+  \includegraphics[width=\columnwidth]{figs/singledc-twopc.pdf}\\ {\centering
+    \textbf{\scriptsize a.) Local-area network scenario based on
+      traces from~\cite{bobtail}}\par}
+  \includegraphics[width=\columnwidth]{figs/multidc-twopc.pdf}\\ \textbf{\scriptsize
+    b.) Wide-area network scenario based on traces
+    from~\cite{hat-vldb} with transactions origininating from a
+    coordinator in VA (VA:~Virginia, OR:~Oregon, CA:~California,
+    IR:~Ireland, SP:~S\~{a}o Paulo, TO:~Tokyo, SI:~Singapore,
+    SY:~Sydney)}
+
+\caption{Atomic committment latency as an upper bound on throughput
+  over LAN and WAN networks.}
 \label{fig:2pc}
 \end{figure}
 
-From traditional database systems, one of the primary challenges in
-scaling database systems to both multiple replicas and across multiple
-partitions is the atomic commitment problem: if a given transaction
-can abort, all replicas (alternatively, partitions it accesses) must
-agree to unilaterally commit or abort the transaction. This problem is
-well-studied in both the database and distributed systems literature,
-with many variants including two-phase commit, decentralized two-phase
-commit, and three-phase commit. For each pair of conflicting
-transactions, the servers responsible for the conflicting operations
-must choose which (if either) should commit. This requirement for
-mutual exclusion effectively means that the duration of atomic
-commitment determines the maximum throughput for a given data item. If
-atomic commit take $10$ms, then, for traditional algorithms, we can
-achieve throughput of $100$ transactions per second per item. Indeed,
-there are many possible optimizations we can exploit, including
-batching and reordering of commits. Moreover, given non-conflicting
-transactions, aggregate system throughput can be much higher than the
-per-item throughput limitations. However, for arbitrary schedules of
-transactions, atomic commitment latency is a reasonable upper bound on
-throughput.
+As studied in traditional database systems, one of the primary
+challenges in scaling database systems to both multiple replicas and
+across multiple partitions is the atomic commitment problem: if a
+given transaction can abort, all servers it accesses (whether replicas
+of the same item or replicas of different items) must agree to
+unilaterally commit or abort the
+transaction~\cite{bernstein-book}. This \textit{atomic commitment}
+problem is well-studied in both the database and distributed systems
+literature, with many variants including two-phase commit,
+decentralized two-phase commit, and three-phase
+commit~\cite{atomictransactions,paxos-commit,traiger-tods}. For each
+pair of conflicting transactions, the servers responsible for the
+conflicting operations must choose which (if either) should commit
+(and, in database systems, is often coupled with a decision about the
+commit order~\cite{hat-vldb,calvin,traiger-tods}). Therefore, the
+duration of atomic commitment determines the the maximum achievable
+throughput for modifications to a given data item. If atomic commit
+take $10$ms, then, for abortable updates, we can achieve throughput of
+$100$ transactions per second per item. Of course, there are many
+possible optimizations to this simple rule of thumb, including
+batching and reordering of commits~\cite{calvin}. Moreover, given
+non-conflicting transactions, aggregate system throughput can be much
+higher than the per-item throughput limitations~\cite{spanner,
+  f1}. However, for arbitrary schedules of transactions, atomic
+commitment latency is a reasonable upper bound on per-item throughput.
 
 To better understand the relationship between atomic commitment
-(necessitated by non-\iconfluent operations) and scalability, we
-performed a simple analysis of achievable throughput under several
-recently reported communication delays. We simulated the latency of
-both traditional two-phase commit (three message delays with $3N$
-messages) and decentralized two-phase commit (two message delays with
-$N^2+N$ messages) under recently reported public cloud network delays
-for null RPC or ping times. To improve performance, we do not simulate
-local processing delays due to, say, locking, latching, or disk
-delays: all overhead is due solely to coordination.
+(necessitated by non-\iconfluent, abortable transactions) and
+scalability, we performed a simple analysis of achievable throughput
+under recently studied real-world communication delays over
+local-area~\cite{bobtail} and wide-area~\cite{hat-vldb} networks. We
+use Monte Carlo analysis to determine the latency of traditional
+two-phase commit~\cite{bernstein-book} and decentralized two-phase
+commit~\cite{paxos-commit}. We consider groups of increasing numbers
+of participants and assume that transactions are perfectly pipelined
+such that each participant \textit{prepare}s the next transaction
+immediately after it has \textit{commit}ted the prior
+transaction. Therefore, two-phase commit requires two message delays
+($N$ \textit{prepared} messages from all nodes to a ``coordinating''
+participant and $N$ messages to send the \textit{commit} response),
+while three-phase commit requires one message delay ($N^2$ messages in
+an all-to-all broadcast of \textit{prepared} messages). We strictly
+consider network latency (i.e., local processing time incurred by
+locking, latching, or I/O delays would only increase latency).
 
 Figures 3A and 3B show our results for both local-area and wide-area
 latencies.  In the local area, with only two servers participating in
