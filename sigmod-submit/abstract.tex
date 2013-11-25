@@ -1,20 +1,20 @@
 
 \begin{abstract}
-Concurrent access to replicated state results in a fundamental
-trade-off between coordination---surfacing in the form of
-availability, latency, and scalability---and application-level
-consistency, or semantic guarantees for end users. Traditional
-mechanisms such as serializable transactions are sufficient to ensure
-consistency at the cost of required synchronous coordination, while
-weaker guarantees in turn may sacrifice consistency for asynchronous
-coordination. In this paper, we identify a necessary and sufficient
-condition for \cfree execution without violating application-level
+Concurrent access to shared state results in a fundamental trade-off
+between coordination---surfacing in the form of availability, latency,
+and scalability---and application-level consistency, or semantic
+guarantees for end users. Traditional mechanisms such as serializable
+transactions are sufficient to ensure application-level consistency
+but require synchronous coordination, while weaker mechanisms in turn
+may sacrifice consistency for asynchronous coordination and greater
+scale. In this paper, we identify a necessary and sufficient condition
+for achieving \cfree execution without violating application-level
 consistency: \fullnameconfluence. By explicitly considering
 application-level invariants, \fullnameconfluence analysis allows
-databases to coordinate only when anomalies that might violate
-invariants are possible. This forms a theoretical basis for
-Coordination-Avoiding Databases that coordinate only when
-it is provably necessary to do so. We demonstrate the utility of
+databases to coordinate between operations only when anomalies that
+might violate invariants are possible. This forms a theoretical basis
+for Coordination-Avoiding Databases that coordinate only when it is
+provably necessary to do so. We demonstrate the utility of
 \fullnameconfluence analysis via both lightweight static analysis of a
 small SQL dialect and a proof-of-concept database prototype.
 \end{abstract}

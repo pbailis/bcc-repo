@@ -2,15 +2,15 @@
 \section{Introduction}
 \label{sec:intro}
 
-The past decade has seen increased tumult in the landscape of
-distributed database design: faced with increasing scale and
-requirements for always-on operation, many service operators shifted
-away from traditional database designs and semantics and towards
-alternatives offering greater scalability, availability, and
+The past decade has seen increased tumult in the landscape of database
+design: faced with increasing scale and requirements for always-on
+operation, many service operators shifted away from traditional
+database designs and semantics and towards alternatives offering
+greater scalability, availability, and
 performance~\cite{dynamo,bigtable,cassandra,brewer-base}. This trend
-belies a \textit{fundamental} divide in the design space of
-distributed databases: the need for synchronous coordination. On the
-one hand, ``strong'' data consistency (i.e., CAP
+belies a \textit{fundamental} divide in the design space of database
+systems: the need for synchronous coordination between concurrent
+operations. On the one hand, ``strong'' data consistency (i.e., CAP
 ``CP''~\cite{gilbert-cap}) models such as the gold standard of
 traditional database concurrency control---the serializable
 transaction, guaranteeing ``single system image''
@@ -18,7 +18,8 @@ behavior~\cite{gray-virtues}---provide semantic guarantees that are
 useful for programmers~\cite{bernstein-book}. However, these
 ``strong'' models require synchronous coordination across replicas in
 order to provide a safe response, leading to provable unavailability
-and increased latency~\cite{pacelc}. In contrast, ``weak consistency''
+and increased latency, and, in a single-site context, possible stalls
+during execution~\cite{pacelc}. In contrast, ``weak consistency''
 (i.e., CAP ``AP'', or ``highly available''~\cite{gilbert-cap}) models
 provide a subset of the semantic guarantees but do not require
 synchronous coordination and therefore do not suffer from
@@ -38,34 +39,35 @@ traditional ``weak isolation'' guarantees~\cite{adya-isolation}---seem
 to tolerate weaker guarantees. Ideally, users can choose the weakest
 possible set of semantics and still maintain correctness, but this is
 no easy task: programmers today must manually map their
-application-level consistency concerns to low-level constructs like
-admissible traces of reads and writes. This in turn requires
-developers to become experts in distributed data consistency, weak
-isolation, and replication protocols~\cite{consistency-borders}.
+application-level consistency concerns to low-level models expressed
+via constructs like admissible traces of reads and writes. This in
+turn requires developers to become experts in distributed data
+consistency, weak isolation, and replication
+protocols~\cite{consistency-borders}.
 
 In this paper, we seek an alternative approach that allows users to
-determine when it is provably \textit{necessary} to employ distributed
+determine when it is provably \textit{necessary} to employ
 coordination in order to maintain application-level
 correctness. Foregoing synchronous coordination (and therefore
 serializability) necessarily means that users will be exposed to
 isolation \textit{anomalies} resulting from concurrent
 access. Determining which anomalies matter to an application is
-impossible under a model in which a database has no knowledge of the
-application. Accordingly, we adopt a model in which users explicitly
-provide the database with \textit{integrity constraints}, or
-predicates representing application-level consistency that should
+impossible if a database system has no knowledge of the
+application. Accordingly, we consider a model in which users
+explicitly provide the database with \textit{integrity constraints},
+or predicates representing application-level consistency that should
 always be satisfied by the database state. Given these constraints,
 the database can determine which procedures will require synchronous
 coordination and, often, which read/write data consistency and
 isolation level each procedure requires. We prove that the
 \textit{\fullnameconfluence} property
-(\iconfluence)~\cite{obs-confluence}---the ability to merge isolated
-transaction executions without violating constraints---is a necessary
-and sufficient condition for executing with \cfreedom. While we
-believe that this is the first necessary and sufficient condition for
-availability without coordination, our results leverage several
-decades-old concepts from the database literature, including
-semantics-based concurrency
+(\iconfluence)~\cite{obs-confluence}---informally, the ability to
+merge isolated transaction executions without violating
+constraints---is a necessary and sufficient condition for executing
+with \cfreedom. While we believe that this is the first necessary and
+sufficient condition for availability without coordination, our
+results leverage several decades-old concepts from the database
+literature, including semantics-based concurrency
 control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability}
 synchronization for abstract data
 types~\cite{herlihy-apologizing,weihl-thesis}, and nested atomic

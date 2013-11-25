@@ -23,6 +23,17 @@ scalability. We will shortly quantify these benefits in a real-world
 system, but, for now, we evaluate the alternative: what are the
 scalability bottlenecks for non-\cfree applications?
 
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\columnwidth]{figs/singledc-twopc.pdf}
+\includegraphics[width=\columnwidth]{figs/multidc-twopc.pdf}
+\end{center}
+\caption{Atomic committment as an upper bound on throughput over LAN
+  and WAN.}
+\label{fig:2pc}
+\end{figure}
+
 From traditional database systems, one of the primary challenges in
 scaling database systems to both multiple replicas and across multiple
 partitions is the atomic commitment problem: if a given transaction
@@ -163,6 +174,17 @@ serializable transactions per second on 1 machine for sequential
 IDs---which become the scaling bottleneck---and over 700,000
 transactions per second for non-sequential IDs).
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=\columnwidth]{figs/wh_thru.pdf}
+\includegraphics[width=\columnwidth]{figs/wh_thru_single.pdf}
+\includegraphics[width=\columnwidth]{figs/pct_thru.pdf}
+\end{center}
+\caption{Performance versus number of concurrent clients.}
+\label{fig:clients}
+\end{figure}
+
+
 Unsurprisingly, as Figure YY shows, when we evaluate TPC-C New-Order
 scaling on an in-memory database prototype, we can scale throughput
 linearly to up to 100 machines. Distributed transactions do not affect
@@ -177,6 +199,15 @@ fairly inefficient implementation: we achieve only 18,000
 transactions/s/server on admittedly very powerful
 hardware. Nonetheless, in a scale-out system, single-node performance
 tuning is dwarfed by the power of largely-\cfree operations.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\columnwidth]{figs/thru_scale.pdf}\vspace{-2em}
+\end{center}
+\caption{Scalability of TPC-C New-Order.}
+\label{fig:clients}
+\end{figure}
+
 
 As Bailis et al. note, the remainder of the TPC-C transactions are
 largely uninteresting from a concurrency control perspective. All

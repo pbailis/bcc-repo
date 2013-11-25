@@ -2,31 +2,32 @@
 \section{From Theory to Practice}
 \label{sec:bcc-practice}
 
-Treating \iconfluence as a necessary and sufficient condition for
-coordination exposes a trade-off between the operations a user wishes
-to perform and the semantic guarantees she wishes to guarantee about
-her data. At the extremes, with either all reads or all writes, a user
-can guarantee any invariant. However, the space between yields a
-spectrum of possible \iconfluent guarantees. In this section, we make
-this trade-off concrete via a simple language analysis, a discussion
-of system and merge function design, and a discussion of several
-related techniques through the lens of \iconfluence.
+Using \iconfluence as test for coordination requirements exposes a
+trade-off between the operations a user wishes to perform and the
+semantic guarantees she wishes to guarantee about her data. At the
+extremes, with no mutations in her operations, a user can guarantee
+any invariant, while, with no invariants, a user can perform any
+operations. However, the space between yields a spectrum of possible
+\iconfluent guarantees. In this section, we make this trade-off
+concrete via a simple language analysis, a discussion of system and
+merge function design, and a discussion of several related techniques
+through the lens of \iconfluence.
 
 \subsection{\lang: A Simple Example Language}
 
-To illustrate the utility of \iconfluence, we consider a
-simple, informal language modeled after simple SQL DDL and stored
-procedures, \lang. In \lang, users store data in collections of
+To illustrate the utility of \iconfluence, we consider a simple,
+informal language modeled after simple SQL DDL and stored procedures,
+called \lang. In \lang, databases store mutations in collections of
 \textit{rows}, grouping rows with equivalent, pre-defined
-\textit{columns} into \textit{tables}. Each column can contain either
-\textit{string}, \textit{numeric}, or \textit{counter}
-datatype. Strings and numeric types contain arbitrary data (resp.,
-numbers) and support arbitrary modification, while counters contain
-numeric data and support algebraic operations (e.g.,
-\textit{increment}, \textit{decrement}). Users declare arbitrary
-functions over data in the form of \textit{procedures}, each of which
-consists of a variable number of \textit{statements}. Statements take
-the form of read (e.g., \textit{select}), write (e.g.,
+\textit{columns} (fields) into \textit{tables}. Each column can
+contain either \textit{string}, \textit{numeric}, or \textit{counter}
+datatype. Strings and numeric types contain arbitrary (text or
+numerical) data and support arbitrary modification, while counters
+contain numeric data and support algebraic operations (e.g.,
+\textit{increment}, \textit{decrement}). Users submit arbitrary
+functions over data in the form of \textit{transactions}, each of
+which consists of a variable number of \textit{statements}. Statements
+take the form of read (e.g., \textit{select}), write (e.g.,
 \textit{insert}), or update (e.g., \textit{update}, \textit{increment}
 for counters, \textit{delete}) operations.
 
@@ -34,7 +35,7 @@ To allow \cfreedom analysis, \lang also requires users to define
 \textit{invariants} over their tables that express application-level
 consistency requirements. Many of these are borrowed from SQL. First,
 a \textit{primary key} on columns $C_1 \dots C_n$ of table \textit{T}
-requires that, there should only be one row matching each distinct
+requires that at most one one row should match each distinct
 combination of possible values for the specified columns. Second, a
 \textit{autoincrement} constraint on a primary key of numeric type
 requires that numeric values be contiguous. Third, a \textit{foreign
@@ -88,7 +89,7 @@ increment operations, respectively, are not invariant
 commutative. Perhaps not surprisingly, all of these rules can be
 checked by simple syntactic rules; we built a simple \lang analysis
 tool that identifies all of the above constructs in addition to
-limited support for conditional updates in several days.
+limited support for conditional updates in less than a week.
 
 \subsection{Dealing with Conflicts}
 \label{sec:conflicts}
