@@ -12,9 +12,9 @@ updates be made visible (with respect to real time)?
 disseminate their \iconfluent updates. However, this can lead to
 anomalies: for example, applying multi-item writes without concurrency
 control might result in a situation where readers observe some writes
-but not the others, violating a declared foreign key constraint. There
-are two models we have identified as particularly useful. The first,
-the \textit{happens-before} relation from
+but not the others, violating a declared foreign key
+constraint. Towards this goal, two models are particularly useful. The
+first, the \textit{happens-before} relation from
 causality~\cite{lamportclocks} informally ensures that, if a write is
 visible, the writes that influenced the write are also visible. This
 is useful in the case that a user reads a write (e.g., read
@@ -32,13 +32,14 @@ transaction inserts \textit{department.id=20} and
 
 Given our \cfree model of divergent replicas with merges, if merge
 respects explicit causality (defined with respect to $I$) and RA
-isolation, $I$ will not be violated. Given that causal consistency is
-known to have substantial metadata overheads (which explicit causality
-mitigates to some extent~\cite{explicit-socc2012}) and that the best
-known implementation of RA isolation~\cite{ramp-txns} requires two
-rounds of communication for reads and writes, these models are best
-employed only when necessary. In \lang, we need only employ them in
-the case of foreign key updates.
+isolation, then $I$ will not be violated. Given that causal
+consistency is known to have substantial metadata overheads (which
+explicit causality mitigates to some extent~\cite{explicit-socc2012})
+and that the best known implementation of RA
+isolation~\cite{ramp-txns} requires two rounds of communication for
+reads and writes, these models are best employed only when
+necessary. In \lang, we need only employ them in the case of foreign
+key updates.
 
 \minihead{Controlling recency} While individual replicas may respect
 invariants, users often desire \textit{recency} guarantees on their
@@ -46,20 +47,21 @@ updates: guarantees on the visibility of their updates, either to
 their own future transactions (e.g., read-your-writes guarantees) or
 to other users (e.g., linearizability). A class of guarantees from the
 distributed systems and database literature called \textit{session
-  guarantees} enforces the former, often via so-called \textit{sticky
-  availability}: all of a user's transactions are executed against the
-same (logical) copy of the database. This satisfies common
-requirements like reading one's prior writes and can be used to
-implement more complex models such as PRAM~\cite{pram} and
-causal~\cite{lamportclocks} recency guarantees. The latter (more
-generally, global real-time recency guarantees) may require
-coordination. A bounded-staleness guarantee can indeed be provided
-with periodic broadcasts between replicas: in the failure-free case,
-this is \cfree with respect to individual requests, but, in the
-presence of failures, may sacrifice availability. More stringent
-guarantees like linearizability will require coordination for
-updates. As Bailis et al. note, these distributed systems guarantees
-are largely orthogonal to traditional ACID semantics~\cite{hat-vldb}
-(e.g., traditional serializability does not place any recency
-guarantees on cross-transaction recency) but are often of interest to
-practitioners (typically, in weaker forms like read-your-writes).
+  guarantees}~\cite{bayou} enforces the former, often via so-called
+\textit{sticky availability}: all of a user's transactions are
+executed against the same (logical) copy of the
+database~\cite{hat-vldb}. This satisfies common requirements like
+reading one's prior writes and can be used to implement more complex
+models such as PRAM~\cite{pram} and causal~\cite{lamportclocks}
+recency guarantees. The latter (more generally, global real-time
+recency guarantees) may require coordination. A bounded-staleness
+guarantee can indeed be provided with periodic broadcasts between
+replicas: in the failure-free case, this is \cfree with respect to
+individual requests, but, in the presence of failures, may sacrifice
+availability. More stringent guarantees like linearizability will
+require coordination for updates. As Bailis et al. note, these
+distributed systems guarantees are largely orthogonal to traditional
+ACID semantics~\cite{hat-vldb} (e.g., traditional serializability does
+not place any recency guarantees on cross-transaction recency) but are
+often of interest to practitioners (typically, in weaker forms like
+read-your-writes).

@@ -124,17 +124,12 @@ mini-transactions---effectively, closures that operate atomically on
 database state. In the doctor case, the mini-transaction might check
 the table for an existing doctor and simply produce no new output. In
 a less trivial case, a user might autoincrement an ID counter when
-inserting a new row; conflicts require serialization, not aborts. Of
-course, this problem of reducing conflicting operations introduces a
-new set of challenges.
+inserting a new row; non-abortable conflicts only require
+serialization, not aborts. Of course, this problem of reducing
+conflicting operations introduces a new set of challenges.
 
-Fortunately, the problem of minimizing conflicts is
-well-studied.\footnote{This problem is more traditional due to two
-  reasons. First, assumes a mechanism to execute several operations
-  atomically (serially), which requires coordination; here, we've
-  already determined that we require coordination. Second, typically
-  (but not exclusively) reasons about concrete transaction executions
-  rather than \textit{all} possible executions.} The most advanced
+Fortunately, the problem of minimizing conflicts is well-studied
+(Section~\ref{sec:relatedwork}). The most aggressive decomposition
 techniques we have encountered are those of Bernstein and Lewis's
 ``Assertional Concurrency Control'' protocols, which decompose
 transactions into minimally-sized atomic units that are subsequently
@@ -151,24 +146,23 @@ techniques in this paper.
 \label{sec:merge}
 
 Thus far, we have assumed a simple bag representation for database
-operations. This is convenient for proving properties about database
-state as well as simplifying any reasoning about the behavior of merge
-functions, but, in practice, merges may be more complex. For example,
-for many applications, it is impractical to retain all versions ever
-written to the database. Instead, databases may wish to
-\textit{compact} these versions to limit storage requirements. A
-simple compaction policy is \textit{last writer wins}, whereby writes
-are assigned a timestamp and only the highest-timestamped write to
-each time is retained. However, improper use of last-writer wins can
-yield invariant-``consistent'' but functionally inconsistent results:
-consider, for example, a user that wishes to ensure that no bank
-account has negative balance. If using a simple numeric register, if
-two users each withdraw \$60 from an account with \$100, a last-writer
-wins column might end up with \$40 total. This can be prevented by
-adding an additional invariant that states that account balances
-should reflect all additions and removals from each account, but this
-is an arguably non-trivial pitfall. Similar false negatives can be
-achieved with ``
+state. This is convenient for proving properties about database state
+and reasoning about the behavior of merge functions, but, in practice,
+merges may be more complex. For example, for many applications, it is
+impractical to retain all versions ever written to the
+database. Instead, databases may wish to \textit{compact} these
+versions to limit storage requirements. A simple compaction policy is
+\textit{last writer wins}, whereby writes are assigned a timestamp and
+only the highest-timestamped write to each time is
+retained~\cite{dynamo}. However, improper use of last-writer wins can
+yield \iconfluent but functionally inconsistent results: consider, for
+example, a user that wishes to ensure that no bank account has
+negative balance. If using a simple numeric register, if two users
+each withdraw \$60 from an account with \$100, a last-writer wins
+column might end up with \$40 total. This can be prevented by adding
+an additional invariant that states that account balances should
+reflect all additions and removals from each account, but this is an
+arguably non-trivial pitfall.
 
 We propose the use of abstract datatypes to avoid anomalies such as
 the above. The bank account example is not technically incorrect, but
@@ -177,18 +171,18 @@ real-world examples, users' successful operations should be reflected
 in any converged database state; by choosing merge functions that
 reflect this ``durability'' requirement, a database can avoid these
 odd anomalies. While many practitioners today must hand-code their own
-merge functions (a la Bayou or Dynamo conflict reconciliation), we
-advocate a model in which a \textit{library} of datatype-specific
-merge functions are presented to users. This approach---suggested by
-concurrency control for abstract data types~\cite{weihl-thesis} and,
-more recently, Commutative and Replicated Data
-Types~\cite{crdt}---simplifies the task of merging updates while also
-reducing the overheads of operations. Unlike this prior work, however,
-\iconfluence analysis \textit{also} guarantees the correctness of
-(specified) arbitrary transformations on these datatypes, thus
-eliminating the problem of Conway et al.'s \textit{scope
-  dilemma}~\cite{blooml}, whereby operations on individual data items
-are valid but their composition is not.
+merge functions (e.g., Bayou~\cite{bayou} and Dynamo~\cite{dynamo}
+conflict reconciliation), we advocate a model in which a
+\textit{library} of datatype-specific merge functions are presented to
+users. This approach---suggested by concurrency control for abstract
+data types~\cite{weihl-thesis} and, more recently, Commutative and
+Replicated Data Types~\cite{crdt}---simplifies the task of merging
+updates while also reducing the overheads of operations. Unlike this
+prior work, however, \iconfluence analysis \textit{also} guarantees
+the correctness of (specified) arbitrary transformations on these
+datatypes, thus eliminating the problem of Conway et al.'s
+\textit{scope dilemma}~\cite{blooml}, whereby operations on individual
+data items are valid but their composition is not.
 
 \input{isolation-subsec}
 

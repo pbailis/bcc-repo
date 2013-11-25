@@ -7,23 +7,24 @@ field to Section~\ref{sec:relatedwork} but briefly discuss three in
 detail here.
 
 \minihead{Escrow} The Escrow transaction method~\cite{escrow}
-increases availability by allocating a share of non-\iconfluent
+increases availability by allocating a ``share'' of non-\iconfluent
 operations between multiple processes. For example, in a bank account,
 a remaining balance of $\$100$ might be divided between $5$ bank
-servers, such that each server can dispense $\$20$ to end user
-withdrawals. If any given server runs out of pre-allocated money, it
-can ask another server to ``refresh'' its current supply by borrowing
-more. This Escrow technique allows availability for otherwise
-non-\iconfluent operations up until a pre-determined threshold. In the
-context of our \cfreedom analysis, this is equivalent to limiting the
-branching factor of the derivation tree to a (pre-determined) constant
-factor: in the example above, the number of concurrent withdrawals
-cannot exceed $5$ servers. This indeed still results in unavailability
-as, say, servers are partitioned from one another, but it this
-restricted branching is a strengthening of our model and formalism. We
-do not attempt a full formalism here but believe that adopting both
-Escrow and alternative time-, versioned-, and numerical- drift-based
-models~\cite{yu-conit} is an area for worthwhile future work.
+servers, such that each server can dispense $\$20$ to users without
+requiring coordination to enforce an invariant of non-negative bank
+account balances. If any given server runs out of pre-allocated money,
+it can ask another server to ``refresh'' its current supply by
+borrowing more. This Escrow technique allows availability for
+otherwise non-\iconfluent operations up until a pre-determined number
+of concurrent operations. In the context of our \cfreedom analysis,
+this is equivalent to limiting the branching factor of the execution
+trace to a (pre-determined) constant factor: in the example above, the
+number of concurrent withdrawals cannot exceed $5$ servers. This
+indeed still results in unavailability in worst-case scenarios but
+reduces coordination in the average case. We do not attempt a full
+formalism here but believe that adopting both Escrow and alternative
+time-, versioned-, and numerical- drift-based models~\cite{yu-conit}
+is an area for worthwhile future work.
 
 \minihead{Immutability} Immutablilty has long been touted as a
 strategy for improving the ability to reason about and program
@@ -48,13 +49,13 @@ confluence. CALM states that, if applications are restricted to
 monotonic logic, they will produce deterministic output despite
 reordering of execution. This indeed precludes non-\iconfluent
 behavior such as subtracting from bank account balances, but it is
-restricting in at least two ways. First, determinism is often not
+restrictive in at least two ways. First, determinism is often not
 necessary as long as application-level invariants are satisfied: take,
 for example, our audit and bank account balance from
 Section~\ref{sec:bcc-theory} (alternatively, as a classic example from
 distributed computing, consensus objects require that exactly one
 value is chosen, not that a \textit{particular value} is chosen---this
-is core to the problem specificiation and is referred to as
+is core to the problem specificiation, where it is called
 \textit{non-triviality}). Users may wish to perform non-monotonic
 logic, and, as we have seen, non-monotonic logic is sometimes safe to
 execute---trivially, if there are no invariants that correspond to the
@@ -63,6 +64,6 @@ are not necessarily correct with respect to application-level
 invariants. If a user issues only \textit{increment} operations on a
 distributed counter, then, indeed, the program is monotonic and will
 be deterministic despite re-ordering of increment operations. However,
-if the desired behavior is to maintain a maximum value of the counter,
-monotonicity of the program actions is insufficient (indeed, the
-condition is not monotonic but the program is).
+if the desired behavior is to maintain a specific counter value,
+monotonicity of the program actions is insufficient to guarantee
+correctness.

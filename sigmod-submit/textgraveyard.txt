@@ -1,3 +1,11 @@
+\footnote{This problem is more traditional due to two
+  reasons. First, it assumes a mechanism to execute several operations
+  atomically (serially), which requires coordination; here, we have
+  instead (largely) focused on determining when coordination is
+  required at all. Second, this work typically (but not exclusively) reasons
+  about concrete transaction executions rather than \textit{all}
+  possible executions.}
+
 \miniheadnostop{Why specify stored procedures?} Much of the database
 literature assumes a model in which users execute arbitrary queries
 composed of arbitrary groupings of operations that are not known in
