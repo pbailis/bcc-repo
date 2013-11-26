@@ -1,0 +1,17 @@
+
+Intro:
+
+--Needs to be more crisp, less repetitive (e.g., "necessary and sufficient")
+--Top-down pitch: serializability is not achievable, instead users give invariants, system decides when to coordinate, and result is that you only coordinate when necessary (e.g., back to the world of traditional concurrency control)
+--Txn concept is not declarative enough
+--Punchline: most workloads satisify invariants (most constraints are okay)
+--Focus on workloads
+
+Motivation:
+--"Transactions and Isolation" can be shortened
+--Example: more punchy results
+
+Model:
+--Shorten it!
+--"Merge" twice
+

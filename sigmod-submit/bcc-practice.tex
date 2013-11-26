@@ -48,22 +48,38 @@ additional constraints to each column: \textit{not equals},
   than}, \textit{greater than}, and \textit{sum\_of} (the final
 representing an aggregate of multiple other numeric columns).
 
-
-\begin{table*}
-\begin{tabular}{|c|c|c|}
+\begin{table}
+\definecolor{yesgray}{gray}{0.9}
+\begin{center}
+\begin{tabular}{|l|c|c|}
 \hline
-Constraint & \iconfluent Operations & Non-\iconfluent Operations \\\hline
-\texttt{PRIMARY KEY} & modifications without specified values & modification with values specified \\
-\texttt{AUTOINCREMENT} & - & insertion \\
-\texttt{FOREIGN KEY} & mutation with pairing & mutation without pairing, deletion\\
-\texttt{!=, ==} & all operations & - \\
-\texttt{<} & increment, modification & decrement \\
-\texttt{>} & decrement, modification & increment\\\hline
-
+Constraint & Operation & \iconfluent? \\\hline
+\rowcolor{yesgray}
+Equality, Inequality & Any & Yes\\
+\rowcolor{yesgray}
+Uniqueness & Choose some value & Yes\\
+Uniqueness & Choose specific value & No\\
+\rowcolor{yesgray}
+> & Increment & Yes\\
+< & Decrement & No \\
+\rowcolor{yesgray}
+> & Increment & Yes \\
+< & Decrement & No \\
+\rowcolor{yesgray}
+Foreign Key & Insert & Yes\\
+\rowcolor{yesgray}
+Foreign Key & Delete Cascade & Yes\\
+Foreign Key & Delete & No\\
+\rowcolor{yesgray}
+Secondary Indexing & Update & Yes \\
+\rowcolor{yesgray}
+Materialized Views & Update & Yes \\
+\texttt{AUTO\_INCREMENT} & Insert & No\\\hline
 \end{tabular}
+\end{center}
 \caption{\iconfluence for \lang.}
 \label{table:invariants}
-\end{table*}
+\end{table}
 
 With this simple (but expressive) language in mind, we can enumerate a
 set of \iconfluent and non-\iconfluent operations. We do not claim

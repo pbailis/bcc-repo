@@ -1,3 +1,20 @@
+\begin{table*}
+\begin{tabular}{|c|c|c|}
+\hline
+Constraint & \iconfluent Operations & Non-\iconfluent Operations \\\hline
+\texttt{PRIMARY KEY} & modifications without specified values & modification with values specified \\
+\texttt{AUTOINCREMENT} & - & insertion \\
+\texttt{FOREIGN KEY} & mutation with pairing & mutation without pairing, deletion\\
+\texttt{!=, ==} & all operations & - \\
+\texttt{<} & increment, modification & decrement \\
+\texttt{>} & decrement, modification & increment\\\hline
+
+\end{tabular}
+\caption{\iconfluence for \lang.}
+\label{table:invariants}
+\end{table*}
+
+
 \footnote{This problem is more traditional due to two
   reasons. First, it assumes a mechanism to execute several operations
   atomically (serially), which requires coordination; here, we have

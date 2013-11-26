@@ -54,7 +54,12 @@ commit~\cite{atomictransactions,paxos-commit,traiger-tods}. For each
 pair of conflicting transactions, the servers responsible for the
 conflicting operations must choose which (if either) should commit
 (and, in database systems, is often coupled with a decision about the
-commit order~\cite{hat-vldb,calvin,traiger-tods}). Therefore, the
+commit order~\cite{hat-vldb,calvin,traiger-tods}). Regardless of
+implementation technique (e.g., two-phase locking, OCC validation), if
+multiple servers participate in the commit decision (e.g., locking
+across partitions or employing multiple active validators), they must
+undergo atomic commitment (whereas a single-server implementation
+would be limited in throughput to its capacity). Therefore, the
 duration of atomic commitment determines the the maximum achievable
 throughput for modifications to a given data item. If atomic commit
 take $10$ms, then, for abortable updates, we can achieve throughput of
