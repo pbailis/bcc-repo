@@ -23,9 +23,9 @@ the results of applying a set of transactions to database state such
 that each intermediate state is valid:
 
 \begin{definition}[Valid Sequence]
-Given invariant $I$, $T_i(D) = t_{i1}(\dots t_{in}(D))$ is an
-$I$-valid sequence of transactions in $T$ if each $t_{ij} \in T$ and
-each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
+Given invariant $I$ and $\{t_{i1}, \dots, t_{in}\} \in T$, $S_i(D) =
+t_{i1}(\dots t_{in}(D))$ is an $I$-valid sequence of transactions in
+$T$ if each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
 \end{definition}
 
 Using the concept of valid sequences, we can formalize the
@@ -34,8 +34,8 @@ with a common ancestor are valid under merge:
 
 \begin{definition}[\iconfluence]
 Given invariant $I$, transactions $T$ are $I$-confluent if, for all
-$I$-valid sequences $T_1(D_0)$, $T_2(D_0)$ of transactions in $T$,
-$I(T_1(D_0) \sqcup T_2(D_0))$ is $I$-valid.
+$I$-valid sequences $S_1(D_0)$, $S_2(D_0)$ of transactions in $T$,
+$I(S_1(D_0) \sqcup S_2(D_0))$ is $I$-valid.
 \end{definition}
 
 Figure~\ref{fig:iconfluence} depicts an \iconfluent execution using
@@ -45,20 +45,19 @@ programming models~\cite{hewitt-forkjoin} (e.g., version control
 systems like Git and Subversion). \iconfluence allows users to ``check
 out'' a known good copy of database state ($I(D)$) and perform
 modifications to the state in isolation---as long as these
-modifications are ``safe'' ($I(T_i(D))$ is true). Under \iconfluent
+modifications are ``safe'' ($I(S_i(D))$ is true). Under \iconfluent
 operations, any concurrent modifications to database state can be
-safely ``merged'' to provide a valid database state ($I(T_1(D) \cup
-T_2(D))$ is true). As we have alluded, the \iconfluence depends on the
+safely ``merged'' to provide a valid database state ($I(S_1(D) \cup
+S_2(D))$ is true). As we have alluded, the \iconfluence depends on the
 semantics of updates: an experienced programmer can likely think of
 several operations and invariants that are not \iconfluent as well as
 many that are. For example, if $I=\textit{no bank account has negative
   balance}$, then $T=\{\textit{increment user A's balance by 100,
   increment user A's balance by 50}\}$ is \iconfluent, as is
-  $T\cup\{$\textit{audit the database and store the sum of user
-    balances in the \textrm{audit} table} but not
-  $T\cup\{$\textit{decrement user A's balance by 200}$\}$. We defer a
-  full discussion of the space of operations until
-  Section~\ref{sec:bcc-practice}.
+$T\cup\{$\textit{audit the database and store the sum of user balances
+  in the \textrm{audit} table} but not $T\cup\{$\textit{decrement user
+  A's balance by 200}$\}$. We defer a full discussion of the space of
+operations until Section~\ref{sec:bcc-practice}.
 
 \begin{figure}
 \begin{center}
