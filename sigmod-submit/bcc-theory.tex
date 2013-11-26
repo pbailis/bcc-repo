@@ -11,10 +11,10 @@ database is required to maintain.
 We begin by introducing the concept of invariant confluence
 (hereafter, \iconfluence)~\cite{obs-confluence}. Applied in a
 transactional context, the \iconfluence property ensures that if the
-effects of two series of separate transactions ($T_i$, $T_j$) that
+effects of two series of separate transactions ($S_i$, $S_j$) that
 operate independently on the same copy of valid database state are
-valid ($I(T_i(D))$, $I(T_j(D))$ hold), their effects can safely be
-combined to produce a valid database state ($I(p_i(D) \sqcup p_j(D))$
+valid ($I(S_i(D))$, $I(S_j(D))$ hold), their effects can safely be
+combined to produce a valid database state ($I(S_i(D) \sqcup S_j(D))$
 holds). \iconfluence will form the formal basis of a relationship
 between \cfreedom and a set of invariants.
 
