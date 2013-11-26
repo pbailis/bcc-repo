@@ -2,121 +2,128 @@
 \section{Introduction}
 \label{sec:intro}
 
-The past decade has seen increased tumult in the landscape of database
-design: faced with increasing scale and requirements for always-on
-operation, many service operators shifted away from traditional
-database designs and semantics and towards alternatives offering
-greater scalability, availability, and
-performance~\cite{dynamo,bigtable,cassandra,brewer-base}. This trend
-belies a \textit{fundamental} divide in the design space of database
-systems: the need for synchronous coordination between concurrent
-operations. On the one hand, ``strong'' data consistency (i.e., CAP
-``CP''~\cite{gilbert-cap}) models such as the gold standard of
-traditional database concurrency control---the serializable
-transaction, guaranteeing ``single system image''
-behavior~\cite{gray-virtues}---provide semantic guarantees that are
-useful for programmers~\cite{bernstein-book}. However, these
-``strong'' models require synchronous coordination across replicas in
-order to provide a safe response, leading to provable unavailability
-and increased latency, and, in a single-site context, possible stalls
-during execution~\cite{pacelc}. In contrast, ``weak consistency''
-(i.e., CAP ``AP'', or ``highly available''~\cite{gilbert-cap}) models
-provide a subset of the semantic guarantees but do not require
-synchronous coordination and therefore do not suffer from
-unavailability or latency~\cite{hat-vldb}. The latter category of
-models (and many of their implementations~\cite{swift}) defer
-coordination until some future point~\cite{calm,consistency-borders}
-and are therefore are perfectly scalable, even at the granularity of
-an individual database record. However, in giving up semantic
-guarantees, weak isolation models sacrifice intuitive programmability.
+% coordination is fundamental to scalability, availability, low
+% latency
 
-This provable trade-off between semantics and coordination leads
-programmers to a difficult choice. On the one hand, many applications
-cannot operate correctly without serializable or Snapshot Isolation
-guarantees. However, on the other hand, many applications---whether
-running on newfangled stores providing weak data consistency or under
-traditional ``weak isolation'' guarantees~\cite{adya-isolation}---seem
-to tolerate weaker guarantees. Ideally, users can choose the weakest
-possible set of semantics and still maintain correctness, but this is
-no easy task: programmers today must manually map their
-application-level consistency concerns to low-level models expressed
-via constructs like admissible traces of reads and writes. This in
-turn requires developers to become experts in distributed data
-consistency, weak isolation, and replication
-protocols~\cite{consistency-borders}.
+Minimized coordination is core to high-performance and scalable
+database designs. Coordination---informally, the requirement that
+concurrently executing operations communicate or otherwise stall in
+order to complete---is expensive, prohibiting parallel execution,
+limiting availability in the presence of partial failure, and
+requiring potentially high latency as communication costs increase
+(e.g., wide-area networks)~\cite{hat-vldb,gilbert-cap}. A system that
+completely eschews synchronous coordination---that is
+\textit{\cfree}---can scale indefinitely: adding more query processing
+capacity (e.g., servers) does not incur additional overhead as queries
+can execute independently from one another. In contrast with scale-out
+across multiple data items (as in ``shared-nothing''
+designs~\cite{bernstein-book,f1,spanner,pnuts,hstore}), \cfreedom
+allows scale-out even at the granularity of a single, contended data
+item and ensures both high availability~\cite{gilbert-cap} and low
+latency execution~\cite{pacelc}.
 
-In this paper, we seek an alternative approach that allows users to
-determine when it is provably \textit{necessary} to employ
-coordination in order to maintain application-level
-correctness. Foregoing synchronous coordination (and therefore
-serializability) necessarily means that users will be exposed to
-isolation \textit{anomalies} resulting from concurrent
-access. Determining which anomalies matter to an application is
-impossible if a database system has no knowledge of the
-application. Accordingly, we consider a model in which users
-explicitly provide the database with \textit{integrity constraints},
-or predicates representing application-level consistency that should
-always be satisfied by the database state. Given these constraints,
-the database can determine which procedures will require synchronous
-coordination and, often, which read/write data consistency and
-isolation level each procedure requires. We prove that the
-\textit{\fullnameconfluence} property
-(\iconfluence)~\cite{obs-confluence}---informally, the ability to
-merge isolated transaction executions without violating
-constraints---is a necessary and sufficient condition for executing
-with \cfreedom. While we believe that this is the first necessary and
-sufficient condition for availability without coordination, our
-results leverage several decades-old concepts from the database
-literature, including semantics-based concurrency
-control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability}
-synchronization for abstract data
-types~\cite{herlihy-apologizing,weihl-thesis}, and nested atomic
-transactions~\cite{atomictransactions}
+% serializability is traditional answer to correctness, but requires
+% coordination
+
+Unfortunately, traditional approaches to maintaining correct data
+during concurrent access are at odds with the goal of \cfreedom. The
+serializable transaction concept provides concurrent operations
+(transactions) with the illusion that they are executing in some
+serial order~\cite{bernstein-book}. Isolation provides correctness: if
+each individual operation maintains correct application state, then an
+equivalent serial composition of transactions will not violate
+correctness~\cite{gray-virtues}. However, this isolation has a cost:
+serializability is provably unachievable with
+\cfreedom~\cite{hat-vldb,davidson-survey}. Giving up serializability
+means that, for arbitrary combinations of transactions, concurrent
+execution will result in isolation \textit{anomalies} that could not
+have resulted from serial execution~\cite{adya-isolation}. For
+arbitrary applications, these anomalies in turn result in
+application-level \textit{inconsistencies}. For example, multiple
+users might be assigned a given username, or, in a classic example, a
+bank account balance might be negative. By disallowing all
+concurrency-related anomalies, serializability is a
+\textit{sufficient} condition for maintaining correct data---with a
+cost.
+
+% which anomalies matter depends on application; think about
+% invariants instead, use to identify necessary and sufficient
+% condition
+
+If serializability prevents all isolation anomalies, a system that
+coordinates only when \textit{necessary} for correctness should only
+prevent anomalies that would result in application-level
+inconsistency. To understand which anomalies matter, we will require
+more information about applications than
+traditional~\cite{bernstein-book,gray-virtues} (but not
+all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics})
+transaction models: we will require users to explicitly specify
+\textit{invariants} (i.e., integrity constraints)~\cite{traiger-tods},
+or predicates representing application-level correctness criteria that
+should always hold true across accesses to database state. For
+example, users might inform the database that usernames should be
+unique and that account balances should be non-negative. By widening
+the declarative transactional API, we can can determine which
+anomalies will violate the provided set of invariants. In contrast
+with the current practice of requiring users to manually specify an
+isolation mode (typically expressed via admissible traces of reads and
+writes; an often daunting task for non-expert
+users)~\cite{consistency-borders}, we require users to specify their
+application-level consistency criteria in terms of application-level
+predicates.
+
+We present a necessary and sufficient condition for \cfree execution
+under a given set of invariants, called \textit{invariant
+  confluence}. This \iconfluence formalizes---at an application
+level---which operations can be safely executed independently and in
+parallel and subsequently ``merged'' into consistent database
+state. We prove that a system can maintain invariants across state
+during \cfree and available operation along with convergence of
+database state if and only if the invariants are
+\iconfluent. Accordingly, \iconfluence analysis directly captures the
+scalability of a given application: if an application passes the test,
+it can be executed without coordination. If an application fails
+the \iconfluence test, it will (provably) \textit{have} to coordinate
+in order to maintain correctness. This provides the foundation for
+\textit{coordination-avoiding} database designs that coordinate only
+when required. Our core results marry theoretical results from
+rule-based rewriting systems~\cite{obs-confluence}, distributed
+computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb}, and many
+prior database concepts such as semantics-based concurrency
+control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability,atomictransactions,weihl-thesis}
 (Section~\ref{sec:relatedwork}).
 
-This theory provides a foundation for \textit{coordination-avoiding
-  databases}: systems that coordinate only when necessary.  If a
-coordination-avoiding database system coordinates, it is because
-application consistency \textit{cannot} be guaranteed without doing
-so. Accordingly, coordination-avoidance analysis directly captures the
-scalability of a given application: an application with \cfreedom can
-effectively scale infinitely with the addition of more machines, while
-the degree to which conflicts are distributed directly determines an
-application's ability to scale out and up. We pithily summarize the
-philosophy of coordination-avoidance via two high-level principles:
-\begin{introenumerate}
-\item \textit{Let concurrency safely flourish}: if a user's operations
-  are \iconfluent, they should be executed on separate copies of
-  database state, without coordination.
-\item \textit{Minimize the distribution (both in space and time) of
-  conflicting operations}: if a user's operations do not commute,
-  execute the conflicting sections while involving as few servers and
-  with as short of a critical section as possible.
-\end{introenumerate}
-To illustrate the utility of these principles, we embody \iconfluence
-analysis in a tiny language, \lang, and analyze applications for
-\cfreedom. As a proof of concept, we analyze and implement the TPC-C
-New-Order on a coordination-avoiding database prototype and achieve
-linear scalability to over 1.8 million transactions per second on a
-100-node EC2 cluster (nearly four times the current record held by
-Oracle). Our prototype's competitive advantage is not due to
-bleeding-edge performance-oriented engineering but is instead due to
-theoretically-motivated, judicious use of coordination.
+% many workloads are amenable to cfree execution! the following ICs
+% are actually okay. but if not, here's the cost.
 
-Overall, this paper attempts to improve distributed database
-programmability by unifying industry trends with the collected wisdom
-of the database community. We recognize the scalability advantages of
-weakly consistent data stores but reconcile them with the
-programmability benefits of maintaining traditional ACID Consistency
-on behalf of application designers. In doing so, we place an
-additional burden on programmers, who must either provide the database
-with a complete and machine-interpretable specification of
-application-level invariants or otherwise must perform analysis
-themselves and manually label their transactions. For programmers that
-wish to achieve their application's maximum scalability, we believe
-that both of these alternatives are far preferable to the
-state-of-the-art ad-hoc mapping from application-level ACID
-Consistency to distributed data consistency models performed today. We
-accordingly view this work as the first step in revisiting core
-database concepts like query optimization, failure recovery, and data
-layout in light of increased knowledge of application-level semantics.
+We subsequently apply our \iconfluence coordination analysis to
+existing applications and quantify the costs of
+coordination. Specifically, we examine a subset of SQL and demonstrate
+that many integrity constraints are indeed achievable without
+coordination, including forms of foreign key constraints, unique value
+generation, and many row-level check constraints. In contrast, others,
+like unique value checking and sequence number generation do not. We
+apply this analysis to existing benchmarks to determine their required
+degree of coordination: surprisingly, many---based on their
+specifications---are \cfree. As a case study, we focus on the TPC-C
+benchmark~\cite{tpcc}, which has seen substantial popularity in the
+database community as a gold standard for new concurrency control
+algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore}. We show
+that, in fact, eleven of twelve of TPC-C's integrity constraints are
+\iconfluent and, more importantly, compliant TPC-C can be implemented
+in a \cfree manner for distributed operation. As a proof-of-concept,
+we consequently scale a simple coordination-avoiding database
+prototype linearly, to over $1.8M$ New-Order transactions per second
+on a $100$-node EC2 cluster. We also demonstrate the costs of
+coordination by analyzing upper bounds on throughput due to to atomic
+commitment overhead.
+
+While our results are not comprehensive, they provide a formal but
+pragmatic grasp on the trade-off between coordination and
+application-level consistency. We accordingly view this work as the
+first step in revisiting core database concepts like query
+optimization, failure recovery, and data layout in light of
+coordination avoidance and increased knowledge of application-level
+semantics.
+
+
