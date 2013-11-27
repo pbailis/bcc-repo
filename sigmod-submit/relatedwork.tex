@@ -47,8 +47,8 @@ Much of semantics-based concurrency control uses application semantics
 as a means to reduce conflicts during validation or execution of
 concrete schedules of transactions (at
 runtime)~\cite{badrinath-semantics} (i.e., via commutativity
-analysis~\cite{weihl-thesis} or \textit{serial dependency
-  relations}~\cite{herlihy-apologizing}). This prior work is eminently
+analysis~\cite{weihl-thesis} or serial dependency
+relations~\cite{herlihy-apologizing}). This prior work is eminently
 useful when, indeed, conflicts are possible. However, this validation
 (and conflict detection) presumes communication between operations to
 reach commit decisions. We instead seek semantics that are achievable
@@ -59,13 +59,13 @@ run-time validation.
 
 Several systems use application-provided labels as a means towards
 determining when concurrent operations are safe. SDD-1~\cite{sdd1} and
-Garcia-Molina~\cite{garciamolina-semantics}'s \textit{compatibility
-  sets} describe (manually-labeled) classes of transactions that can
+Garcia-Molina~\cite{garciamolina-semantics}'s compatibility
+  sets describe (manually-labeled) classes of transactions that can
 be safely interleaved as a series of atomic steps (producing
-\textit{semantically consistent schedules}; equivalent to Korth's
+``semantically consistent schedules''; equivalent to Korth's
 predicate-wise
 serializability~\cite{korth-serializability}). Bernstein and Lewis's
-\textit{Assertional Concurrency Control}~\cite{decomp-semantics}
+Assertional Concurrency Control~\cite{decomp-semantics}
 furthers this analysis by leveraging axiomatic program analysis to
 decompose transactions into a set of atomic steps and requiring
 Hoare-style pre- and post-conditions for each individual
@@ -77,16 +77,16 @@ obviates the need for manually labeling transaction types.
 Program decomposition via techniques like chopping~\cite{chopping}
 (which is automatic), nested atomic
 transactions~\cite{atomictransactions} (as in our sequence number
-assignment of New-Order), and a range of alternate \textit{extended
-  transaction} models~\cite{acta} can further reduce conflicts once it
+assignment of New-Order), and a range of alternate extended
+  transaction models~\cite{acta} can further reduce conflicts once it
 is established that invariant-based conflicts can actually occur.
 
 \minihead{State-based Commutativity} Related work often reasons about
 the commutativity of transaction \textit{outcomes}: for example, two
 transactions provide state-based commutativity if their return value
 is the same the the final state of the database is equivalent despite
-reordering~\cite{weihl-data,weihl-thesis}. This \textit{state-based
-  commutativity} is a sufficient but not necessary condition for
+reordering~\cite{weihl-data,weihl-thesis}. This state-based
+  commutativity is a sufficient but not necessary condition for
 concurrent execution. Despite its conservativeness, these techniques
 have been successfully applied in diverse fields including both
 database concurrency control and, recently, operating systems
@@ -114,17 +114,17 @@ useful grounding for our own formalism and see further comparison to
 rewriting systems as an interesting starting point for future
 theoretical analysis. Similar rewrite system concepts---including
 confluence---have been successfully integrated into database systems
-under the moniker \textit{active databases} (see~\cite{activedb-book}
+under the moniker ``active databases'' (see~\cite{activedb-book}
 for a survey; e.g., triggers and rule processing), although we are not
 familiar with a concept analogous to \iconfluence in this literature.
 
 \minihead{Program analysis} The problem of maintaining correctness
 despite concurrent modification is well studied in the programming
 languages community. In particular, \iconfluence condition is closely
-related to Goicki-Gries \textit{interference
-  freedom}~\cite{owickigries}, whereby concurrent operations cannot
+related to Goicki-Gries interference
+  freedom~\cite{owickigries}, whereby concurrent operations cannot
 interfere with one another's preconditions for execution as well as
-Lamport's ``monotone assertions''~\cite{lamport-safety}. As
+Lamport's monotone assertions~\cite{lamport-safety}. As
 Bernstein and Lewis~\cite{decomp-semantics} and Agrawal et
 al.~\cite{agarwal-consistency} demonstrate, much of this programming
 language theory on axomatic decomposition of concurrent programs can
