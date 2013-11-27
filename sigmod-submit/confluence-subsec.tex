@@ -33,7 +33,7 @@ immutability eliminates the problem of handling namespace collisions
 (either by pre-allocating or otherwise coordinating in order to manage
 the space of IDs). However, immutability is subject to many of the
 same problems as non-\iconfluent operations. For example, if we store
-bank deposits/withdrawls in a ledger instead of perfoming commutative
+bank deposits and withdrawals in a ledger instead of perfoming commutative
 update-in-place (as is encouraged in \lang), we have not actually
 solved the problem of ensuring that no account has negative
 balances. Instead, what immutability provides is a simple

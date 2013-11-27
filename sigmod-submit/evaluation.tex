@@ -110,16 +110,16 @@ $2$ transaction per second regardless of situation.
 While this study is based solely on reported latencies, deployment
 reports corroborate our findings. For example, Google's F1 uses
 optimistic concurrency control via WAN with commit latencies of
-$50--150ms$. As the authors discuss, this limits throughput to between
-$6-20$ transactions per second per data item. Megastore's average
-write latencies of $100-400$ms suggest similar throughputs to those
-that we have predicted. Indeed, \textit{aggregate throughput} may be
-substantially greater as multiple 2PC rounds for disjoint sets of data
-items may safely proceed in parallel. However, \textit{worst-case}
-access patterns will indeed greatly limit scalability: as many before
-us have noted, adding more active servers/replicas in non-\cfree
-models like serializability can greatly reduce
-throughput~\cite{abadi-vll,calvin,jones-dtxn}.
+$50$ to $150$ms. As the authors discuss, this limits throughput to between
+$6-20$ transactions per second per data item~\cite{f1}. Megastore's
+average write latencies of $100$ to $400$ms suggest similar throughputs to
+those that we have predicted~\cite{megastore}. Indeed,
+\textit{aggregate throughput} may be substantially greater as multiple
+2PC rounds for disjoint sets of data items may safely proceed in
+parallel. However, \textit{worst-case} access patterns will indeed
+greatly limit scalability: as many before us have noted, adding more
+active servers/replicas in non-\cfree models like serializability can
+greatly reduce throughput~\cite{abadi-vll,calvin,jones-dtxn}.
 
 \subsection{Proof of Concept}
 
@@ -155,8 +155,8 @@ describe below:
   these updates are visible, or none are.
 
 \item \textit{Sequential ID assignment (Consistency Criteria
-  3.3.2.2-3).} Each New-Order executed in a pre-determined warehouse
-  district should have a sequentially assigned ID (e.g.,
+  3.3.2.2-3).} Each New-Order executed in a pre-determined
+  per-warehouse requires a sequentially assigned ID (e.g.,
   \texttt{AUTO\_INCREMENT}). This poses a challenge: the
   \texttt{DISTRICT\_NEXT\_O\_ID} column must be incremented at the
   same time that corresponding rows are inserted into the
@@ -187,10 +187,10 @@ atomic increment-and-get operation on each district's order sequence
 number. Our \cfreedom analysis shows that eleven of twelve required
 constraints are achievable without synchronous coordination and the
 twelfth is implementagble a non-abortable operation. Hence,
-scalability---even for a single warehouse---is limited to
+scalability for a single warehouse is limited to atomic
 increment-and-get on a single machine. Indeed, when we execute the
 above query plan on a linearizable main-memory database prototype
-(Figure~\ref{fig:clients}; disregarding think time and per-warehouse
+(Figure~\ref{fig:clients}; we disregard think time and per-warehouse
 client limits, as is
 standard~\cite{calvin,hstore,abadi-vll,jones-dtxn}), we indeed
 bottleneck on sequence number assignment. On EC2 cc2.8xlarge

@@ -1,11 +1,12 @@
 \subsection{From Applications to Isolation Models}
 
 Even if an application is \iconfluent and therefore achievable with
-coordination-freedom, application designers (or, ideally, a database
-system) may still wish to choose an appropriate isolation model. There
-are two primary decisions a system faces: how should new updates be
-made visible (with respect to other updates), and how quickly should
-updates be made visible (with respect to real time)?
+coordination-freedom, application designers (or, alternatively, a
+database query planner) may still wish to choose an appropriate
+isolation model. There are two primary decisions a system faces: how
+should new updates be made visible (with respect to other updates),
+and how quickly should updates be made visible (with respect to real
+time)?
 
 \minihead{Making updates visible} Ideally, users could instead use
 \textit{no} concurrency control or \textit{eventual consistency} to

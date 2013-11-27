@@ -1,3 +1,25 @@
 
 \section{Conclusion}
 \label{sec:conclusion}
+
+In this paper, we have developed a necessary and sufficient condition
+for maintaining consistency during coordination-free execution of
+transactions over shared database state. To do so, we assumed a model
+in which users submit explicit integrity constraints to the database,
+which subsequently analyzes them for the \iconfluence
+property. \iconfluence formalizes the requirement that any two valid
+copies of database state can be ``merged'' into a common, valid
+database state. We subsequently used this test on a variety of common
+integrity constraints and applied these results to the TPC-C
+benchmark, analyzing the overheads of coordination when \iconfluence
+does not hold.
+
+These initial results indicate that, at least for large-scale
+distributed systems, the time for alternative, semantics-based
+correctness criteria may have come. As system deployments continue to
+scale and geo-replicate, elasticity provided by coordination-avoiding
+concurrency control strategies minimize the challenges of maintaining
+availability, low latency, and high-performance transaction processing
+across database replicas. We accordingly view this theoretical
+foundation (with promising real-world deployment results) as the first
+steps towards realizing full coordionation-avoiding database systems.

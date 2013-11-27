@@ -94,7 +94,7 @@ design~\cite{kohler-commutativity}. State-based commutativity analysis
 does not require the specification of application-level invariants
 but, as~\cite{kohler-commutativity} notes, is accordingly not
 necessary for maintaining correctness for all (and often common)
-applications.
+applications~\cite{lamport-audit}.
 
 \minihead{Term rewriting} Our use of \iconfluence is directly inspired
 by the literature on term rewriting and constraint programming. A
@@ -124,7 +124,7 @@ languages community. In particular, \iconfluence condition is closely
 related to Goicki-Gries \textit{interference
   freedom}~\cite{owickigries}, whereby concurrent operations cannot
 interfere with one another's preconditions for execution as well as
-Lamport's ``monotone assertions''~\cite{lamport-correctness}. As
+Lamport's ``monotone assertions''~\cite{lamport-safety}. As
 Bernstein and Lewis~\cite{decomp-semantics} and Agrawal et
 al.~\cite{agarwal-consistency} demonstrate, much of this programming
 language theory on axomatic decomposition of concurrent programs can
@@ -159,12 +159,14 @@ state---\textit{safety}, in the form of application-level integrity
 constraints. CRDTs are accordingly useful to ensure that merging CAT
 results is sensible but do not solve the problem of maintaining
 application-level consistency. Similarly, the CALM
-Theorem~\cite{ameloot-calm,calm} shows that monotonic logic results in
-deterministic program outcomes despite message re-ordering. Here, we
-wish to provide stronger guarantees \textit{during execution}. In
-doing so, we relax the requirement that quiescent database state be
-deterministic; we only require that it maintain the specified
-application-level invariants.
+Theorem~\cite{ameloot-calm} shows that monotonic logic results in
+deterministic program outcomes despite message re-ordering. Subsequent
+program analysis in the Bloom~\cite{calm}, Bloom\textsuperscript{L}~\cite{blooml},
+and Blazes~\cite{blazes} languages statically highlight non-monotonic,
+non-confluent operations. Here, we wish to provide stronger guarantees
+\textit{during execution}. In doing so, we relax the requirement that
+quiescent database state be deterministic; we only require that it
+maintain the specified application-level invariants.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability via ``optimistic
@@ -173,20 +175,19 @@ Lynch's CAP Theorem~\cite{gilbert-cap}, is equivalent to our goals of
 coordination-freedom. \cite{hat-vldb} recently classified a range of
 weak isolation and data consistency models according to their
 availability via a range of proof-of-concept and informal, per-model
-proofs~\cite{hat-vldb}. While we are inspired by this prior work, it
-did not consider conditions for achieving application-level
-consistency and instead focused on low-level read/write isolation
-anomalies. Towards more practical systems, a range of stores such as
-SwiftCloud~\cite{swift} often provide weak isolation, while related
-work on Red-Blue Consistency~\cite{redblue} aims to provide mixed
-eventually consistent and linearizable operations within a single
-store. We view this related work as complementary to ours: here, we
-seek an understanding of \textit{when} a given model is useful rather
-than an optimal implementation of each. Towards an understanding of
-actual degrees of contention, Johnson et al. have characterized the
-communication patterns of transaction synchronization as well as their
-impact on database design~\cite{shore-communication}. We currently
-focus on all-or-nothing communication requirements, but their
-observations form the basis of a more thorough treatment of
-non-\iconfluent updates.
+proofs. While we are inspired by this prior work, it did not consider
+conditions for achieving application-level consistency and instead
+focused on low-level read/write isolation anomalies. Towards more
+practical systems, a range of stores such as SwiftCloud~\cite{swift}
+often provide weak isolation, while related work on Red-Blue
+Consistency~\cite{redblue} aims to provide mixed eventually consistent
+and linearizable operations within a single store. We view this
+related work as complementary to ours: here, we seek an understanding
+of \textit{when} a given model is useful rather than an optimal
+implementation of each. Towards an understanding of actual degrees of
+contention, Johnson et al. have characterized the communication
+patterns of transaction synchronization as well as their impact on
+database design~\cite{shore-communication}. We currently focus on
+all-or-nothing communication requirements, but their observations form
+the basis of a more thorough treatment of non-\iconfluent updates.
 

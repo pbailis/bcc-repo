@@ -75,15 +75,15 @@ semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
   according to reads and writes on opaque registers.}  There are
 infinitely many non-serializable models~\cite{hat-vldb}, but each
 exposes end users to isolation \textit{anomalies}, or behavior that
-could not have arisen in a serial execution. These anomalies make
-reasoning about application-level consistency challenging; as Gray and
-Reuter pithily summarize: ``engineers can build distributed systems,
-but few users know how to program them or have algorithms that use
+could not have arisen in a serial execution. These anomalies
+complicate reasoning about application behavior; as Gray and Reuter
+pithily summarize: ``engineers can build distributed systems, but few
+users know how to program them or have algorithms that use
 them''~\cite{gray-book}. Users wishing to adopt one of these weaker
 models must manually map their application-level consistency criteria
-to the low-level read/write traces that define each alternative
-level---an error-prone and laborious process, particularly for the
-non-specialist developer~\cite{consistency-borders}.
+to the low-level traces of reads and writes that define each
+alternative level---an error-prone and laborious process, particularly
+for the non-specialist developer~\cite{consistency-borders}.
 
 % dividing line: coordination---define them
 
@@ -155,7 +155,7 @@ have added options for weaker isolation~\cite{pnuts-update}. On the
 opposite side of the spectrum, recent database designs originally
 intended for highly available, scalable operation have begun to add
 stronger semantics (e.g., Riak and Cassandra independently added
-support for compare-and-swap; a critical building block for mutual
+support for compare-and-swap, a critical building block for mutual
 exclusion and higher-level functionality like lock-based concurrency
 control).
 %https://blog.heroku.com/archives/2010/7/20/nosql

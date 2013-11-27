@@ -76,8 +76,8 @@ Secondary Indexing & Update & Yes \\
 Materialized Views & Update & Yes \\
 \texttt{AUTO\_INCREMENT} & Insert & No\\\hline
 \end{tabular}
-\end{center}
-\caption{\iconfluence for \lang.}
+\end{center}\vspace{-1em}
+\caption{\iconfluence for \lang invariants.}
 \label{table:invariants}
 \end{table}
 
@@ -151,17 +151,17 @@ techniques we have encountered are those of Bernstein and Lewis's
 transactions into minimally-sized atomic units that are subsequently
 executed as to avoid pre-condition invalidation (cf. \textit{maximally
   reduced proofs} for non-modular transaction
-decomposition~\cite{decomp-semantics}). To do so, they require
-additional semantics about intermediate pre- and post-conditions for
-each operation: this brings this research into the realm of
-programming languages. We believe this is a worthwhile area for future
-work, but, due to programmer burden, do not further consider these
-techniques in this paper.
+decomposition~\cite{decomp-semantics}). To do so requires additional
+semantics about intermediate pre- and post-conditions for each
+operation: this brings this research into the realm of programming
+languages. We believe this is a worthwhile area for future work, but,
+due to programmer burden, do not further consider these techniques in
+this paper.
 
 \subsection{Merge Functions}
 \label{sec:merge}
 
-Thus far, we have assumed a simple bag representation for database
+So far, we have assumed a simple bag representation of database
 state. This is convenient for proving properties about database state
 and reasoning about the behavior of merge functions, but, in practice,
 merges may be more complex. For example, for many applications, it is
