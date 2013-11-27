@@ -156,13 +156,13 @@ will reflect all prior updates made to each CRDT. This is a useful
 \textit{liveness} guarantee---something good will happen---but does
 not prevent users from observing inconsistent database
 state---\textit{safety}, in the form of application-level integrity
-constraints. CRDTs are accordingly useful to ensure that merging CAT
-results is sensible but do not solve the problem of maintaining
-application-level consistency. Similarly, the CALM
-Theorem~\cite{ameloot-calm} shows that monotonic logic results in
-deterministic program outcomes despite message re-ordering. Subsequent
-program analysis in the Bloom~\cite{calm}, Bloom\textsuperscript{L}~\cite{blooml},
-and Blazes~\cite{blazes} languages statically highlight non-monotonic,
+constraints. CRDTs are accordingly useful in merging divergent
+replicas but do not solve the problem of maintaining application-level
+consistency. Similarly, the CALM Theorem~\cite{ameloot-calm} shows
+that monotonic logic results in deterministic program outcomes despite
+message re-ordering. Subsequent program analysis in the
+Bloom~\cite{calm}, Bloom\textsuperscript{L}~\cite{blooml}, and
+Blazes~\cite{blazes} languages statically highlight non-monotonic,
 non-confluent operations. Here, we wish to provide stronger guarantees
 \textit{during execution}. In doing so, we relax the requirement that
 quiescent database state be deterministic; we only require that it
@@ -183,11 +183,12 @@ often provide weak isolation, while related work on Red-Blue
 Consistency~\cite{redblue} aims to provide mixed eventually consistent
 and linearizable operations within a single store. We view this
 related work as complementary to ours: here, we seek an understanding
-of \textit{when} a given model is useful rather than an optimal
-implementation of each. Towards an understanding of actual degrees of
-contention, Johnson et al. have characterized the communication
-patterns of transaction synchronization as well as their impact on
-database design~\cite{shore-communication}. We currently focus on
-all-or-nothing communication requirements, but their observations form
-the basis of a more thorough treatment of non-\iconfluent updates.
+of \textit{when} coordination is necessary rather than an optimal
+implementation of a given model. Towards an understanding of actual
+degrees of contention, Johnson et al. have characterized the
+communication patterns of transaction synchronization as well as their
+impact on database design~\cite{shore-communication}. We currently
+focus on all-or-nothing communication requirements, but their
+observations form the basis of a more thorough treatment of
+non-\iconfluent updates.
 
