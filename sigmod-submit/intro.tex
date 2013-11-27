@@ -28,72 +28,73 @@ latency execution~\cite{pacelc}.
 Unfortunately, traditional approaches to maintaining correct data
 during concurrent access are at odds with the goal of \cfreedom. The
 serializable transaction concept provides concurrent operations
-(transactions) with the illusion that they are executing in some
-serial order~\cite{bernstein-book}. Isolation provides correctness: if
-each individual operation maintains correct application state, then an
-equivalent serial composition of transactions will not violate
+(transactions) with the illusion of executing in some serial
+order~\cite{bernstein-book}. Isolation guarantees application-level
+consistency: if each individual operation maintains correct
+application state, then an equivalent serial composition of
+transactions will not violate
 correctness~\cite{gray-virtues}. However, this isolation has a cost:
-serializability is provably unachievable with
-\cfreedom~\cite{hat-vldb,davidson-survey}. Giving up serializability
-means that, for arbitrary combinations of transactions, concurrent
-execution will result in isolation \textit{anomalies} that could not
-have resulted from serial execution~\cite{adya-isolation}. For
-arbitrary applications, these anomalies in turn result in
-application-level \textit{inconsistencies}. For example, multiple
+serializability is provably unachievable without
+coordination~\cite{hat-vldb,davidson-survey}. In turn, foregoing
+serializability exposes transactions to a range of isolation
+\textit{anomalies} that could not have resulted from serial
+execution~\cite{adya-isolation}. For arbitrary applications, these
+anomalies in turn result in application-level
+\textit{inconsistencies}, or incorrect data. For example, multiple
 users might be assigned a given username, or, in a classic example, a
-bank account balance might be negative. By disallowing all
+bank account balance might be negative. By disallowing
 concurrency-related anomalies, serializability is a
 \textit{sufficient} condition for maintaining correct data---with a
-cost.
+steep coordination cost.
 
 % which anomalies matter depends on application; think about
 % invariants instead, use to identify necessary and sufficient
 % condition
 
-If serializability prevents all isolation anomalies, a system that
-coordinates only when \textit{necessary} for correctness should only
-prevent anomalies that would result in application-level
-inconsistency. To understand which anomalies matter, we will require
-more information about applications than
+In contrast with serializable systems, a system that coordinates only
+when \textit{necessary} for correctness should will only prevent
+anomalies that can result in application-level inconsistency. However,
+to understand which anomalies matter to a given application, we need
+require more information about applications than
 traditional~\cite{bernstein-book,gray-virtues} (but not
 all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics,activedb-book,ic-survey,ic-survey-two})
 transaction models: we will require users to explicitly specify
 \textit{invariants} (i.e., integrity constraints)~\cite{traiger-tods},
 or predicates representing application-level correctness criteria that
-should always hold true across accesses to database state. For
-example, users might inform the database that usernames should be
-unique and that account balances should be non-negative. By widening
-the declarative transactional API, we can can determine which
-anomalies will violate the provided set of invariants. In contrast
-with the current practice of requiring users to manually specify an
-isolation mode (typically expressed via admissible traces of reads and
-writes; an often daunting task for non-expert
-users)~\cite{consistency-borders}, we require users to specify their
-application-level consistency criteria in terms of application-level
-predicates.
+should always hold true across database state(s). For example, users
+might inform the database that usernames should be unique and that
+account balances should be non-negative. By widening the declarative
+transactional API, we can determine which anomalies will violate the
+provided set of invariants. In contrast with the current practice of
+requiring users to manually specify an isolation mode (typically
+expressed via admissible traces of reads and writes; an often daunting
+task for non-expert users)~\cite{consistency-borders}, we require
+users to specify their application-level consistency criteria in terms
+of application-level predicates.
 
-We present a necessary and sufficient condition for \cfree execution
-under a given set of invariants, called \textit{invariant
-  confluence}. This \iconfluence formalizes---at an application
-level---which operations can be safely executed independently and in
-parallel and subsequently ``merged'' into consistent database
-state. We prove that a database system can maintain invariants across state
-during \cfree and available operation along with convergence of
-database state if and only if the invariants are
-\iconfluent. Accordingly, \iconfluence analysis directly captures the
-scalability of a given application: if an application passes the test,
-it can be executed without coordination. If an application fails the
-\iconfluence test, it will (provably) \textit{have} to coordinate in
-order to maintain correctness. This provides the foundation for
-\textit{coordination-avoiding} database designs that coordinate only
-when required. As discussed in Section~\ref{sec:relatedwork}, our core
-results marry theoretical results from rule-based rewriting
+In this paper, we present a necessary and sufficient condition for
+\cfree execution under a given set of invariants, called
+\textit{invariant confluence}. This \iconfluence formalizes---at an
+application level---which operations can be safely executed
+independently and in parallel and subsequently ``merged'' into
+consistent database state. We prove that a database system can
+maintain invariants across state during \cfree and available operation
+along with convergence of database state if and only if the invariants
+are \iconfluent. Accordingly, \iconfluence analysis directly captures
+the scalability of a given application: if an application passes the
+\iconfluence test, it can be executed without coordination. If an
+application fails the test, it will (provably) \textit{have} to
+coordinate in order to guarantee correctness. This provides the
+foundation for \textit{coordination-avoiding} database designs that
+coordinate only when required. As we discuss in
+Section~\ref{sec:relatedwork}, our core results marry theoretical
+results from rule-based rewriting
 systems~\cite{obs-confluence,termrewriting}, distributed
 computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb}, and many
 prior database concepts~\cite{activedb-book,ic-survey,ic-survey-two}
 such as semantics-based concurrency
 control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability,atomictransactions,weihl-thesis},
-notably combining them in the context of (logically) replicated state.
+in the context of (logically) replicated state.
 
 % many workloads are amenable to cfree execution! the following ICs
 % are actually okay. but if not, here's the cost.
