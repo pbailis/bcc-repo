@@ -56,7 +56,7 @@ prevent anomalies that would result in application-level
 inconsistency. To understand which anomalies matter, we will require
 more information about applications than
 traditional~\cite{bernstein-book,gray-virtues} (but not
-all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics})
+all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics,activedb-book,ic-survey,ic-survey-two})
 transaction models: we will require users to explicitly specify
 \textit{invariants} (i.e., integrity constraints)~\cite{traiger-tods},
 or predicates representing application-level correctness criteria that
@@ -82,16 +82,18 @@ during \cfree and available operation along with convergence of
 database state if and only if the invariants are
 \iconfluent. Accordingly, \iconfluence analysis directly captures the
 scalability of a given application: if an application passes the test,
-it can be executed without coordination. If an application fails
-the \iconfluence test, it will (provably) \textit{have} to coordinate
-in order to maintain correctness. This provides the foundation for
+it can be executed without coordination. If an application fails the
+\iconfluence test, it will (provably) \textit{have} to coordinate in
+order to maintain correctness. This provides the foundation for
 \textit{coordination-avoiding} database designs that coordinate only
-when required. Our core results marry theoretical results from
-rule-based rewriting systems~\cite{obs-confluence}, distributed
+when required. As discussed in Section~\ref{sec:relatedwork}, our core
+results marry theoretical results from rule-based rewriting
+systems~\cite{obs-confluence,termrewriting}, distributed
 computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb}, and many
-prior database concepts such as semantics-based concurrency
-control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability,atomictransactions,weihl-thesis}
-(Section~\ref{sec:relatedwork}).
+prior database concepts~\cite{activedb-book,ic-survey,ic-survey-two}
+such as semantics-based concurrency
+control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability,atomictransactions,weihl-thesis},
+notably combining them in the context of (logically) replicated state.
 
 % many workloads are amenable to cfree execution! the following ICs
 % are actually okay. but if not, here's the cost.

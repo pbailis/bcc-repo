@@ -2,12 +2,12 @@
 \section{Minding the Gap}
 \label{sec:evaluation}
 
-\cfreedom, if achievable, enables scalability limited to that of
-available hardware: namely, server and network capacity. This is
-fairly powerful: a \cfree application can scale out without
+If achievable, coordination-freedom enables scalability limited to
+that of available hardware: namely, server and network capacity. This
+is fairly powerful: a \cfree application can scale out without
 sacrificing correctness, latency, or availability. However, this
 raises two important questions: what happens if \cfreedom is not
-possible (i.e., \iconfluence is not present), and how commonly can
+possible (i.e., \iconfluence does not hold), and how commonly can
 \cfreedom be achieved? In this section, we begin to answer both of
 these questions via both simple modeling and via a real-world,
 proof-of-concept implementation of what is traditionally considered a
@@ -35,7 +35,7 @@ alternative: what happens if a system must coordinate?
     IR:~Ireland, SP:~S\~{a}o Paulo, TO:~Tokyo, SI:~Singapore,
     SY:~Sydney)}
 
-\caption{Atomic committment latency as an upper bound on throughput
+\caption{Atomic commitment latency as an upper bound on throughput
   over LAN and WAN networks.}
 \label{fig:2pc}
 \end{figure}
@@ -77,11 +77,11 @@ scalability, we performed a simple analysis of achievable throughput
 under recently studied real-world communication delays over
 local-area~\cite{bobtail} and wide-area~\cite{hat-vldb} networks. We
 use Monte Carlo analysis to determine the latency of traditional
-two-phase commit~\cite{bernstein-book} and decentralized two-phase
-commit~\cite{paxos-commit}. We consider groups of increasing numbers
-of participants and assume that transactions are perfectly pipelined
-such that each participant \textit{prepare}s the next transaction
-immediately after it has \textit{commit}ted the prior
+two-phase commit~\cite{bernstein-book} (\dpc) and decentralized
+two-phase commit~\cite{paxos-commit} (\cpc). We consider groups of
+increasing numbers of participants and assume that transactions are
+perfectly pipelined such that each participant \textit{prepare}s the
+next transaction immediately after it has \textit{commit}ted the prior
 transaction. Therefore, two-phase commit requires two message delays
 ($N$ \textit{prepared} messages from all nodes to a ``coordinating''
 participant and $N$ messages to send the \textit{commit} response),
@@ -90,47 +90,49 @@ an all-to-all broadcast of \textit{prepared} messages). We strictly
 consider network latency (i.e., local processing time incurred by
 locking, latching, or I/O delays would only increase latency).
 
-Figures 3A and 3B show our results for both local-area and wide-area
-latencies.  In the local area, with only two servers participating in
-atomic commitment (e.g., replication factor of $2$ or, alternatively,
-two conflicting operations on items residing on different servers), we
-see a maximum attainable throughput of around $600$ transactions per
-second. With ten servers participating, throughput drops to only $200$
-transactions per second: the long-tail of network latency surfaces as
-the number of messages sent increases. In the wide area, the effects
-are even more stark: if only coordinating within the continental US
-from Virginia to Oregon, message delays incur a latency of around
-$200$ milliseconds per commit: this results in a throughput of $5$
+Figure~\ref{fig:2pc} show our results for both local-area
+(\ref{fig:2pc}a) and wide-area (\ref{fig:2pc}b) networks.  In the
+local area, with only two servers participating in atomic commitment
+(e.g., replication factor of $2$ or, alternatively, two conflicting
+operations on items residing on different servers), we see a maximum
+attainable throughput of approximately $1100$ transactions per second
+(via \dpc; $750$ via \cpc). With ten servers participating, \dpc
+throughput drops to only $120$ transactions per second (resp. $200$
+for \cpc): the long-tail of network latency surfaces as the number of
+messages sent increases. In the wide area, the effects are even more
+stark: if only coordinating within the continental US from Virginia to
+Oregon, \dpc message delays incur a latency of around $83$
+milliseconds per commit: this results in a throughput of $12$
 operations per second. If coordinating between all eight EC2
-availability zones, throughput is only around $1$ transaction per
-second.
+availability zones, throughput drops substantially, to slightly over
+$2$ transaction per second regardless of situation.
 
 While this study is based solely on reported latencies, deployment
-systems corroborate our findings. For example, Google's F1 uses
+reports corroborate our findings. For example, Google's F1 uses
 optimistic concurrency control via WAN with commit latencies of
-50-150ms. As the authors discuss, this limits throughput to between
-$6-20$ transactions per second per item. Megastore's average write
-latencies of $100-400$ms suggest similar throughputs to those that we
-have predicted. Indeed, \textit{aggregate throughput} may be
+$50--150ms$. As the authors discuss, this limits throughput to between
+$6-20$ transactions per second per data item. Megastore's average
+write latencies of $100-400$ms suggest similar throughputs to those
+that we have predicted. Indeed, \textit{aggregate throughput} may be
 substantially greater as multiple 2PC rounds for disjoint sets of data
 items may safely proceed in parallel. However, \textit{worst-case}
 access patterns will indeed greatly limit scalability: as many before
 us have noted, adding more active servers/replicas in non-\cfree
-models like serializability can greatly reduce throughput.
+models like serializability can greatly reduce
+throughput~\cite{abadi-vll,calvin,jones-dtxn}.
 
 \subsection{Proof of Concept}
 
-As a proof of concept application of \cfreedom analysis, we show that
-the classic benchmark for OLTP performance is, indeed, not
+As a proof of concept application of \cfreedom analysis, we next show
+that the classic benchmark for OLTP performance is, indeed, not
 particularly challenging from a concurrency control perspective. The
 TPC-C benchmark is often used as the gold standard for database
-concurrency control both in research and in industry, and in recent
-years (despite the introduction of the TPC-E benchmark, whose
-leaderboard is missing the current TPC-C world champion, Oracle) has
-been used as a yardstick for distributed database performance (e.g.,
-Calvin, H-Store, Silo). Accordingly, we determine the fundamental
-scalability limitations of the backbone of this benchmark, the
-New-Order transaction.
+concurrency control both in research and in industry~\cite{tpcc}, and
+in recent years has been used as a yardstick for distributed database
+performance (e.g., Calvin~\cite{calvin}, H-Store~\cite{hstore},
+Silo~\cite{silo}). Accordingly, we begin by determining the
+fundamental scalability limitations of the backbone of this benchmark,
+the New-Order transaction.
 
 New-Order corresponds to the placement of an order in a wholesale
 supplier application. Each new order randomly chooses a set of items,
@@ -169,8 +171,7 @@ describe below:
   inserting rows into the \texttt{ORDER}, \texttt{NEW-ORDER}, and
   \texttt{ORDER-LINE} tables, we assign a temporary key and, upon
   commit, rewrite this temporary key to point to the true sequential
-  key. Accordingly, we only hold locks for a single atomic
-  increment. Figure XX shows this process.
+  key. Accordingly, we only hold locks for a single atomic increment.
 
 \item \textit{Maintaining stock levels.} When an order for a given
   item is placed, the stock for the given item must be adjusted
@@ -181,66 +182,110 @@ describe below:
   additions to the stock as concurrent updates are made to a given item.
 \end{itemize}
 
-In all, TPC-C New-Order coordination can be limited to a single,
-atomic increment-and-get operation on each district's order table. Our
-\cfreedom analysis shows that all required constraints except one are
-achievable without synchronous coordination. Hence, scalability---even
-for a single warehouse---is limited to increment-and-get on a single
-machine: several million transactions per second on modern
-hardware. In contrast, the highest compliant TPC-C that respects this
-sequential assignment is around $500,000$ New-Order transactions per
-second (Oracle 11G). Compliant TPC-C results require scaling dataset
-size with throughput, so contention is constant regardless of
-throughput. However, the best known results in the research literature
-that disregard this scaling are Calvin (500,000 serializable
-transactions per second on 100 machines) and Silo (400,000
-serializable transactions per second on 1 machine for sequential
-IDs---which become the scaling bottleneck---and over 700,000
-transactions per second for non-sequential IDs).
+All told, TPC-C New-Order coordination can be limited to a single,
+atomic increment-and-get operation on each district's order sequence
+number. Our \cfreedom analysis shows that eleven of twelve required
+constraints are achievable without synchronous coordination and the
+twelfth is implementagble a non-abortable operation. Hence,
+scalability---even for a single warehouse---is limited to
+increment-and-get on a single machine. Indeed, when we execute the
+above query plan on a linearizable main-memory database prototype
+(Figure~\ref{fig:clients}; disregarding think time and per-warehouse
+client limits, as is
+standard~\cite{calvin,hstore,abadi-vll,jones-dtxn}), we indeed
+bottleneck on sequence number assignment. On EC2 cc2.8xlarge
+instances, as depicted, we achieve over $12K$ New-Order transactions
+per second per warehouse. Deploying multiple warehouses per server, we
+attain throughput in excess of $17K$ transactions per second before
+bottlenecking on CPU. There is no synchronous coordination across
+partitions, so varying the percentage of distributed transactions
+results in a modest ($25\%$) throughput reduction due to CPU
+utilization due to serialization and the kernel's TCP/IP stack
+(Figure~\ref{fig:pct}). In contrast, traditional (serializable)
+approaches (as Figure~\ref{fig:2pc} hints) incur throughput overheads
+ranging from 66--88\%~\cite{abadi-vll}.
 
 \begin{figure}
-\begin{center}
-\includegraphics[width=\columnwidth]{figs/wh_thru.pdf}
-\includegraphics[width=\columnwidth]{figs/wh_thru_single.pdf}
-\includegraphics[width=\columnwidth]{figs/pct_thru.pdf}
-\end{center}
-\caption{Performance versus number of concurrent clients.}
+\includegraphics[width=\columnwidth]{figs/wh_thru.pdf}\vspace{-1em}
+%\includegraphics[width=\columnwidth]{figs/wh_thru_single.pdf}
+\caption{TPC-C New-Order throughput across eight servers.}
 \label{fig:clients}
 \end{figure}
 
+\begin{figure}
+\includegraphics[width=\columnwidth]{figs/pct_thru.pdf}\vspace{-1em}
+\caption{Coordination-free distributed execution of TPC-C New-Order
+  (primary cost: CPU overhead due to serialization).}
+\label{fig:pct}
+\end{figure}
 
-Unsurprisingly, as Figure YY shows, when we evaluate TPC-C New-Order
-scaling on an in-memory database prototype, we can scale throughput
-linearly to up to 100 machines. Distributed transactions do not affect
-throughput except insofar as they consume additional CPU for
-serialization and messaging. On a cluster of 100 EC2 cc2.8xlarge
-instances spanning three us-west availability zones, we achieve over
-1.8 million New-Order transactions per second. Contention is
-negligible and, in our Java prototype, corresponds to a single
-java.util.concurrent AtomicLong incrementAndGet() for each
-transaction. Rather, each server is CPU bound due to our current,
-fairly inefficient implementation: we achieve only 18,000
-transactions/s/server on admittedly very powerful
-hardware. Nonetheless, in a scale-out system, single-node performance
-tuning is dwarfed by the power of largely-\cfree operations.
+Unsurprisingly, a coordination-avoiding strategy allows linear scaling
+100 machines (Figure~\ref{fig:scaleout}). On a cluster of 100 EC2
+cc2.8xlarge servers spanning three \texttt{us-west} availability zones
+($5$ warehouses per server), we achieve over 1.8 million New-Order
+transactions per second. We achieve 89.5\% of perfect scaling from one
+to 100 machines and perfect scaling from ten to 100 machines. At peak,
+each server is CPU bound due to our current, fairly inefficient
+implementation: we achieve only 18,000 transactions/s/server on
+admittedly very powerful hardware. Nonetheless, in a scale-out system,
+single-node performance tuning is dwarfed by the power of
+coordination-avoiding operations. An apples-to-apples comparison with
+a serializable or even Snapshot Isolation system would be unfair, but
+we are unaware of any other compliant implementation that achieves
+greater than $500K$ New-Order transactions per second (e.g., Oracle
+11G, Calvin~\cite{calvin}, Silo's non-FastIDs~\cite{silo},
+VLL~\cite{abadi-vll}). In contrast, we present these results as a
+proof of concept that executing even ``challenging'' workloads like
+TPC-C that contain many complex integrity constraints are not at odds
+with scalability if implemented in a coordination-avoiding manner.
 
 \begin{figure}
 \begin{center}
 \includegraphics[width=\columnwidth]{figs/thru_scale.pdf}\vspace{-2em}
 \end{center}
-\caption{Scalability of TPC-C New-Order.}
-\label{fig:clients}
+\caption{Coordination-free distributed execution of TPC-C New-Order
+  achieves linear scaling (depicted by dashed line).}
+\label{fig:scaleout}
 \end{figure}
 
+\minihead{Additional transactions} We have focused here on New-Order
+as it is the subject of considerable attention and is the only
+distributed transaction in the benchmark. However, the remainder of
+the TPC-C transactions are largely uninteresting from the perspective
+of coordination. We omit a full analysis, but all operations except
+for the Delivery transaction are implementable via a combination of
+foreign key updates and commutative counter increment/decrement, and
+the Delivery transaction is easily implemented (as acknowledged in the
+benchmark specification~\cite{abadi-vll}) as a single-partition
+transaction. The TPC-C isolation requirements (reflecting the ANSI SQL
+specification) are all achievable via client-side caching as proposed
+by Bailis et al.~\cite{hat-vldb}.
 
-As Bailis et al. note, the remainder of the TPC-C transactions are
-largely uninteresting from a concurrency control perspective. All
-except for the Delivery transaction are implementable via a
-combination of foreign key updates and commutative counter
-increment/decrement, and the Delivery transaction is easily
-implemented (as acknowledged in the benchmark specification) as a
-single-partition transaction. The three (!)  consistency conditions in
-the newer TPC-E benchmark represent a subset of the twelve conditions
-from TPC-C that we consider here. Indeed, for the future, we are
-proposing a more challenging benchmark designed to actually stress
-concurrency control systems.
+
+\minihead{Additional applications} While TPC-C is the de facto
+standard yardstick for transactional system performance, we are
+cognizant of the fact that it may be a simplification of real-world
+workloads. For greater variety, we examined the transactions in the
+OLTPBenchmark suite~\cite{oltpbench} and found that seven of ten
+benchmarks had no integrity constraints, one (\texttt{CH-bencCHmark})
+matched TPC-C, and the remaining two specifications implied a
+requirement for mutual exclusion (\texttt{AuctionMark}'s
+\texttt{new-purchase}, \texttt{SEATS}'s
+\texttt{NewReservation}). Moreover, the three ``consistency
+conditions'' in the newer TPC-E benchmark represent a subset of the
+twelve conditions from TPC-C that we consider here. Indeed, it is
+possible (even likely) that these benchmarks are simply
+under-specified, but, according to official specification, TPC-C
+contains the most rigorous application-level invariants among the
+benchmarks we encountered.
+
+Anecdotally, conversations with users have not identified invariants
+that are radically different than those we have proposed, and a simple
+thought experiment identifying the invariants required to provide,
+say, a social networking site, are fairly simple (e.g., username
+uniqueness, foreign key constraints between updates, privacy
+settings). Nonetheless, as we discuss shortly, we view the further
+study of real-world invariants to be a necessary area for future
+investigation.
+
+
