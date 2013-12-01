@@ -5,18 +5,18 @@
 % coordination is fundamental to scalability, availability, low
 % latency
 
-Minimized coordination is core to high-performance and scalable
-database designs. Coordination---informally, the requirement that
+High-performance and scalable database designs require minimized
+coordination. Coordination---informally, the requirement that
 concurrently executing operations communicate or otherwise stall in
 order to complete---is expensive, prohibiting parallel execution,
 limiting availability in the presence of partial failure, and
 requiring potentially high latency as communication costs increase
-(e.g., wide-area networks)~\cite{hat-vldb,gilbert-cap}. A system that
-completely eschews synchronous coordination---that is
-\textit{\cfree}---can scale indefinitely: adding more query processing
-capacity (e.g., servers) does not incur additional overhead as queries
-can execute independently from one another. In contrast with scale-out
-across multiple data items (as in ``shared-nothing''
+(e.g., wide-area networks)~\cite{hat-vldb,gilbert-cap}. A system
+without synchronous coordination---that is \textit{\cfree}---can scale
+indefinitely: adding more query processing capacity (e.g., servers)
+does not incur additional overhead as queries can execute
+independently from one another. In contrast with scale-out across
+multiple data items (as in ``shared-nothing''
 designs~\cite{bernstein-book,f1,spanner,pnuts,hstore}), \cfreedom
 allows scale-out even at the granularity of a single, contended data
 item and ensures both high availability~\cite{gilbert-cap} and low
@@ -29,9 +29,9 @@ Unfortunately, traditional approaches to maintaining correct data
 during concurrent access are at odds with the goal of \cfreedom. The
 serializable transaction concept provides concurrent operations
 (transactions) with the illusion of executing in some serial
-order~\cite{bernstein-book}. Isolation guarantees application-level
-consistency: if each individual operation maintains correct
-application state, then an equivalent serial composition of
+order~\cite{bernstein-book}. Serializable isolation guarantees
+application-level consistency: if each individual operation maintains
+correct application state, then an equivalent serial composition of
 transactions will not violate
 correctness~\cite{gray-virtues}. However, this isolation has a cost:
 serializability is provably unachievable without
@@ -41,7 +41,7 @@ serializability exposes transactions to a range of isolation
 execution~\cite{adya-isolation}. For arbitrary applications, these
 anomalies in turn result in application-level
 \textit{inconsistencies}, or incorrect data. For example, multiple
-users might be assigned a given username, or, in a classic example, a
+users might be assigned the same username, or, in a classic example, a
 bank account balance might be negative. By disallowing
 concurrency-related anomalies, serializability is a
 \textit{sufficient} condition for maintaining correct data---with a
@@ -52,13 +52,13 @@ steep coordination cost.
 % condition
 
 In contrast with serializable systems, a system that coordinates only
-when \textit{necessary} for correctness should will only prevent
+when \textit{necessary} for correctness will only prevent those
 anomalies that can result in application-level inconsistency. However,
 to understand which anomalies matter to a given application, we need
-require more information about applications than
+more information about applications than
 traditional~\cite{bernstein-book,gray-virtues} (but not
 all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics,activedb-book,ic-survey,ic-survey-two})
-transaction models: we will require users to explicitly specify
+transaction models: we require users to explicitly specify
 \textit{invariants} (i.e., integrity constraints)~\cite{traiger-tods},
 or predicates representing application-level correctness criteria that
 should always hold true across database state(s). For example, users
@@ -66,7 +66,7 @@ might inform the database that usernames should be unique and that
 account balances should be non-negative. By widening the declarative
 transactional API, we can determine which anomalies will violate the
 provided set of invariants. In contrast with the current practice of
-requiring users to manually specify an isolation mode (typically
+requiring users to manually specify an ``isolation mode'' (typically
 expressed via admissible traces of reads and writes; an often daunting
 task for non-expert users)~\cite{consistency-borders}, we require
 users to specify their application-level consistency criteria in terms
@@ -78,17 +78,16 @@ In this paper, we present a necessary and sufficient condition for
 application level---which operations can be safely executed
 independently and in parallel and subsequently ``merged'' into
 consistent database state. We prove that a database system can
-maintain invariants across state during \cfree and available operation
-along with convergence of database state if and only if the invariants
-are \iconfluent. Accordingly, \iconfluence analysis directly captures
-the scalability of a given application: if an application passes the
-\iconfluence test, it can be executed without coordination. If an
-application fails the test, it will (provably) \textit{have} to
-coordinate in order to guarantee correctness. This provides the
-foundation for \textit{coordination-avoiding} database designs that
-coordinate only when required. As we discuss in
-Section~\ref{sec:relatedwork}, our core results marry theoretical
-results from rule-based rewriting
+maintain invariants during \cfree, available, and convergent operation
+if and only if the invariants are \iconfluent. Accordingly,
+\iconfluence analysis can capture the potential scalability of a given
+application: if an application passes the \iconfluence test, it can be
+executed without coordination. If an application fails the test, it
+will (provably) \textit{have} to coordinate in order to guarantee
+correctness. This provides the foundation for
+\textit{coordination-avoiding} database designs that coordinate only
+when required. As we discuss in Section~\ref{sec:relatedwork}, our
+core results marry theoretical results from rule-based rewriting
 systems~\cite{obs-confluence,termrewriting}, distributed
 computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb}, and many
 prior database concepts~\cite{activedb-book,ic-survey,ic-survey-two}
@@ -101,25 +100,25 @@ in the context of (logically) replicated state.
 
 We subsequently apply our \iconfluence coordination analysis to
 existing applications and quantify the costs of
-coordination. Specifically, we examine a subset of SQL and demonstrate
-that many integrity constraints are indeed achievable without
-coordination, including forms of foreign key constraints, unique value
-generation, and many row-level check constraints. In contrast, others,
-like unique value checking and sequence number generation do not. We
-apply this analysis to existing benchmarks to determine their required
-degree of coordination: surprisingly, many---based on their
-specifications---are \cfree. As a case study, we focus on the TPC-C
-benchmark~\cite{tpcc}, which has seen substantial popularity in the
-database community as a gold standard for new concurrency control
+coordination. Specifically, we examine several SQL operators and
+demonstrate that many integrity constraints are indeed achievable
+without coordination, including forms of foreign key constraints,
+unique value generation, and many row-level check constraints. In
+contrast, others, like unique value checking and sequence number
+generation do not. We apply this analysis to existing benchmarks to
+determine their required degree of coordination: surprisingly,
+many---based on their specifications---are \cfree. As a case study, we
+focus on the TPC-C benchmark~\cite{tpcc}, which has seen substantial
+popularity in the database community as a gold standard for new
+concurrency control
 algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore}. We show
 that, in fact, eleven of twelve of TPC-C's integrity constraints are
 \iconfluent and, more importantly, compliant TPC-C can be implemented
-in a \cfree manner for distributed operation. As a proof-of-concept,
-we consequently scale a simple coordination-avoiding database
-prototype linearly, to over $1.8M$ New-Order transactions per second
-on a $100$-node EC2 cluster. We also demonstrate the costs of
-coordination by analyzing upper bounds on throughput due to to atomic
-commitment overhead.
+in a \cfree manner for distributed operation. As a proof of concept,
+we scale a simple coordination-avoiding database prototype linearly,
+to over $1.8M$ New-Order transactions per second on a $100$-node EC2
+cluster. We also demonstrate the costs of coordination by analyzing
+upper bounds on throughput due to to atomic commitment overhead.
 
 While our results are not comprehensive, they provide a formal but
 pragmatic grasp on the trade-off between coordination and

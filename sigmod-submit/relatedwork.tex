@@ -50,12 +50,14 @@ runtime)~\cite{badrinath-semantics} (i.e., via commutativity
 analysis~\cite{weihl-thesis} or serial dependency
 relations~\cite{herlihy-apologizing}). This prior work is eminently
 useful when, indeed, conflicts are possible. However, this validation
-(and conflict detection) presumes communication between operations to
-reach commit decisions. We instead seek semantics that are achievable
-without coordination. This in turn means that our \iconfluence
-analysis is conservative: we statically reason about all
-\textit{possible} schedules of transactions instead of performing
-run-time validation.
+(and conflict detection) requires communication between processes to
+reach commit decisions. We instead seek to identify semantics that are
+achievable entirely without coordination: \iconfluence analysis
+statically reason about all \textit{possible} schedules of
+transactions instead of performing run-time validation. If any two
+operations can conflict, we flag them accordingly; run-time validation
+of concrete schedules can indeed verify whether conflicts are present
+by coordinating.
 
 Several systems use application-provided labels as a means towards
 determining when concurrent operations are safe. SDD-1~\cite{sdd1} and
@@ -86,8 +88,8 @@ the commutativity of transaction \textit{outcomes}: for example, two
 transactions provide state-based commutativity if their return value
 is the same the the final state of the database is equivalent despite
 reordering~\cite{weihl-data,weihl-thesis}. This state-based
-  commutativity is a sufficient but not necessary condition for
-concurrent execution. Despite its conservativeness, these techniques
+commutativity is a sufficient but not necessary condition for
+concurrent execution. Despite its conservativity, these techniques
 have been successfully applied in diverse fields including both
 database concurrency control and, recently, operating systems
 design~\cite{kohler-commutativity}. State-based commutativity analysis
@@ -97,7 +99,7 @@ necessary for maintaining correctness for all (and often common)
 applications~\cite{lamport-audit}.
 
 \minihead{Term rewriting} Our use of \iconfluence is directly inspired
-by the literature on term rewriting and constraint programming. A
+by the literature on term rewriting and constraint programming. An
 \iconfluent rewrite system guarantees that arbitrary rule application
 will not violate a given invariant~\cite{obs-confluence}. This
 generalizes traditional Church-Rosser confluence, which ensures that
@@ -113,10 +115,10 @@ transactions can be introduced. We have found this literature to be a
 useful grounding for our own formalism and see further comparison to
 rewriting systems as an interesting starting point for future
 theoretical analysis. Similar rewrite system concepts---including
-confluence---have been successfully integrated into database systems
-under the moniker ``active databases'' (see~\cite{activedb-book}
-for a survey; e.g., triggers and rule processing), although we are not
-familiar with a concept analogous to \iconfluence in this literature.
+confluence (CITE NEEDED)---have been successfully integrated into
+active database systems (e.g., triggers and rule processing), although
+we are not familiar with a concept analogous to \iconfluence in this
+literature.
 
 \minihead{Program analysis} The problem of maintaining correctness
 despite concurrent modification is well studied in the programming
@@ -149,24 +151,26 @@ state or otherwise write this compensatory code; here,
 we seek a solution that does not require this of programmers or
 database systems.
 
-\minihead{Liveness and Convergence} Recent work on Commutative
-Replicated Data Type (CRDT) objects~\cite{crdt} ensure that, once a
-database quiesces writes and all nodes exchange writes, the database
-will reflect all prior updates made to each CRDT. This is a useful
-\textit{liveness} guarantee---something good will happen---but does
-not prevent users from observing inconsistent database
-state---\textit{safety}, in the form of application-level integrity
-constraints. CRDTs are accordingly useful in merging divergent
-replicas but do not solve the problem of maintaining application-level
-consistency. Similarly, the CALM Theorem~\cite{ameloot-calm} shows
-that monotonic logic results in deterministic program outcomes despite
-message re-ordering. Subsequent program analysis in the
-Bloom~\cite{calm}, Bloom\textsuperscript{L}~\cite{blooml}, and
-Blazes~\cite{blazes} languages statically highlight non-monotonic,
-non-confluent operations. Here, we wish to provide stronger guarantees
-\textit{during execution}. In doing so, we relax the requirement that
-quiescent database state be deterministic; we only require that it
-maintain the specified application-level invariants.
+\minihead{Liveness and Convergence} The CALM
+Theorem~\cite{ameloot-calm} shows that monotonic logic results in
+deterministic program outcomes despite message re-ordering. Subsequent
+program analysis in the Bloom~\cite{calm},
+Bloom\textsuperscript{L}~\cite{blooml}, and Blazes~\cite{blazes}
+languages statically highlight non-monotonic, non-confluent
+operations. This is a useful \textit{liveness} guarantee---something
+good will happen~\cite{lamport-safety}---but does not prevent users
+from observing inconsistent database state---\textit{safety}, in the
+form of application-level integrity constraints.  Here, we wish to
+provide stronger guarantees (including safety) \textit{during
+  execution}. In doing so, we relax the requirement that quiescent
+database state be deterministic; we only require that it maintain the
+specified application-level invariants (liveness). Similarly,
+Commutative Replicated Data Type (CRDT) objects~\cite{crdt} ensure
+that, once a database quiesces writes and all servers exchange writes,
+the database will reflect all prior updates made to each CRDT. CRDTs
+are accordingly useful in merging divergent replicas on a per-type
+basis but do not solve the problem of maintaining application-level
+consistency.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability via ``optimistic

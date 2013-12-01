@@ -5,13 +5,13 @@
 Using \iconfluence as test for coordination requirements exposes a
 trade-off between the operations a user wishes to perform and the
 semantic guarantees she wishes to guarantee about her data. At the
-extremes, with no mutations in her operations, a user can guarantee
-any invariant, while, with no invariants, a user can perform any
-operations. However, the space between yields a spectrum of possible
-\iconfluent guarantees. In this section, we make this trade-off
-concrete via a simple language analysis, a discussion of system and
-merge function design, and a discussion of several related techniques
-through the lens of \iconfluence.
+extreme, if a user's transactions cannot modify the initial database
+state, she can guarantee any invariant, while, with no invariants, a
+user can perform any operations. However, the space between yields a
+spectrum of possible \iconfluent guarantees. In this section, we make
+this trade-off concrete via a simple language analysis, a discussion
+of system and merge function design, and a discussion of several
+related techniques through the lens of \iconfluence.
 
 \subsection{\lang: A Simple Example Language}
 
@@ -26,12 +26,13 @@ numerical) data and support arbitrary modification, while counters
 contain numeric data and support algebraic operations (e.g.,
 \textit{increment}, \textit{decrement}). Users submit arbitrary
 functions over data in the form of \textit{transactions}, each of
-which consists of a variable number of \textit{statements}. Statements
-take the form of read (e.g., \textit{select}), write (e.g.,
-\textit{insert}), or update (e.g., \textit{update}, \textit{increment}
-for counters, \textit{delete}) operations.
+which consists of a variable number of sequential
+\textit{statements}. Statements take the form of read (e.g.,
+\textit{select}), write (e.g., \textit{insert}), or update (e.g.,
+\textit{update}, \textit{increment/decrement} for counters,
+\textit{delete}) operations.
 
-To allow \cfreedom analysis, \lang also requires users to define
+To enable \cfreedom analysis, \lang allows users to define
 \textit{invariants} over their tables that express application-level
 consistency requirements. Many of these are borrowed from SQL. First,
 a \textit{primary key} on columns $C_1 \dots C_n$ of table \textit{T}
@@ -39,14 +40,15 @@ requires that at most one one row should match each distinct
 combination of possible values for the specified columns. Second, a
 \textit{autoincrement} constraint on a primary key of numeric type
 requires that numeric values be contiguous. Third, a \textit{foreign
-  key} on numeric column $C_f$ of table $T_f$ referencing another
-column $C_r$ (resident in a different table $T_r \neq T_f$) dictates
-that, for each row in $T_f$, there should be at least one row in $T_f$
-whose value for $C_r$ matches that of $C_r$. Unlike SQL, \lang adds
-additional constraints to each column: \textit{not equals},
-\textit{equals}, and, for numeric and counter datatypes, \textit{less
-  than}, \textit{greater than}, and \textit{sum\_of} (the final
-representing an aggregate of multiple other numeric columns).
+  key} on numeric columns $C_F=\{C_{f1}\dots C_{fn}\}$ of table $T_f$
+referencing another set of columns $C_R = \{C_{r1}\dots C_{rn}\}$ (resident in a
+different table $T_f \neq T_r$) dictates that, for each row in $T_f$,
+there should be at least one row in $T_f$ whose values for $C_r$
+matches that of $C_r$. Unlike SQL, \lang adds additional constraints
+to each column: \textit{not equals}, \textit{equals}, and, for numeric
+and counter datatypes, \textit{less than}, \textit{greater than}, and
+\textit{sum\_of} (the final representing an aggregate of multiple
+other numeric columns).
 
 \begin{table}
 \definecolor{yesgray}{gray}{0.9}
@@ -102,7 +104,7 @@ ID'' versus ``insert this new ID'') are also supported. In contrast,
 insertion of specified primary keys, use of autoincrement, and
 \textit{less than} and \textit{greater than} for decrement and
 increment operations, respectively, are not invariant
-commutative. Perhaps not surprisingly, all of these rules can be
+commutative. Perhaps not surprisingly, all of these cases can be
 checked by simple syntactic rules; we built a simple \lang analysis
 tool that identifies all of the above constructs in addition to
 limited support for conditional updates in less than a week.
@@ -180,7 +182,7 @@ an additional invariant that states that account balances should
 reflect all additions and removals from each account, but this is an
 arguably non-trivial pitfall.
 
-We propose the use of abstract datatypes to avoid anomalies such as
+We propose the use of abstract data types to avoid anomalies such as
 the above. The bank account example is not technically incorrect, but
 it reflects an incomplete specification of invariants. In many
 real-world examples, users' successful operations should be reflected
@@ -189,14 +191,14 @@ reflect this ``durability'' requirement, a database can avoid these
 odd anomalies. While many practitioners today must hand-code their own
 merge functions (e.g., Bayou~\cite{bayou} and Dynamo~\cite{dynamo}
 conflict reconciliation), we advocate a model in which a
-\textit{library} of datatype-specific merge functions are presented to
+\textit{library} of type-specific merge functions are presented to
 users. This approach---suggested by concurrency control for abstract
 data types~\cite{weihl-thesis} and, more recently, Commutative and
 Replicated Data Types~\cite{crdt}---simplifies the task of merging
 updates while also reducing the overheads of operations. Unlike this
 prior work, however, \iconfluence analysis \textit{also} guarantees
 the correctness of (specified) arbitrary transformations on these
-datatypes, thus eliminating the problem of Conway et al.'s
+types, thus eliminating the problem of Conway et al.'s
 \textit{scope dilemma}~\cite{blooml}, whereby operations on individual
 data items are valid but their composition is not.
 

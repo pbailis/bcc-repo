@@ -48,8 +48,8 @@ on concurrent accesses to data items, resulting in aborts due to
 deadlocks and decreased throughput due to
 contention~\cite{bernstein-book,gray-book,gray-virtues}. The costs of
 serializability in a distributed environment are even more
-expensive---as we will shortly discuss, it is well known to be
-provably unachievable without synchronous coordination between
+expensive---as we will shortly discuss, serializability is well known
+to be provably unachievable without synchronous coordination between
 replicas---due to the possibility of network partitions and
 millisecond-or-higher cross-server latencies (up to hundreds of
 milliseconds across datacenters)~\cite{hat-vldb,bobtail}.
@@ -76,7 +76,7 @@ semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
 infinitely many non-serializable models~\cite{hat-vldb}, but each
 exposes end users to isolation \textit{anomalies}, or behavior that
 could not have arisen in a serial execution. These anomalies
-complicate reasoning about application behavior; as Gray and Reuter
+complicate reasoning about application behavior. As Gray and Reuter
 pithily summarize: ``engineers can build distributed systems, but few
 users know how to program them or have algorithms that use
 them''~\cite{gray-book}. Users wishing to adopt one of these weaker
@@ -92,24 +92,24 @@ a large spectrum of isolation models, a fundamental property divides
 the space: availability without coordination. We formally define
 coordination in Section~\ref{sec:model}, but, informally, we say that
 a database is \textit{coordination-free} if, given a copy of database
-state, a user's operations can always proceed safely without
-contacting (and, therefore, possibly stalling) other users
-concurrently accessing shared state. This requirement has been
-captured in the distributed systems community as
-\textit{availability}, or ``always-on'' operation: an available
-distributed system can perform operations on any non-failed server,
-despite arbitrary communication partitions between
-servers~\cite{gilbert-cap}. This focus on worst-case behavior yields
-benefits during normal operation as well; systems that do not require
-coordination can provide low latency: to serve a request, a server
-need not contact any others~\cite{pacelc}, and client requests can
-safely proceed in parallel. Over wide-area networks, this can
+state, a user's operations can always proceed without contacting (and,
+therefore, possibly stalling) other users concurrently accessing
+shared state. This requirement has been captured in the distributed
+systems community as \textit{availability}, or ``always-on''
+operation: an available distributed system can perform operations on
+any non-failed server, despite arbitrary communication partitions
+between servers~\cite{gilbert-cap}. This focus on worst-case behavior
+yields benefits during normal operation as well; systems that do not
+require coordination can provide low latency: to serve a request, a
+server need not contact any others~\cite{pacelc}, and client requests
+can safely proceed in parallel. Over wide-area networks, this can
 correspond to hundreds of milliseconds lower
 latency~\cite{hat-vldb}. In contrast, a system that requires
 synchronous coordination risks unavailability in the presence of
 network partitions and partial failures, and, during normal operation,
 incurs higher latency due to communication delays and, possibly,
-resource contention.
+resource contention. At scale, coordination may also surface in the
+form of variance and, possibly, unstable queuing effects~\cite{ladis}.
 
 % cost of coordination? unavailability, latency, stalls : focus on
 % worst-case behavior yields average-case benefits
@@ -135,19 +135,18 @@ guarantees on single data items---and Snapshot Isolation---a common
 % evidence for mixed models: polyglot persistence, adding support for
 % CAS, basis for lock manager, etc.
 
-\minihead{Life with and without Serializability} In practice, the
-trade-off between the convenience of ``strong'' isolation guarantees
-and coordination-freedom is evidenced in common practice today. Some
-applications require serializability for correct behavior, while the
-many applications running on eventually consistent data stores are
-evidence that synchronous coordination is not always required. Two
-trends in particular highlight this requirement for a combination of
-models. First, many deployments of weakly consistent stores are often
-coupled with deployments of strongly consistent counterparts (e.g.,
-Riak, Redis, and Postgres in a single web service stack). While this
-``polyglot persistence'' is influenced by many factors including data
-model and persistence format, availability and scalability are
-frequenly mentioned as imporant criteria when choosing between
+\minihead{Life with and without Serializability} The trade-off between
+the convenience of ``strong'' isolation and coordination-freedom
+surfaces in common practice. Some applications seem to require
+serializability, while many applications run on systems providing
+weaker guarantees, like eventual consistency. Two trends in particular
+highlight a requirement for a combination of models. First, many
+deployments of weakly consistent stores are often coupled with
+deployments of strongly consistent counterparts (e.g., Riak, Redis,
+and Postgres in a single web service stack). While this ``polyglot
+persistence'' is influenced by many factors including data model and
+persistence format, availability and scalability are frequenly
+mentioned as imporant criteria when choosing between
 stores~\cite{polyglot}. Second, many databases today run at
 non-serializable isolation by default and often as the strongest level
 offered~\cite{hat-vldb}; even strongly consistent systesms like PNUTS
@@ -168,12 +167,12 @@ in inconsistency for arbitrary applications: the question becomes,
 given an application, which anomalies are important? Our primary focus
 in this paper is to answer this question with a necessary and
 sufficient condition for coordination-freedom. To do so, we will also
-have to directly consider application semantics. As we will discuss,
-this requirement represents a burden for end-users, but we believe it
-is preferable to have a user enumerate properties of her application
-rather than reason about her application behavior at a lower level of
-abstraction---namely, anomalies expressed the level of reads and
-writes (as provided by most distributed isolation models).
+have to directly consider application semantics. We discuss this
+decision shortly, but we believe it is preferable to have a user
+enumerate properties of her application rather than reason about her
+application behavior at a lower level of abstraction---namely,
+non-serializable anomalies expressed the level of reads and writes (as
+provided by most distributed isolation models).
 
 % if you give up serializability, can't guarantee correctness in an
 % arbitrary read/write model; users have to manage this trade-off for
@@ -192,10 +191,9 @@ database:
 \item\textbf{Employee IDs:} Employees are assigned ID numbers that
   should be unique with respect to all other assigned IDs (i.e., a
   primary key constraint).
-\item\textbf{Departments:} Employees should belong to exactly one of a
-  (currently pre-declared, fixed) set of departments (i.e., a foreign
-  key constraint). Employees can migrate departments at will by
-  updating their department assignment.
+\item\textbf{Departments:} Employees should belong to exactly one
+  department (i.e., a foreign key constraint). Employees can migrate
+  departments at will by updating their department assignment.
 \item\textbf{Salaries:} Employees have salaries, and no employee
   should have salary greater than $\$50,000$.
 \end{myitemize}
@@ -210,8 +208,8 @@ as the department constraint, appear safe under concurrent insertions:
 so long as the employee's department field corresponds to an existing
 department, it appears (and, indeed, we will later prove) that
 concurrent insertions can saefly proceed independently. However,
-arbitrary operations like deletions \textit{can} compromise the
-department constraint.
+arbitrary operations like deletions of departments \textit{can}
+compromise the department constraint.
 
 This example demonstrates a trade-off between transaction expressivity
 and invariant strength: some combinations of transactions and

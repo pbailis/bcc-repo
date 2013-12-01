@@ -4,16 +4,16 @@
 
 If achievable, coordination-freedom enables scalability limited to
 that of available hardware: namely, server and network capacity. This
-is fairly powerful: a \cfree application can scale out without
-sacrificing correctness, latency, or availability. However, this
-raises two important questions: what happens if \cfreedom is not
-possible (i.e., \iconfluence does not hold), and how commonly can
-\cfreedom be achieved? In this section, we begin to answer both of
-these questions via both simple modeling and via a real-world,
-proof-of-concept implementation of what is traditionally considered a
-challenging OLTP benchmark. The former is the realm of traditional
-concurrency control, while the latter offers a glimpse at what is
-attainable via coordination-avoiding database systems.
+is powerful: a \cfree application can scale out without sacrificing
+correctness, latency, or availability. However, this raises two
+important questions: what happens if \cfreedom is not possible (i.e.,
+\iconfluence does not hold), and how commonly can \cfreedom be
+achieved? In this section, we begin to answer both of these questions
+via both simple modeling and via a real-world, proof-of-concept
+implementation of what is traditionally considered a challenging OLTP
+benchmark. The former is the realm of traditional concurrency control,
+while the latter offers a glimpse at what is attainable via
+coordination-avoiding database systems.
 
 \subsection{Costs of Coordination}
 
@@ -55,40 +55,41 @@ pair of conflicting transactions, the servers responsible for the
 conflicting operations must choose which (if either) should commit
 (and, in database systems, is often coupled with a decision about the
 commit order~\cite{hat-vldb,calvin,traiger-tods}). Regardless of
-implementation technique (e.g., two-phase locking, OCC validation), if
-multiple servers participate in the commit decision (e.g., locking
-across partitions or employing multiple active validators), they must
-undergo atomic commitment (whereas a single-server implementation
-would be limited in throughput to its capacity). Therefore, the
-duration of atomic commitment determines the the maximum achievable
-throughput for modifications to a given data item. If atomic commit
-take $10$ms, then, for abortable updates, we can achieve throughput of
-$100$ transactions per second per item. Of course, there are many
-possible optimizations to this simple rule of thumb, including
-batching and reordering of commits~\cite{calvin}. Moreover, given
-non-conflicting transactions, aggregate system throughput can be much
-higher than the per-item throughput limitations~\cite{spanner,
-  f1}. However, for arbitrary schedules of transactions, atomic
-commitment latency is a reasonable upper bound on per-item throughput.
+implementation technique, if multiple servers participate in the
+commit decision (e.g., locking across partitions or employing multiple
+active validators), they must undergo atomic commitment (whereas a
+single-server implementation would be limited in throughput to its
+capacity). Therefore, the duration of atomic commitment determines the
+the maximum achievable throughput for modifications to a given data
+item. If atomic commit take $10$ms, then, for abortable updates, we
+can achieve throughput of $100$ transactions per second per item. Of
+course, there are many possible optimizations to this simple rule of
+thumb, including batching and reordering of
+commits~\cite{calvin}. Moreover, given non-conflicting transactions,
+aggregate system throughput can be much higher than the per-item
+throughput limitations~\cite{spanner, f1}. However, for arbitrary
+schedules of transactions, atomic commitment latency is a reasonable
+upper bound on per-item throughput.
 
 To better understand the relationship between atomic commitment
 (necessitated by non-\iconfluent, abortable transactions) and
 scalability, we performed a simple analysis of achievable throughput
-under recently studied real-world communication delays over
-local-area~\cite{bobtail} and wide-area~\cite{hat-vldb} networks. We
-use Monte Carlo analysis to determine the latency of traditional
-two-phase commit~\cite{bernstein-book} (\dpc) and decentralized
-two-phase commit~\cite{paxos-commit} (\cpc). We consider groups of
-increasing numbers of participants and assume that transactions are
-perfectly pipelined such that each participant \textit{prepare}s the
-next transaction immediately after it has \textit{commit}ted the prior
-transaction. Therefore, two-phase commit requires two message delays
-($N$ \textit{prepared} messages from all nodes to a ``coordinating''
-participant and $N$ messages to send the \textit{commit} response),
-while three-phase commit requires one message delay ($N^2$ messages in
-an all-to-all broadcast of \textit{prepared} messages). We strictly
-consider network latency (i.e., local processing time incurred by
-locking, latching, or I/O delays would only increase latency).
+using recently published datasets of real-world communication delay
+from both local-area~\cite{bobtail} and wide-area~\cite{hat-vldb}
+networks. We use Monte Carlo analysis to determine the latency of
+traditional two-phase commit~\cite{bernstein-book} (\dpc) and
+decentralized two-phase commit~\cite{paxos-commit} (\cpc). We consider
+groups of increasing numbers of participants and assume that
+transactions are perfectly pipelined such that each participant
+\textit{prepare}s the next transaction immediately after it has
+\textit{commit}ted the prior transaction. Therefore, two-phase commit
+requires two message delays ($N$ \textit{prepared} messages from all
+nodes to a ``coordinating'' participant and $N$ messages to send the
+\textit{commit} response), while three-phase commit requires one
+message delay ($N^2$ messages in an all-to-all broadcast of
+\textit{prepared} messages). We strictly consider network latency
+(i.e., local processing time incurred by locking, latching, or I/O
+delays would only increase latency).
 
 Figure~\ref{fig:2pc} show our results for both local-area
 (\ref{fig:2pc}a) and wide-area (\ref{fig:2pc}b) networks.  In the
@@ -151,8 +152,8 @@ describe below:
   atomically control the visibility of these updates to multiple
   tables. However, our analysis of \lang tells us that we can maintain
   these constraints under insert with \cfreedom. Indeed, with the
-  newly proposed \cfree RAMP algorithm, we can ensure that all of
-  these updates are visible, or none are.
+  newly proposed \cfree ANON algorithm~\cite{ramp-txns}, we can ensure
+  that all of these updates are visible, or none are.
 
 \item \textit{Sequential ID assignment (Consistency Criteria
   3.3.2.2-3).} Each New-Order executed in a pre-determined
@@ -163,15 +164,16 @@ describe below:
   \texttt{ORDER}, \texttt{NEW-ORDER}, and \texttt{ORDER-LINE}
   tables. We know from our analysis of \lang that this sequential
   assignment is not \cfree, so, for a compliant run, we will need to
-  coordinate (note that others forego this sequential constraint CITE
-  SILO at the expense of compliance). A naive approach would hold
-  locks for the duration of each New-Order, but this greatly reduces
-  throughput. Instead, we know that assigning a sequential ID cannot
-  abort, so we simply wait to assign an order ID until commit. When
-  inserting rows into the \texttt{ORDER}, \texttt{NEW-ORDER}, and
-  \texttt{ORDER-LINE} tables, we assign a temporary key and, upon
-  commit, rewrite this temporary key to point to the true sequential
-  key. Accordingly, we only hold locks for a single atomic increment.
+  coordinate (others forego this sequential
+  constraint~\cite{hat-vldb,silo} at the expense of compliance). A
+  naive approach would hold locks for the duration of each New-Order,
+  but this greatly reduces throughput. Instead, we know that assigning
+  a sequential ID cannot abort, so we simply wait to assign an order
+  ID until commit. When inserting rows into the \texttt{ORDER},
+  \texttt{NEW-ORDER}, and \texttt{ORDER-LINE} tables, we assign a
+  temporary key and, upon commit, rewrite this temporary key to point
+  to the true sequential key. Accordingly, we only hold locks for a
+  single atomic increment.
 
 \item \textit{Maintaining stock levels.} When an order for a given
   item is placed, the stock for the given item must be adjusted
@@ -184,26 +186,26 @@ describe below:
 
 All told, TPC-C New-Order coordination can be limited to a single,
 atomic increment-and-get operation on each district's order sequence
-number. Our \cfreedom analysis shows that eleven of twelve required
+number. Our \cfreedom analysis shows that ten of twelve required
 constraints are achievable without synchronous coordination and the
-twelfth is implementagble a non-abortable operation. Hence,
-scalability for a single warehouse is limited to atomic
-increment-and-get on a single machine. Indeed, when we execute the
-above query plan on a linearizable main-memory database prototype
+remainder (3.3.2.2-3) are satisfiable via non-abortable single-site
+operation. Hence, scalability for a single warehouse is limited to
+atomic increment-and-get on a single machine. Indeed, when we execute
+the above query plan on a linearizable main-memory database prototype
 (Figure~\ref{fig:clients}; we disregard think time and per-warehouse
 client limits, as is
 standard~\cite{calvin,hstore,abadi-vll,jones-dtxn}), we indeed
 bottleneck on sequence number assignment. On EC2 cc2.8xlarge
 instances, as depicted, we achieve over $12K$ New-Order transactions
-per second per warehouse. Deploying multiple warehouses per server, we
-attain throughput in excess of $17K$ transactions per second before
-bottlenecking on CPU. There is no synchronous coordination across
-partitions, so varying the percentage of distributed transactions
-results in a modest ($25\%$) throughput reduction due to CPU
-utilization due to serialization and the kernel's TCP/IP stack
-(Figure~\ref{fig:pct}). In contrast, traditional (serializable)
-approaches (as Figure~\ref{fig:2pc} hints) incur throughput overheads
-ranging from 66--88\%~\cite{abadi-vll}.
+per second per warehouse. Deploying multiple warehouses per server
+decreases contention and we attain throughput in excess of $17K$
+transactions per second before bottlenecking on CPU. There is no
+synchronous coordination across partitions, so varying the percentage
+of distributed transactions results in a modest ($25\%$) throughput
+reduction due to CPU utilization due to serialization and the kernel's
+TCP/IP stack (Figure~\ref{fig:pct}). In contrast, traditional
+(serializable) approaches (as Figure~\ref{fig:2pc} hints) incur
+throughput overheads ranging from 66--88\%~\cite{abadi-vll}.
 
 \begin{figure}
 \includegraphics[width=\columnwidth]{figs/wh_thru.pdf}\vspace{-1em}
@@ -220,7 +222,7 @@ ranging from 66--88\%~\cite{abadi-vll}.
 \end{figure}
 
 Unsurprisingly, a coordination-avoiding strategy allows linear scaling
-100 machines (Figure~\ref{fig:scaleout}). On a cluster of 100 EC2
+to 100 machines (Figure~\ref{fig:scaleout}). On a cluster of 100 EC2
 cc2.8xlarge servers spanning three \texttt{us-west} availability zones
 ($5$ warehouses per server), we achieve over 1.8 million New-Order
 transactions per second. We achieve 89.5\% of perfect scaling from one
@@ -269,15 +271,14 @@ workloads. For greater variety, we examined the transactions in the
 OLTPBenchmark suite~\cite{oltpbench} and found that seven of ten
 benchmarks had no integrity constraints, one (\texttt{CH-bencCHmark})
 matched TPC-C, and the remaining two specifications implied a
-requirement for mutual exclusion (\texttt{AuctionMark}'s
-\texttt{new-purchase}, \texttt{SEATS}'s
+requirement for coordination due to unique ID assignment
+(\texttt{AuctionMark}'s \texttt{new-purchase}, \texttt{SEATS}'s
 \texttt{NewReservation}). Moreover, the three ``consistency
 conditions'' in the newer TPC-E benchmark represent a subset of the
-twelve conditions from TPC-C that we consider here. Indeed, it is
-possible (even likely) that these benchmarks are simply
-under-specified, but, according to official specification, TPC-C
-contains the most rigorous application-level invariants among the
-benchmarks we encountered.
+twelve conditions from TPC-C that we consider here. It is possible
+(even likely) that these benchmarks are simply under-specified, but,
+according to official specification, TPC-C contains the most rigorous
+application-level invariants among the benchmarks we encountered.
 
 Anecdotally, conversations with users have not identified invariants
 that are radically different than those we have proposed, and a simple

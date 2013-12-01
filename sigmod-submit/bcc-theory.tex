@@ -24,8 +24,8 @@ that each intermediate state is valid:
 
 \begin{definition}[Valid Sequence]
 Given invariant $I$ and $\{t_{i1}, \dots, t_{in}\} \in T$, $S_i(D) =
-t_{i1}(\dots t_{in}(D))$ is an $I$-valid sequence of transactions in
-$T$ if each $t_{ik}(\dots t_{in}(D))$ is valid under $I$.
+t_{in}(\dots t_{i1}(D))$ is an $I$-valid sequence of transactions in
+$T$ if each $t_{ik}(\dots t_{i1}(D))$ is valid under $I$.
 \end{definition}
 
 Using the concept of valid sequences, we can formalize the
@@ -48,16 +48,16 @@ modifications to the state in isolation---as long as these
 modifications are ``safe'' ($I(S_i(D))$ is true). Under \iconfluent
 operations, any concurrent modifications to database state can be
 safely ``merged'' to provide a valid database state ($I(S_1(D) \cup
-S_2(D))$ is true). As we have alluded, the \iconfluence depends on the
+S_2(D))$ is true). As we have alluded, \iconfluence depends on the
 semantics of updates: an experienced programmer can likely think of
 several operations and invariants that are not \iconfluent as well as
 many that are. For example, if $I=\textit{no bank account has negative
   balance}$, then $T=\{\textit{increment user A's balance by 100,
   increment user A's balance by 50}\}$ is \iconfluent, as is
 $T\cup\{$\textit{audit the database and store the sum of user balances
-  in the \textrm{audit} table} but not $T\cup\{$\textit{decrement user
-  A's balance by 200}$\}$. We defer a full discussion of the space of
-operations until Section~\ref{sec:bcc-practice}.
+  in the \textrm{audit} table}$\}$ but not $T\cup\{$\textit{decrement
+  user A's balance by 200}$\}$. We defer a full discussion of the
+space of operations until Section~\ref{sec:bcc-practice}.
 
 \begin{figure}
 \begin{center}
@@ -65,9 +65,9 @@ operations until Section~\ref{sec:bcc-practice}.
 \end{center}
 \caption{The \iconfluence property illustrated via a diamond
   diagram. If a set of transactions $T$ is \iconfluent, then all
-  database states ($D_{in}$, $D_{jm}$) resulting from a sequence of
-  $I$-valid transformations on the initial database state ($D_0$) must
-  be mergeable ($\sqcup$) into an $I$-valid database state.}
+  database states ($D_{in}$, $D_{jm}$) produced by $I$-valid sequences
+  in $T$ starting from the initial database state ($D_0$) must be
+  mergeable ($\sqcup$) into an $I$-valid database state.}
 \label{fig:iconfluence}
 \end{figure}
 
@@ -75,16 +75,17 @@ operations until Section~\ref{sec:bcc-practice}.
 directly incorporates a user's application-level invariants as part of
 transaction execution. We discuss specific trade-offs in
 Section~\ref{sec:relatedwork}, but we note that this definition is
-more general than related concepts like like state-based
+more general than related concepts like state-based
 commutativity~\cite{weihl-thesis} or traditional
-confluence~\cite{calm,termrewriting}. In Lamport's example of audits
-and deposit transactions from Section~\ref{sec:motivation},
-transactions may not be commutative or confluent at the level of
-database state are indeed confluent with respect to the invariant that
-the database does not contain negative account balances. The use of
-invariants instead of states will allow us to specify a
-\textit{necessary} and sufficient condition (instead of simply a
-sufficient condition) for coordination during execution.
+confluence~\cite{calm,termrewriting}. For example, in Lamport's
+example from Section~\ref{sec:motivation}, the outcome of audit
+transactions is not commutative or confluent with respect to deposit
+transactions, but audit transactions and deposit transactions are
+indeed confluent with respect to the invariant that the database does
+not contain negative account balances. The use of invariants instead
+of states will allow us to specify a \textit{necessary} and sufficient
+condition (instead of simply a sufficient condition) for coordination
+during execution.
 
 \iconfluence is particularly useful because it is deeply connected to
 coordination-free execution:
