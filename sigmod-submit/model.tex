@@ -82,16 +82,20 @@ begin, we consider a system model with multiple copies of database
 state (\textit{replicas}) that can each respond to transaction
 requests. While most treatments of database systems treat replicas as
 individual servers, a single-site database can also provide users with
-an interface that exposes multiple ``replicas''. In fact, a
-multi-versioned database system~\cite{bernstein-book} effectively
-provides each user with a logical replica of database state that is
-isolated from concurrent access and modification. A set of invariants
-and stored procedures that are achievable without coordination in a
-distributed context can also be executed in parallel on a single-site
-system without stalling due to concurrent operations.  In fact, our
-current prototype transaction model (Section~\ref{sec:evaluation}) is
-based on multi-versioning and snapshot reads (``logical replicas'')
-rather than physical multi-master replication.
+an interface that exposes multiple ``replicas''. A multi-versioned
+database system~\cite{bernstein-book} effectively provides each user
+with a logical replica of database state that is isolated from
+concurrent access and modification. A set of invariants and stored
+procedures that are achievable without coordination in a distributed
+context can also be executed in parallel on a single-site system
+without stalling due to concurrent operations.  In fact, our current
+prototype transaction model (Section~\ref{sec:evaluation}) is based on
+multi-versioning and snapshot reads (``logical replicas'') rather than
+physical multi-master replication. Accordingly, we assume that, if a
+client can access a physical server responsible for a given data item,
+it can access a replica for the item without blocking. Therefore, all
+concurrent operations will behave as if they are executed on separate
+replicas.
 
 \minihead{Availability} To reflect the requirement
 that each user's transactions eventually receive a response, we need a
@@ -164,11 +168,11 @@ states are valid not only during operation but also after merge, we
 introduce the following definition:
 
 \begin{definition}
-A system is \textit{always valid} if all replicas always contain valid
-state.
+A system is \textit{globally valid} if all replicas always contain valid
+state with respect to declared invariants.
 \end{definition}
 
-\minihead{Coordination} A transactionally available, always valid,
+\minihead{Coordination} A transactionally available, globally valid,
 convergent system provides a guaranteed response, maintains replica
 validity, and ensures that replicas agree. However, our system model
 is missing one final constraint: coordination between
@@ -205,10 +209,30 @@ union, each replica contains the same database state.
 \label{fig:replicas}
 \end{figure}
 
-\minihead{Summary} An always valid, transactionally available,
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|}
+\hline\textbf{Requirement} & \textbf{Effect}  \\\hline\hline
+Global validity & Invariants are never violated \\\hline
+Transactional availability & Non-trivial response guaranteed \\\hline
+Convergence & Replicas must reconcile \\\hline
+Coordination-freedom & No synchronous coordination\\\hline
+\end{tabular}
+\end{center}\vspace{-1em}
+\caption{Utility of requirements in system model.}
+\label{table:requirements}
+\end{table}
+
+
+\minihead{Summary} A globally valid, transactionally available,
 convergent, and \cfree system achieves our intended goals of perfect
-scalability, availability, and low latency. The above
+scalability, availability, and low latency. As we summarize in
+Table~\ref{table:requirements}, every instance of database state is
+valid with respect to invariants, each transaction receives a
+non-trivial response, database states eventually agree, and all
+transactions are processed without communication. The above
 definitions---while indeed somewhat pedagogical---rule out trivial
-implementations that satisfy our goals but compromise ``useful''
-behavior. Using this formalism, we can subsequently understand when
-these goals are achievable.
+implementations that satisfy our informal goals but compromise
+``useful'' behavior. Using this formalism, we can subsequently
+understand when these goals are achievable.

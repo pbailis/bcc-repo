@@ -2,35 +2,42 @@
 \section{Freedom and \iconfluence}
 \label{sec:bcc-theory}
 
-With a system model in hand, we now address the question: under what
-conditions does a transaction require synchronous coordination? The
-answer will depend on the set of operations the database may be
-expected to perform as well as the integrity constraints that the
-database is required to maintain.
+With a system model and formal goals in hand, we now address the
+question: under what conditions does transaction processing require
+synchronous coordination? The answer depends on the set of operations
+the database may be expected to perform as well as the integrity
+constraints that the database is required to maintain.
 
-We begin by introducing the concept of invariant confluence
-(hereafter, \iconfluence)~\cite{obs-confluence}. Applied in a
-transactional context, the \iconfluence property ensures that if the
-effects of two series of separate transactions ($S_i$, $S_j$) that
-operate independently on the same copy of valid database state are
-valid ($I(S_i(D))$, $I(S_j(D))$ hold), their effects can safely be
-combined to produce a valid database state ($I(S_i(D) \sqcup S_j(D))$
-holds). \iconfluence will form the formal basis of a relationship
-between \cfreedom and a set of invariants.
+\subsection{\iconfluence}
 
-We first define a valid sequence of transformations, with represents
-the results of applying a set of transactions to database state such
-that each intermediate state is valid:
+To begin, we introduce a concept that will underly our main result:
+invariant confluence (hereafter,
+\iconfluence)~\cite{obs-confluence}. Applied in a transactional
+context, the \iconfluence property informally ensures that divergent,
+valid database states can be merged into a valid database state. That
+is, if the effects of two valid series of transactions ($S_i$, $S_j$)
+that operate independently on the same copy of valid database state
+produce valid outputs ($I(S_i(D))$, $I(S_j(D))$ hold), their effects
+can safely be combined to produce a valid database state ($I(S_i(D)
+\sqcup S_j(D))$ holds). \iconfluence will form the formal basis of a
+relationship between \cfreedom and a set of invariants.
+
+We first define a valid sequence of transactions, representing the
+result of applying a set of transactions to database state such that
+each intermediate state is valid; this captures the process of
+applying transactions to a single database state and transitively
+maintaining validity:
 
 \begin{definition}[Valid Sequence]
-Given invariant $I$ and $\{t_{i1}, \dots, t_{in}\} \in T$, $S_i(D) =
-t_{in}(\dots t_{i1}(D))$ is an $I$-valid sequence of transactions in
-$T$ if each $t_{ik}(\dots t_{i1}(D))$ is valid under $I$.
+Given invariant $I$ and transactions $\{t_{i1}, \dots, t_{in}\} \in
+T$, the database state $S_i(D) = t_{in}(\dots t_{i1}(D))$ is an
+$I$-valid sequence of transactions in $T$ if each state $t_{ik}(\dots
+t_{i1}(D))$ is valid under $I$.
 \end{definition}
 
 Using the concept of valid sequences, we can formalize the
-\iconfluence property, which ensures that the set of valid sequences
-with a common ancestor are valid under merge:
+\iconfluence property, which requires that valid sequences with a
+common ancestor are also valid under merge:
 
 \begin{definition}[\iconfluence]
 Given invariant $I$, transactions $T$ are $I$-confluent if, for all
@@ -43,21 +50,27 @@ two valid sequences each starting from the initial database state
 $D_0$. This execution model will be familiar to users of fork-join
 programming models~\cite{hewitt-forkjoin} (e.g., version control
 systems like Git and Subversion). \iconfluence allows users to ``check
-out'' a known good copy of database state ($I(D)$) and perform
-modifications to the state in isolation---as long as these
-modifications are ``safe'' ($I(S_i(D))$ is true). Under \iconfluent
-operations, any concurrent modifications to database state can be
-safely ``merged'' to provide a valid database state ($I(S_1(D) \cup
-S_2(D))$ is true). As we have alluded, \iconfluence depends on the
-semantics of updates: an experienced programmer can likely think of
-several operations and invariants that are not \iconfluent as well as
-many that are. For example, if $I=\textit{no bank account has negative
-  balance}$, then $T=\{\textit{increment user A's balance by 100,
-  increment user A's balance by 50}\}$ is \iconfluent, as is
-$T\cup\{$\textit{audit the database and store the sum of user balances
-  in the \textrm{audit} table}$\}$ but not $T\cup\{$\textit{decrement
-  user A's balance by 200}$\}$. We defer a full discussion of the
-space of operations until Section~\ref{sec:bcc-practice}.
+out'' a known good copy of database state ($D$ such that $I(D)$ holds)
+and perform a series of modifications ($S_i$) to the state in
+isolation---as long as these modifications are ``safe'' ($I(S_i(D))$
+is true). Under \iconfluent operations, any concurrent series of
+modifications to database state can be safely ``merged'' to provide a
+valid database state ($I(S_1(D) \cup S_2(D))$ is true). We require
+that $I$-valid sequences of transactions have a common ancestor to
+rule out the possibility of merging arbitrary states that could not
+have arisen from transaction execution (e.g., even if no transaction
+assigns ids, it may be invalid to merge two states that each have
+unique but overlapping sets of ids).
+
+\iconfluence holds for some combinations of invariants and
+transactions but not others. For example, if $I=\{$\textit{no bank
+  account has negative balance}$\}$, then $T=\{$\textit{increment user
+  A's balance by 100, increment user A's balance by 50}$\}$ is
+\iconfluent, as is $T\cup\{$\textit{audit the database and store the
+  sum of user balances in the \textrm{audit} table}$\}$ but not
+$T\cup\{$\textit{decrement user A's balance by 200}$\}$. For now, our
+goal will be to use this property in the abstract, but we will provide
+a full discussion of practical uses in Section~\ref{sec:bcc-practice}.
 
 \begin{figure}
 \begin{center}
@@ -71,42 +84,44 @@ space of operations until Section~\ref{sec:bcc-practice}.
 \label{fig:iconfluence}
 \end{figure}
 
-\miniheadnostop{A note on \iconfluence} Our notion of \iconfluence
-directly incorporates a user's application-level invariants as part of
-transaction execution. We discuss specific trade-offs in
-Section~\ref{sec:relatedwork}, but we note that this definition is
-more general than related concepts like state-based
-commutativity~\cite{weihl-thesis} or traditional
-confluence~\cite{calm,termrewriting}. For example, in Lamport's
-example from Section~\ref{sec:motivation}, the outcome of audit
-transactions is not commutative or confluent with respect to deposit
-transactions, but audit transactions and deposit transactions are
-indeed confluent with respect to the invariant that the database does
-not contain negative account balances. The use of invariants instead
-of states will allow us to specify a \textit{necessary} and sufficient
-condition (instead of simply a sufficient condition) for coordination
-during execution.
+\subsection{Coordination}
 
-\iconfluence is particularly useful because it is deeply connected to
-coordination-free execution:
+We can apply the concept of \iconfluence our goals from
+Section~\ref{sec:model}:
 
 \begin{theorem}
 \label{theorem:necessary}
-An always valid system can guarantee an application with transactions
+A globally valid system can guarantee an application with transactions
 $T$ and invariants $I$ with \cfreedom, transactional availability,
 convergence if and only if $T$ is $I$-confluent.
 \end{theorem}
 
 Theorem~\ref{theorem:necessary} establishes \iconfluence as a
 necessary and sufficient condition for coordination-free
-execution---the first such condition we are aware of. The proof of
-this theorem is a reformulation of classic partitioning
-arguments~\cite{gilbert-cap}. Informally, if \iconfluence holds, each
-replica can simply check each transaction's modifications locally and
-replicas can simply merge independent modifications to guarantee
-convergence. For the converse, we construct a scenario under which a
-replica cannot determine whether or not a non-\iconfluent update
-should succeed without contacting another replica.
+execution---the first such condition we are aware of. Effectively, we
+have ``lifted'' the specification of semantics that are achievable
+with scalability, availability, and low-latency to the level of
+invariants and transactions. If \iconfluence holds, these goals are
+attainable; if not, there is no possible implementation or execution
+strategy that can guarantee these properties for the provided
+invariants and transactions. That is, if \iconfluence does not hold,
+there exists at least one execution of transactions on divergent
+replicas that will violate the given invariants when replicas
+converge. To prevent invalid states from occuring, at least one of the
+transaction sequences will have to forego availability or \cfreedom,
+or the system will have to forego convergence. This is a useful
+result, and we will spend much of the remainder of the paper applying
+it.
+
+Before doing so, we now prove Theorem~\ref{theorem:necessary}. The
+proof is based on both a proof by construction and classic
+partitioning arguments~\cite{gilbert-cap}. Informally, if \iconfluence
+holds, each replica can simply check each transaction's modifications
+locally and replicas can simply merge independent modifications to
+guarantee convergence to a valid state. For the converse, we construct
+a scenario under which a replica cannot determine whether or not a
+non-\iconfluent update should succeed without contacting another
+replica, diverging forever, or compromising availability.
 
 \begin{proof}
 ($\Leftarrow$) We begin with the simpler proof, which is by
@@ -124,36 +139,75 @@ should succeed without contacting another replica.
   valid. Transactional availability, convergence, and validity are all
   maintained via coordination-free execution.
 
-($\Rightarrow$) Assume a system $S$ exists that can guarantee always
+($\Rightarrow$) Assume a system $M$ exists that can guarantee globally
   valid operation for a set of transactions $T$ with \cfreedom,
   transactional availability, and convergence, but $T$ is not
-  $I$-confluent. Then there exists valid sequences $T_1,T_2$ in $T$
-  such that $I(T_1(D_0)) \wedge I(T_2(D_0))$ is true but $I(T_1(D_0)
-  \sqcup I(T_2(D_0))$ is false. We now construct two executions of $S$
-  to produce a contradiction. Consider an execution $\alpha_1$ in
-  which one replica $R_1$ executes the transactions from $T_1$ and a
-  second execution $\alpha_2$ in which a second replica $R_2$ executes
-  the transactions from $T_2$ and each replica initially contains the
-  initial state $D_0$. Without synchronous communication, a third
-  execution $\alpha_3$ containing the operations in both $\alpha_1$
-  and $\alpha_2$---that is, $T_1$ is submitted to $R_1$ and $T_2$ is
-  submitted to $R_2$---is, from the perspective of $R_1$,
-  indistinguishable from $\alpha_1$, and, from the perspective of
-  $R_2$, indistinguishable from $\alpha_2$. To preserve availability,
-  in $\alpha_1$ and $\alpha_2$, $R_1$ and $R_2$ cannot choose to abort
-  any of $T_1$ or $T_2$, yet, in $\alpha_3$, if $R_1$ and $R_2$ each
-  commit their respective sequences, the merged state will be
-  invalid. Therefore, $R_1$ and $R_2$ cannot simultaneously maintain
-  valid state, \cfreedom, transactional availability, or convergence,
-  as desired.
+  $I$-confluent. Then there exists valid sequences $S_1,S_2$ in $T$
+  such that $I(S_1(D_0)) \wedge I(S_2(D_0))$ is true but $I(S_1(D_0)
+  \sqcup I(S_2(D_0))$ is false.
+
+  Consider an execution $\alpha_1$ in which one client $C_1$ submits
+  the transactions from $S_1$ to a replica $R_1$ and a second
+  execution $\alpha_2$ in which a second client $C_2$ submits the
+  transactions from $S_2$ to replica $R_2$ such that each replica
+  initially contains the initial state $D_0$. To preserve
+  transactional availability, in $\alpha_1$, $R_1$ must commit the
+  transactions in $S_1$ (resulting in $S_1(D_0)$), while, in
+  $\alpha_2$, $R_2$ must commit the transactions in $S_2$ (resulting
+  in $S_2(D_0)$).
+
+   We now consider a third execution, $\alpha_3$x to produce a
+   contradiction. In $\alpha_3$, $C_1$ submits $S_1$ at the same time
+   as $C_2$ submits $S_2$; in our system model, $C_1$ and $C_2$ will
+   necessarily access different replicas because their operations are
+   concurrently executing. $M$ is \cfree, so, from the perspective of
+   $R_1$, $\alpha_3$ is indistinguishable from $\alpha_1$, and, from
+   the perspective of $R_2$, $\alpha_3$ is indistinguishable from
+   $\alpha_2$. However, if $R_1$ and $R_2$ each commit their
+   respective sequences (as is required for transactional availability
+   in $\alpha_1$ and $\alpha_2$), then their resulting states will, by
+   assumption, not be valid under merge. Therefore, to preserve
+   transactional availability, $M$ must sacrifice one of global
+   validity (by allowing the invalid merge), convergence (by never
+   merging), or \cfreedom (by allowing $R_1$ and $R_2$ to converge
+   prior to commit time).
 \end{proof}
 
-Formalism aside, \iconfluence captures a simple rule; informally:
-\textbf{Coordination is only required when a transaction's actions
-  cannot be reconciled with concurrent actions.}  Alternatively (and
-much less formally): \textbf{In a coordination-free system, any two
-  valid database states must be mergeable into a valid database
-  state.}
+\subsection{Discussion}
+
+\iconfluence captures a simple (informal) rule: \textbf{coordination
+  can only be avoided when replica-local commit decisions are globally
+  valid.} If two independent decisions to commit can result in invalid
+converged state, then replicas must coordinate in order to ensure that
+only one of the decisions is to commit. If two such decisions exist,
+it is unsafe for those operations to proceed in parallel, without
+coordination. In the proof of Theorem~\ref{theorem:necessary}, the
+specific system executions of $\alpha_1$ and $\alpha_2$ preserved
+global validity. However, without coordination, $\alpha_1$ and
+$\alpha_2$ were indistinguishable from an invalid
+execution. \iconfluence analysis captures the fact that such an
+invalid execution exists (or not). Moreover, given the existence of an
+invalid execution and the inability to distinguish between safe and
+invalid executions using only local information, a globally valid
+system \textit{must} coordinate in order to prevent the invalid
+execution.
+
+\iconfluence directly incorporates a user's application-level
+invariants in transaction execution. We discuss specific trade-offs in
+Section~\ref{sec:relatedwork}, but this definition is more general
+than related concepts like state-based
+commutativity~\cite{weihl-thesis} (e.g., equivalence of return values)
+or traditional confluence~\cite{calm,termrewriting} (i.e.,
+deterministic program outcomes). For example, in Lamport's example
+from Section~\ref{sec:motivation}, the outcome of audit transactions
+differs depend on whether it runs before or after a given deposit
+transaction and is therefore not commutative or confluent with respect
+to deposit transactions. However, audit transactions and deposit
+transactions are indeed confluent with respect to the invariant that
+the database does not contain negative account balances. Reasoning
+about invariants instead of equivalence of database states is key to
+achieving a \textit{necessary} and sufficient condition (instead of
+simply a sufficient condition).
 
 \minihead{Revisiting Payroll} Given \iconfluence, we can revisit our
 payroll example. As we showed by counterexample, uniqueness of
