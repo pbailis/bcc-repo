@@ -1,4 +1,178 @@
 
+Using \iconfluence as test for coordination requirements exposes a
+trade-off between the operations a user wishes to perform and the
+semantic guarantees she wishes to guarantee about her data. At the
+extreme, if a user's transactions cannot modify the initial database
+state, she can guarantee any invariant, while, with no invariants, a
+user can perform any operations. However, the space between yields a
+spectrum of possible \iconfluent guarantees. In this section, we make
+this trade-off concrete via a simple language analysis, a discussion
+of system and merge function design, and a discussion of several
+related techniques through the lens of \iconfluence.
+
+\subsection{\lang: A Simple Example Language}
+
+To illustrate the utility of \iconfluence, we consider a simple,
+informal language modeled after simple SQL DDL and stored procedures,
+called \lang. In \lang, databases store mutations in collections of
+\textit{rows}, grouping rows with equivalent, pre-defined
+\textit{columns} (fields) into \textit{tables}. Each column can
+contain either \textit{string}, \textit{numeric}, or \textit{counter}
+datatype. Strings and numeric types contain arbitrary (text or
+numerical) data and support arbitrary modification, while counters
+contain numeric data and support algebraic operations (e.g.,
+\textit{increment}, \textit{decrement}). Users submit arbitrary
+functions over data in the form of \textit{transactions}, each of
+which consists of a variable number of sequential
+\textit{statements}. Statements take the form of read (e.g.,
+\textit{select}), write (e.g., \textit{insert}), or update (e.g.,
+\textit{update}, \textit{increment/decrement} for counters,
+\textit{delete}) operations.
+
+To enable \cfreedom analysis, \lang allows users to define
+\textit{invariants} over their tables that express application-level
+consistency requirements. Many of these are borrowed from SQL. First,
+a \textit{primary key} on columns $C_1 \dots C_n$ of table \textit{T}
+requires that at most one one row should match each distinct
+combination of possible values for the specified columns. Second, a
+\textit{autoincrement} constraint on a primary key of numeric type
+requires that numeric values be contiguous. Third, a \textit{foreign
+  key} on numeric columns $C_F=\{C_{f1}\dots C_{fn}\}$ of table $T_f$
+referencing another set of columns $C_R = \{C_{r1}\dots C_{rn}\}$ (resident in a
+different table $T_f \neq T_r$) dictates that, for each row in $T_f$,
+there should be at least one row in $T_f$ whose values for $C_r$
+matches that of $C_r$. Unlike SQL, \lang adds additional constraints
+to each column: \textit{not equals}, \textit{equals}, and, for numeric
+and counter datatypes, \textit{less than}, \textit{greater than}, and
+\textit{sum\_of} (the final representing an aggregate of multiple
+other numeric columns).
+
+
+
+With this simple (but expressive) language in mind, we can enumerate a
+set of \iconfluent and non-\iconfluent operations. We do not claim
+that this enumeration is complete or that \lang is sufficiently
+expressive for all applications. However, as we will see
+(Section~\ref{sec:evaluation}), it is surprisingly expressive for
+many.
+
+Several operations are \iconfluent: any operation on columns without
+constraints, increment (decrement) of counters without \textit{less
+  than} (\textit{greater than}) constraints, modification of foreign
+key columns (provided $i.)$ a suitable remote data column is read as
+part of the same transaction or $ii.)$ a suitable remote data column
+is modified), and any (in-)equality constraints, \textit{sum\_of}
+(with the same caveat as foreign key constraints). Given cluster-wide
+unique ID generation (i.e., UUID or via cluster membership), insertion
+into primary key columns without autoincrement constraints (provided
+the columns are not specified by the end user---e.g., ``give me a new
+ID'' versus ``insert this new ID'') are also supported. In contrast,
+insertion of specified primary keys, use of autoincrement, and
+\textit{less than} and \textit{greater than} for decrement and
+increment operations, respectively, are not invariant
+commutative. Perhaps not surprisingly, all of these cases can be
+checked by simple syntactic rules; we built a simple \lang analysis
+tool that identifies all of the above constructs in addition to
+limited support for conditional updates in less than a week.
+
+\subsection{Dealing with Conflicts}
+\label{sec:conflicts}
+
+If a set of transactions is not \iconfluent, then concurrently
+executing combination of the transactions might violate the given
+integrity constraint. This requires coordination--but how much?
+
+At one extreme, it is sufficient to perform (serial) mutual exclusion
+between any possibly conflicting transactions. For instance, if
+procedures $p_1$ and $p_2$ could conflict, then a system could execute
+each under a serializable isolation level. This is expensive: for any
+\textit{possible} conflicts, transactions will have to coordinate and
+potentially block, even for operations in the transactions that do not
+conflict.
+
+We suggest an alternative: let transactions execute in isolation and
+produce outputs, and then use optimistic concurrency control to check
+whether any conflicting outputs were actually produced. This
+validation step is possibly expensive, as \textit{every} possible
+conflict must be checked. If $\delta_{i1}$ and $\delta_{j1}$ conflict,
+any transaction producing either of these outputs must contact a
+validator in order to check whether the corresponding conflicting
+action has been performed. If so, we have two options. In the basic
+case, the transaction must abort due to a would-be conflict of
+integrity constraints. We call these updates \textit{abortable
+  conflicts}. However, not all conflicts require aborting. For
+example, a transaction that enforces that \textit{some} doctor is on
+duty need not actually abort if an alternate doctor is actually on
+staff. We model these \textit{non-abortable conflicts} as
+mini-transactions---effectively, closures that operate atomically on
+database state. In the doctor case, the mini-transaction might check
+the table for an existing doctor and simply produce no new output. In
+a less trivial case, a user might autoincrement an ID counter when
+inserting a new row; non-abortable conflicts only require
+serialization, not aborts. Of course, this problem of reducing
+conflicting operations introduces a new set of challenges.
+
+Fortunately, the problem of minimizing conflicts is well-studied
+(Section~\ref{sec:relatedwork}). The most aggressive decomposition
+techniques we have encountered are those of Bernstein and Lewis's
+``Assertional Concurrency Control'' protocols, which decompose
+transactions into minimally-sized atomic units that are subsequently
+executed as to avoid pre-condition invalidation (cf. \textit{maximally
+  reduced proofs} for non-modular transaction
+decomposition~\cite{decomp-semantics}). To do so requires additional
+semantics about intermediate pre- and post-conditions for each
+operation: this brings this research into the realm of programming
+languages. We believe this is a worthwhile area for future work, but,
+due to programmer burden, do not further consider these techniques in
+this paper.
+
+\subsection{Merge Functions}
+\label{sec:merge}
+
+So far, we have assumed a simple bag representation of database
+state. This is convenient for proving properties about database state
+and reasoning about the behavior of merge functions, but, in practice,
+merges may be more complex. For example, for many applications, it is
+impractical to retain all versions ever written to the
+database. Instead, databases may wish to \textit{compact} these
+versions to limit storage requirements. A simple compaction policy is
+\textit{last writer wins}, whereby writes are assigned a timestamp and
+only the highest-timestamped write to each time is
+retained~\cite{dynamo}. However, improper use of last-writer wins can
+yield \iconfluent but functionally inconsistent results: consider, for
+example, a user that wishes to ensure that no bank account has
+negative balance. If using a simple numeric register, if two users
+each withdraw \$60 from an account with \$100, a last-writer wins
+column might end up with \$40 total. This can be prevented by adding
+an additional invariant that states that account balances should
+reflect all additions and removals from each account, but this is an
+arguably non-trivial pitfall.
+
+We propose the use of abstract data types to avoid anomalies such as
+the above. The bank account example is not technically incorrect, but
+it reflects an incomplete specification of invariants. In many
+real-world examples, users' successful operations should be reflected
+in any converged database state; by choosing merge functions that
+reflect this ``durability'' requirement, a database can avoid these
+odd anomalies. While many practitioners today must hand-code their own
+merge functions (e.g., Bayou~\cite{bayou} and Dynamo~\cite{dynamo}
+conflict reconciliation), we advocate a model in which a
+\textit{library} of type-specific merge functions are presented to
+users. This approach---suggested by concurrency control for abstract
+data types~\cite{weihl-thesis} and, more recently, Commutative and
+Replicated Data Types~\cite{crdt}---simplifies the task of merging
+updates while also reducing the overheads of operations. Unlike this
+prior work, however, \iconfluence analysis \textit{also} guarantees
+the correctness of (specified) arbitrary transformations on these
+types, thus eliminating the problem of Conway et al.'s
+\textit{scope dilemma}~\cite{blooml}, whereby operations on individual
+data items are valid but their composition is not.
+
+\input{isolation-subsec}
+
+\input{confluence-subsec}
+
+
 
 The past decade has seen increased tumult in the landscape of database
 design: faced with increasing scale and requirements for always-on
@@ -467,3 +641,163 @@ Mergeable conflict: resolve afterwards -- mutation as *intent*, not literal
 \begin{theorem}
 
 \end{theorem}
+
+
+\minihead{Invariant Specification} One limitation of our current
+approach is that it requries users to fully specify any invariants
+that they are concerned with. Without invariants, we assume that all
+queries are \iconfluent and can be executed with \cfreedom. An
+alternative approach would start with an assumption that no
+transactions are \iconfluent and would execute all transactions under
+serializable isolation. Users could subsequently annotate their
+transactions as \iconfluent and enjoy the benefits of scalability as
+\cfreedom is recognized. We view these two approaches as complementary
+and, a complete coordination-avoiding system should easily accomodate
+both. Both approaches maintain the beneficial property that users
+reason about their applications (via invariants) rather than low-level
+isolation anomalies; indeed, the requirement for a full specification
+replaces the requirement for a full analysis of all possible
+read/write traces.
+
+
+\minihead{Lifecycle Management} A common end-user requirement that has
+proven particularly important for real-world users is the ability to
+reason about new invariants as they are introduced into
+already-deployed databases. For example, if a user wants to add a
+given invariant/constraint, how will it impact running queries and
+other invariants in the system? As a baseline concern, we must ensure
+that the constraints in the database are satisfiable: a configuration
+with invariants that are not simultaneously achievable will become
+unavailable and, worse, represents inconsistent application
+state. This is manageable via standard (if expensive) satisfiability
+analyses but, more importantly, also means that the addition of new
+invariants cannot be performed in a \cfree manner. Towards the
+question of impact on running queries, we believe that lightweight
+logging of transactions will allow analysis of new queries as they are
+added to a database and, in general, can allow users to directly
+assess the scalability effects of (adding \textit{or} removing) a
+given invariant. In summary, we believe that coordination-avoidance
+via invariant specification is achievable in a sane operational manner
+but will require care in ensuring that the addition of new invariants
+does not compromise database integrity (or, if desirable, performance
+and availability).
+
+\subsection{From Applications to Isolation Models}
+
+Even if an application is \iconfluent and therefore achievable with
+coordination-freedom, application designers (or, alternatively, a
+database query planner) may still wish to choose an appropriate
+isolation model. There are two primary decisions a system faces: how
+should new updates be made visible (with respect to other updates),
+and how quickly should updates be made visible (with respect to real
+time)?
+
+\minihead{Making updates visible} Ideally, users could instead use
+\textit{no} concurrency control or \textit{eventual consistency} to
+disseminate their \iconfluent updates. However, this can lead to
+anomalies: for example, applying multi-item writes without concurrency
+control might result in a situation where readers observe some writes
+but not the others, violating a declared foreign key
+constraint. Towards this goal, two models are particularly useful. The
+first, the \textit{happens-before} relation from
+causality~\cite{lamportclocks} informally ensures that, if a write is
+visible, the writes that influenced the write are also visible. This
+is useful in the case that a user reads a write (e.g., read
+\textit{department.id=20}) and one of her subsequent writes depends on
+that write (e.g., insert \textit{user.department=20}). We can use a
+degenerate form of happens-before---so-called \textit{explicit
+  causality}~\cite{explicit-socc2012} to ensure that, if a user issues
+a write to an item that explicitly (via a forign key dependency)
+depends on a previously write, the latter is only observed with the
+former. The second model, \textit{Read Atomic isolation}
+(RA)~\cite{ramp-txns} ensures that, once one of the writes in a
+transaction is visible to a reader, all are visible (e.g., a single
+transaction inserts \textit{department.id=20} and
+\textit{user.department=20}).
+
+Given our \cfree model of divergent replicas with merges, if merge
+respects explicit causality (defined with respect to $I$) and RA
+isolation, then $I$ will not be violated. Given that causal
+consistency is known to have substantial metadata overheads (which
+explicit causality mitigates to some extent~\cite{explicit-socc2012})
+and that the best known implementation of RA
+isolation~\cite{ramp-txns} requires two rounds of communication for
+reads and writes, these models are best employed only when
+necessary. In \lang, we need only employ them in the case of foreign
+key updates.
+
+\minihead{Controlling recency} While individual replicas may respect
+invariants, users often desire \textit{recency} guarantees on their
+updates: guarantees on the visibility of their updates, either to
+their own future transactions (e.g., read-your-writes guarantees) or
+to other users (e.g., linearizability). A class of guarantees from the
+distributed systems and database literature called \textit{session
+  guarantees}~\cite{bayou} enforces the former, often via so-called
+\textit{sticky availability}: all of a user's transactions are
+executed against the same (logical) copy of the
+database~\cite{hat-vldb}. This satisfies common requirements like
+reading one's prior writes and can be used to implement more complex
+models such as PRAM~\cite{pram} and causal~\cite{lamportclocks}
+recency guarantees. The latter (more generally, global real-time
+recency guarantees) may require coordination. A bounded-staleness
+guarantee can indeed be provided with periodic broadcasts between
+replicas: in the failure-free case, this is \cfree with respect to
+individual requests, but, in the presence of failures, may sacrifice
+availability. More stringent guarantees like linearizability will
+require coordination for updates. As Bailis et al. note, these
+distributed systems guarantees are largely orthogonal to traditional
+ACID semantics~\cite{hat-vldb} (e.g., traditional serializability does
+not place any recency guarantees on cross-transaction recency) but are
+often of interest to practitioners (typically, in weaker forms like
+read-your-writes).
+
+
+\subsection{Beyond Confluence}
+
+A range of techniques have been proposed to mitigate the trade-off
+between consistency and coordination. We defer a full survey of the
+field to Section~\ref{sec:relatedwork} but briefly discuss three in
+detail here.
+
+\minihead{Escrow} 
+\minihead{Immutability} Immutablilty has long been touted as a
+strategy for improving the ability to reason about and program
+distributed systems~\cite{helland-immutable,gray-virtues}. Indeed,
+immutability eliminates the problem of handling namespace collisions
+(either by pre-allocating or otherwise coordinating in order to manage
+the space of IDs). However, immutability is subject to many of the
+same problems as non-\iconfluent operations. For example, if we store
+bank deposits and withdrawals in a ledger instead of perfoming commutative
+update-in-place (as is encouraged in \lang), we have not actually
+solved the problem of ensuring that no account has negative
+balances. Instead, what immutability provides is a simple
+\textit{merge} procedure: without namespace conflicts, no write is
+lost due to, say, improper reconciliation techniques. This is a
+powerful property but it is not sufficient to prevent true
+application-level consistency violations.
+
+\minihead{Monotonicity} Hellerstein's CALM conjecture~\cite{calm}
+(subsequently proven as the CALM Theorem~\cite{ameloot-calm})
+establishes a strong connection between monotonic logic and
+confluence. CALM states that, if applications are restricted to
+monotonic logic, they will produce deterministic output despite
+reordering of execution. This indeed precludes non-\iconfluent
+behavior such as subtracting from bank account balances, but it is
+restrictive in at least two ways. First, determinism is often not
+necessary as long as application-level invariants are satisfied: take,
+for example, our audit and bank account balance from
+Section~\ref{sec:bcc-theory} (alternatively, as a classic example from
+distributed computing, consensus objects require that exactly one
+value is chosen, not that a \textit{particular value} is chosen---this
+is core to the problem specificiation, where it is called
+\textit{non-triviality}). Users may wish to perform non-monotonic
+logic, and, as we have seen, non-monotonic logic is sometimes safe to
+execute---trivially, if there are no invariants that correspond to the
+output of the non-monotonic operations. Second, deterministic outcomes
+are not necessarily correct with respect to application-level
+invariants. If a user issues only \textit{increment} operations on a
+distributed counter, then, indeed, the program is monotonic and will
+be deterministic despite re-ordering of increment operations. However,
+if the desired behavior is to maintain a specific counter value,
+monotonicity of the program actions is insufficient to guarantee
+correctness.

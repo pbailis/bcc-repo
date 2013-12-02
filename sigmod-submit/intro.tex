@@ -2,8 +2,7 @@
 \section{Introduction}
 \label{sec:intro}
 
-% coordination is fundamental to scalability, availability, low
-% latency
+% coordination-freedom provides scalability
 
 High-performance and scalable database designs require minimized
 coordination. Coordination---informally, the requirement that
@@ -72,6 +71,8 @@ task for non-expert users)~\cite{consistency-borders}, we require
 users to specify their application-level consistency criteria in terms
 of application-level predicates.
 
+
+
 In this paper, we present a necessary and sufficient condition for
 \cfree execution under a given set of invariants, called
 \textit{invariant confluence}. This \iconfluence formalizes---at an
@@ -112,13 +113,14 @@ focus on the TPC-C benchmark~\cite{tpcc}, which has seen substantial
 popularity in the database community as a gold standard for new
 concurrency control
 algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore}. We show
-that, in fact, eleven of twelve of TPC-C's integrity constraints are
+that, in fact, twelve of twelve of TPC-C's integrity constraints are
 \iconfluent and, more importantly, compliant TPC-C can be implemented
-in a \cfree manner for distributed operation. As a proof of concept,
-we scale a simple coordination-avoiding database prototype linearly,
-to over $1.8M$ New-Order transactions per second on a $100$-node EC2
-cluster. We also demonstrate the costs of coordination by analyzing
-upper bounds on throughput due to to atomic commitment overhead.
+without synchronous coordination across servers. As a proof of
+concept, we scale a simple coordination-avoiding database prototype
+linearly, to over $1.8M$ New-Order transactions per second on a
+$100$-node EC2 cluster. We also demonstrate the costs of coordination
+by analyzing upper bounds on throughput due to to atomic commitment
+overhead.
 
 While our results are not comprehensive, they provide a formal but
 pragmatic grasp on the trade-off between coordination and

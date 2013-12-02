@@ -224,7 +224,7 @@ throughput overheads ranging from 66--88\%~\cite{abadi-vll}.
 Unsurprisingly, a coordination-avoiding strategy allows linear scaling
 to 100 machines (Figure~\ref{fig:scaleout}). On a cluster of 100 EC2
 cc2.8xlarge servers spanning three \texttt{us-west} availability zones
-($5$ warehouses per server), we achieve over 1.8 million New-Order
+($5$ warehouses per server), we achieve over 1.6 million New-Order
 transactions per second. We achieve 89.5\% of perfect scaling from one
 to 100 machines and perfect scaling from ten to 100 machines. At peak,
 each server is CPU bound due to our current, fairly inefficient
@@ -245,8 +245,8 @@ with scalability if implemented in a coordination-avoiding manner.
 \begin{center}
 \includegraphics[width=\columnwidth]{figs/thru_scale.pdf}\vspace{-2em}
 \end{center}
-\caption{Coordination-free distributed execution of TPC-C New-Order
-  achieves linear scaling (depicted by dashed line).}
+\caption{Coordination-free distributed execution of TPC-C New-Order is
+  linearly scalable (dashed line is perfect scaling).}
 \label{fig:scaleout}
 \end{figure}
 

@@ -4,51 +4,207 @@
 
 Using \iconfluence as test for coordination requirements exposes a
 trade-off between the operations a user wishes to perform and the
-semantic guarantees she wishes to guarantee about her data. At the
-extreme, if a user's transactions cannot modify the initial database
-state, she can guarantee any invariant, while, with no invariants, a
-user can perform any operations. However, the space between yields a
-spectrum of possible \iconfluent guarantees. In this section, we make
-this trade-off concrete via a simple language analysis, a discussion
-of system and merge function design, and a discussion of several
-related techniques through the lens of \iconfluence.
+semantic guarantees she wishes to guarantee about her data.
 
-\subsection{\lang: A Simple Example Language}
+\minihead{Revisiting Payroll} Given \iconfluence, we can (briefly)
+revisit our payroll example. As we showed by counterexample,
+uniqueness of arbitrary values is not \iconfluent: $\{$Stan:5$\}$ and
+$\{$Mary:5$\}$ are both valid states that can be reached by valid
+sequences (starting at $\{\}$) but their merge---$\{$Stan:5,
+Mary:5$\}$ is not valid. Therefore, insertion of arbitrary values is
+not $I$-confluent for $I=\{$unique IDs$\}$. However, deletion of
+employees \textit{is} $I$-confluent: removing items from a bag of
+unique values cannot introduce duplicates. We can repeat the same
+exercise for foreign key constraints: inserting new records with valid
+department IDs cannot in fact introduce conflicts during merge. The
+salary constraint is similarly easily validated for simple insert
+statements.
 
-To illustrate the utility of \iconfluence, we consider a simple,
-informal language modeled after simple SQL DDL and stored procedures,
-called \lang. In \lang, databases store mutations in collections of
-\textit{rows}, grouping rows with equivalent, pre-defined
-\textit{columns} (fields) into \textit{tables}. Each column can
-contain either \textit{string}, \textit{numeric}, or \textit{counter}
-datatype. Strings and numeric types contain arbitrary (text or
-numerical) data and support arbitrary modification, while counters
-contain numeric data and support algebraic operations (e.g.,
-\textit{increment}, \textit{decrement}). Users submit arbitrary
-functions over data in the form of \textit{transactions}, each of
-which consists of a variable number of sequential
-\textit{statements}. Statements take the form of read (e.g.,
-\textit{select}), write (e.g., \textit{insert}), or update (e.g.,
-\textit{update}, \textit{increment/decrement} for counters,
-\textit{delete}) operations.
+At the extreme, if a user's transactions do not modify database state,
+she can guarantee any invariant that holds over the initial state,
+while, with no invariants, a user can perform any operations. However,
+the space between yields a spectrum of possible \iconfluent
+guarantees. In this section, we make this trade-off concrete by
+informally analyzing increasingly permissive subsets of SQL.
 
-To enable \cfreedom analysis, \lang allows users to define
-\textit{invariants} over their tables that express application-level
-consistency requirements. Many of these are borrowed from SQL. First,
-a \textit{primary key} on columns $C_1 \dots C_n$ of table \textit{T}
-requires that at most one one row should match each distinct
-combination of possible values for the specified columns. Second, a
-\textit{autoincrement} constraint on a primary key of numeric type
-requires that numeric values be contiguous. Third, a \textit{foreign
-  key} on numeric columns $C_F=\{C_{f1}\dots C_{fn}\}$ of table $T_f$
-referencing another set of columns $C_R = \{C_{r1}\dots C_{rn}\}$ (resident in a
-different table $T_f \neq T_r$) dictates that, for each row in $T_f$,
-there should be at least one row in $T_f$ whose values for $C_r$
-matches that of $C_r$. Unlike SQL, \lang adds additional constraints
-to each column: \textit{not equals}, \textit{equals}, and, for numeric
-and counter datatypes, \textit{less than}, \textit{greater than}, and
-\textit{sum\_of} (the final representing an aggregate of multiple
-other numeric columns).
+\subsection{\iconfluence for Sets}
+
+We begin by considering several constraints found in SQL that are
+expressible via standard relational constructs.
+
+\minihead{Equality} Applications often wish to disallow certain values
+from records. For example, an application writer might require that an
+id column assume a non-null value by marking the column as \texttt{NOT
+  NULL}. These equality (and, similarly, in-equality) constraints
+operate on a per-record basis. We can combine any two sets of records
+that each obey equality invariants via simple set union without
+compromising the invariant. Merging sets of opaque records does not
+change the value of any record. If individual replicas ensure that
+equality constraints hold during insertion and record modification,
+constraints will not be violated. We omit a formal proof, but
+per-record equality invariants for arbitrary values are \iconfluent.
+
+\minihead{Uniqueness} Applications often wish to assert the uniqueness
+of values within a given record. For example, an application might
+desire unique user IDs. If we allow \textit{arbitrary} insertion and
+modification of unique values, then we can easily construct a
+non-\iconfluent sequences of transactions (e.g., simultaneously
+perform \texttt{insert id=0} and \texttt{insert id=0}). Uniqueness is
+not \iconfluent for inserts of unique values. 
+
+However, if we consider arbitrary \textit{generation} of IDs, whereby
+the database generates unique values on behalf of users (e.g., assign
+a new user an ID), we can indeed achieve uniqueness---with a notion of
+replica membership (e.g., server IDs), deterministically (e.g.,
+combining a unique replica ID with a sequence number) or with high
+probability (e.g., via UUIDs). The difference is subtle (``grant this
+record this specific, unique ID'' versus ``grant this record some
+unique ID''), but, in a system model with membership or random number
+generation (as is pragmatic for most contexts), is powerful. If
+replicas only assign IDs that are unique and within their respective
+portion of the ID namespace, then merging locally valid states will
+also be globally valid.
+
+We can consider further constraints on the unique values: for example,
+an \texttt{AUTO\_INCREMENT} constraint dictates that values are
+assigned in increasing order. This represents a further refinement to
+the above examples. The former (specific value assignment) is still
+not \iconfluent, while the latter depends on the semantics of the
+constraint. A constraint requiring a dense, unique sequence of IDs
+(i.e., no gaps in the ID space) is not \iconfluent. However, as a
+consolation, if we can defer the ID assignment until the end of the
+transaction (Section~\ref{sec:evaluation}), resolving this
+``conflict'' does not necessarily require transaction abort. Rather,
+as long as transactions commit in the order in which they were
+assigned IDs, the constraint will hold.
+
+Uniqueness invariants are unsurprisingly \iconfluent under selection
+(i.e., read) and deletion.
+
+\minihead{Foreign Keys} Applications often wish to express
+relationships between records, captured in SQL by foreign key
+constraints. In our payroll example, each employee should belong to at
+least one department.
+
+From the perspective of \iconfluence analysis, foreign key constraints
+concern the \textit{visibility} of related updates: if individual
+database states maintain referential integrity, a non-destructive
+merge function (like our bag union) cannot cause tuples to
+``disappear'' and compromise the constraint. Indeed, foreign key
+constraints are \iconfluent under insertion and selection. Implicitly,
+this may require merging all of a remote replica's data at once (e.g.,
+merging the \texttt{employee} table then the \texttt{department} table
+might result in inconsistency) but is achievable (even in a
+partitioned environment) without compromising availability via
+multi-versioning~\cite{ramp-txns,hat-vldb}.
+
+Deletion and modification are more challenging. A na\"{\i}ve
+implementation of deletion (i.e., via tombstoning records) might lead
+to constraint violation (e.g., an employee is in department that does
+not exist in the \texttt{department} table). However, if we only allow
+\textit{cascading deletes}, then any ``dangling'' references will also
+be deleted on merge, preserving \iconfluence. We can generalize these
+concepts to update (and cascading updates).
+
+\minihead{Materialized Views} As a final example within standard SQL,
+we can consider the problem of maintaining materialized views. A user
+may wish to pre-compute the cardinality of a given relation or query
+in order to speed performance via a materialized
+view~\cite{gray-book}. When data changes, the materialized view should
+change. Merging divergent ``primary'' data should update the
+(divergent) materialized views. The updated materialized views can be
+computed and installed at the same time as the changes to the primary
+data are installed (a problem related to foreign key constraints),
+view maintenance is \iconfluent. Synchronously updating the views may
+be expensive but is indeed possible in a convergent setting.
+
+\subsection{\iconfluence for Data Types}
+
+Thus far, we have only considered bags of modifications stored in
+relations. We can express many useful constraints over these bags, and
+the model is a natural fit for, say, immutable
+databases~\cite{gray-virtues,gray-book} (which, as we have seen, are
+not \iconfluent for all invariants). However, in practice, many
+database systems do not expose bag semantics, leading to a variety of
+interesting anomalies. For example, if we implement a bank account
+balance using a ``last writer wins'' merge policy~\cite{vogels-defs},
+then merging the result of two concurrent withdrawal transactions
+might result in a database state reflecting only one transaction
+(i.e., the Lost Update phenomenon)~\cite{adya-isolation,hat-vldb}. To
+support these anomalies, many database designs have proposed the use
+of \textit{abstract data types}, providing merge functions for a
+variety of uses such as counters, sets, and
+maps~\cite{crdt,atomictransactions,weihl-thesis,blooml}. For example,
+a simple op-based CRDT counter might be built from a single integer
+that is incremented for each corresponding user-level
+\texttt{increment} operation~\cite{crdt}.
+
+\iconfluence is applicable to these data types as well. For example,
+it is easy to see that a row-level \texttt{>} threshold invariant is
+\iconfluent for \texttt{increment} and \texttt{update} but not
+\texttt{decrement}, while a row-level \texttt{<} threshold invariant
+is \iconfluent for \texttt{decrement} and \texttt{update} but not
+\texttt{increment}. These data types can be combined with standard
+relational constraints like materialized view maintenance (e.g., the
+``total salary'' row should contain the sum of employee salaries in
+the \texttt{employee} table). Importantly, while many implementations
+of these data types provide useful properties like convergence without
+compromising availability~\cite{blooml,crdt}, they do \textit{not}
+guarantee that invariants are not violated. Our prior CRDT counter
+supporting increment and decrement operations will guarantee that all
+operation invocations are reflected in the final CRDT state but will
+not guarantee (or enforce) that our given invariants hold.
+
+\subsection{Discussion and Limitations}
+
+As Table~\ref{table:invariants} summarizes, we have surveyed several
+examples of invariants and operations to demonstrate the utility of
+(informal) \iconfluence analysis. These examples are by no means
+comprehensive, but we have found them to be surprisingly expressive
+for many applications (Section~\ref{sec:evaluation}). Moreover, as
+many are common to existing SQL dialects, we have found it easy to
+automate this process via syntactic, rule-based analysis of
+declarative procedures and DDL; a basic prototype identifying
+\iconfluence for all of the above constraints in addition to limited
+support for conditional updates required less than a week to build.
+
+Through our treatment of abstract data types, we recognize that
+immutable/bag semantics are not always desirable from a
+programmability perspective. In practice, and in our analysis thus
+far, we have found abstract data types to be a useful workaround for
+avoiding anomalies due to non-bag merge semantics. Indeed, as others
+have noted~\cite{bayou,gray-book}, managing update conflicts requires
+care to avoid ``losing'' modifications and/or ending up with logically
+inconsistent data (e.g., ``return \texttt{NULL}'' is a safe if trivial
+merge function). \iconfluence analysis adds application-level
+semantics (safety) to the process of merging (liveness) and can be
+viewed as determining when it is indeed safe to perform ``optimistic''
+replication and merge~\cite{optimistic}. However, unlike ``tentative
+update'' programming models, any successful (i.e., committed) update
+will not be rolled back in our system model.
+
+While our proposed invariants are entirely declarative, a class of
+useful semantics---recency guarantees---are not inherently
+declarative. Users often wish to read data that is up-to-date as of a
+given point in time (e.g., ``read latest''~\cite{pnuts}). While
+serializability and traditional isolation models frequently ignore
+these recency guarantees~\cite{adya-isolation}, they are indeed
+important to programmers. We can simulate recency requirements in
+\iconfluence analysis by logging the result of all reads with a
+timestamp and requiring that the logged timestamps obey their recency
+guarantees, but it is known that recency guarantees are unachievable
+with transactional availability~\cite{hat-vldb}. If users wish to
+``read their writes'' (i.e., ``session'' guarantees~\cite{bayou}),
+they can do so by maintaining affinity or
+``stickiness''~\cite{hat-vldb,vogels-defs} with a given set of
+replicas, while ``bounded staleness'' guarantees for reads are
+achievable with multi-versioning or read
+replicas~\cite{pnuts}. Otherwise, linearizable
+semantics~\cite{spanner} will require coordination. Indeed, when
+``consistency'' means ``recency,'' we cannot circumvent speed-of-light
+delays.
+
+% understanding the limits -- merges, recency, escrow, immutability
 
 \begin{table}
 \definecolor{yesgray}{gray}{0.9}
@@ -58,150 +214,27 @@ other numeric columns).
 Constraint & Operation & \iconfluent? \\\hline
 \rowcolor{yesgray}
 Equality, Inequality & Any & Yes\\
+Uniqueness & Choose specific value & No\\
 \rowcolor{yesgray}
 Uniqueness & Choose some value & Yes\\
-Uniqueness & Choose specific value & No\\
+\texttt{AUTO\_INCREMENT} & Insert & No\\
+\rowcolor{yesgray}
+Foreign Key & Insert & Yes\\
+Foreign Key & Delete & No\\
+\rowcolor{yesgray}
+Foreign Key & Delete Cascade & Yes\\
+\rowcolor{yesgray}
+Secondary Indexing & Update & Yes \\
+\rowcolor{yesgray}
+Materialized Views & Update & Yes \\
 \rowcolor{yesgray}
 > & Increment & Yes\\
 < & Decrement & No \\
 \rowcolor{yesgray}
 > & Increment & Yes \\
-< & Decrement & No \\
-\rowcolor{yesgray}
-Foreign Key & Insert & Yes\\
-\rowcolor{yesgray}
-Foreign Key & Delete Cascade & Yes\\
-Foreign Key & Delete & No\\
-\rowcolor{yesgray}
-Secondary Indexing & Update & Yes \\
-\rowcolor{yesgray}
-Materialized Views & Update & Yes \\
-\texttt{AUTO\_INCREMENT} & Insert & No\\\hline
+< & Decrement & No \\\hline
 \end{tabular}
 \end{center}\vspace{-1em}
-\caption{\iconfluence for \lang invariants.}
+\caption{\iconfluence for selected SQL and ADT invariants.}
 \label{table:invariants}
 \end{table}
-
-With this simple (but expressive) language in mind, we can enumerate a
-set of \iconfluent and non-\iconfluent operations. We do not claim
-that this enumeration is complete or that \lang is sufficiently
-expressive for all applications. However, as we will see
-(Section~\ref{sec:evaluation}), it is surprisingly expressive for
-many.
-
-Several operations are \iconfluent: any operation on columns without
-constraints, increment (decrement) of counters without \textit{less
-  than} (\textit{greater than}) constraints, modification of foreign
-key columns (provided $i.)$ a suitable remote data column is read as
-part of the same transaction or $ii.)$ a suitable remote data column
-is modified), and any (in-)equality constraints, \textit{sum\_of}
-(with the same caveat as foreign key constraints). Given cluster-wide
-unique ID generation (i.e., UUID or via cluster membership), insertion
-into primary key columns without autoincrement constraints (provided
-the columns are not specified by the end user---e.g., ``give me a new
-ID'' versus ``insert this new ID'') are also supported. In contrast,
-insertion of specified primary keys, use of autoincrement, and
-\textit{less than} and \textit{greater than} for decrement and
-increment operations, respectively, are not invariant
-commutative. Perhaps not surprisingly, all of these cases can be
-checked by simple syntactic rules; we built a simple \lang analysis
-tool that identifies all of the above constructs in addition to
-limited support for conditional updates in less than a week.
-
-\subsection{Dealing with Conflicts}
-\label{sec:conflicts}
-
-If a set of transactions is not \iconfluent, then concurrently
-executing combination of the transactions might violate the given
-integrity constraint. This requires coordination--but how much?
-
-At one extreme, it is sufficient to perform (serial) mutual exclusion
-between any possibly conflicting transactions. For instance, if
-procedures $p_1$ and $p_2$ could conflict, then a system could execute
-each under a serializable isolation level. This is expensive: for any
-\textit{possible} conflicts, transactions will have to coordinate and
-potentially block, even for operations in the transactions that do not
-conflict.
-
-We suggest an alternative: let transactions execute in isolation and
-produce outputs, and then use optimistic concurrency control to check
-whether any conflicting outputs were actually produced. This
-validation step is possibly expensive, as \textit{every} possible
-conflict must be checked. If $\delta_{i1}$ and $\delta_{j1}$ conflict,
-any transaction producing either of these outputs must contact a
-validator in order to check whether the corresponding conflicting
-action has been performed. If so, we have two options. In the basic
-case, the transaction must abort due to a would-be conflict of
-integrity constraints. We call these updates \textit{abortable
-  conflicts}. However, not all conflicts require aborting. For
-example, a transaction that enforces that \textit{some} doctor is on
-duty need not actually abort if an alternate doctor is actually on
-staff. We model these \textit{non-abortable conflicts} as
-mini-transactions---effectively, closures that operate atomically on
-database state. In the doctor case, the mini-transaction might check
-the table for an existing doctor and simply produce no new output. In
-a less trivial case, a user might autoincrement an ID counter when
-inserting a new row; non-abortable conflicts only require
-serialization, not aborts. Of course, this problem of reducing
-conflicting operations introduces a new set of challenges.
-
-Fortunately, the problem of minimizing conflicts is well-studied
-(Section~\ref{sec:relatedwork}). The most aggressive decomposition
-techniques we have encountered are those of Bernstein and Lewis's
-``Assertional Concurrency Control'' protocols, which decompose
-transactions into minimally-sized atomic units that are subsequently
-executed as to avoid pre-condition invalidation (cf. \textit{maximally
-  reduced proofs} for non-modular transaction
-decomposition~\cite{decomp-semantics}). To do so requires additional
-semantics about intermediate pre- and post-conditions for each
-operation: this brings this research into the realm of programming
-languages. We believe this is a worthwhile area for future work, but,
-due to programmer burden, do not further consider these techniques in
-this paper.
-
-\subsection{Merge Functions}
-\label{sec:merge}
-
-So far, we have assumed a simple bag representation of database
-state. This is convenient for proving properties about database state
-and reasoning about the behavior of merge functions, but, in practice,
-merges may be more complex. For example, for many applications, it is
-impractical to retain all versions ever written to the
-database. Instead, databases may wish to \textit{compact} these
-versions to limit storage requirements. A simple compaction policy is
-\textit{last writer wins}, whereby writes are assigned a timestamp and
-only the highest-timestamped write to each time is
-retained~\cite{dynamo}. However, improper use of last-writer wins can
-yield \iconfluent but functionally inconsistent results: consider, for
-example, a user that wishes to ensure that no bank account has
-negative balance. If using a simple numeric register, if two users
-each withdraw \$60 from an account with \$100, a last-writer wins
-column might end up with \$40 total. This can be prevented by adding
-an additional invariant that states that account balances should
-reflect all additions and removals from each account, but this is an
-arguably non-trivial pitfall.
-
-We propose the use of abstract data types to avoid anomalies such as
-the above. The bank account example is not technically incorrect, but
-it reflects an incomplete specification of invariants. In many
-real-world examples, users' successful operations should be reflected
-in any converged database state; by choosing merge functions that
-reflect this ``durability'' requirement, a database can avoid these
-odd anomalies. While many practitioners today must hand-code their own
-merge functions (e.g., Bayou~\cite{bayou} and Dynamo~\cite{dynamo}
-conflict reconciliation), we advocate a model in which a
-\textit{library} of type-specific merge functions are presented to
-users. This approach---suggested by concurrency control for abstract
-data types~\cite{weihl-thesis} and, more recently, Commutative and
-Replicated Data Types~\cite{crdt}---simplifies the task of merging
-updates while also reducing the overheads of operations. Unlike this
-prior work, however, \iconfluence analysis \textit{also} guarantees
-the correctness of (specified) arbitrary transformations on these
-types, thus eliminating the problem of Conway et al.'s
-\textit{scope dilemma}~\cite{blooml}, whereby operations on individual
-data items are valid but their composition is not.
-
-\input{isolation-subsec}
-
-\input{confluence-subsec}

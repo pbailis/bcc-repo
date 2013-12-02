@@ -1,0 +1,61 @@
+Paint the tradition as ``conservative'' Your work is like a scalpel
+
+Section 2: "I'd lead with the Gray meme!"; "Note that single-transaction consistency has always been the job of the programmer"; why is PNUTS a good example?; takes too long to ask "which anomalies are important?"
+
+Section 4: "Confusing what S, T, and t are. Define up front, including subscripted usages", "Needs more setup. Define these terms." 
+
+Section 5: "go slower" on SQL section
+
+Section 5.2.: "Feels like this section can be postponed. Breaks flow--very prescriptive"
+
+Section 5.3: "This discussion feels oddly lite. I expected something more concrete here."
+
+Section 5.4: "Cheat: non-monotonicity correctness constraint"
+
+Section 6.3: "Clarify connection between sentences"
+
+Section 7: "DSLs and analysis. What about your isolation/visibility discussion?"
+
+Section 8: cite the confluence paper
+
+
+
+----
+
+
+Nice start!  A few main concerns, and a lot more comments in the scribbles.  Apologies for the scan quality and handwriting -- let me know what you can't read.
+
+1) Intro is a great read but is way too long.  I would encourage you to do the following:
+        a) Put a 10-word comment in the latex above each paragraph saying what it's for.
+        b) Use the resulting outline to decide what needs to stay and what needs to go, content wise. I think it's quite redundant.
+        c) Write a brutally direct, crisp new outline that highlights your contribution
+        d) Write a brutally direct, crisp new intro that follows the new outline
+        e) Go back to your first draft and see what you've lost.  Weave in minimally.
+I end up doing this a lot in my own writing.
+
+2) In Section 4, the core formal definitions for I-confluence are not in place: coordination (-freedom), availability, and convergence.
+
+3) The second half of the proof of Theorem 1 needs more setup to be true.  The argument assumes a "replica layout" that favors your argument.  You haven't set up the rules on data placement and replication -- this is a lot of what goes into all the theory papers in this space (Ameloot, the Ullman and Suciu papers on parallel complexity for parallel algorithms, etc).  Because you use an operational argument, you essentially need a set of rules that force the hand of an adversary.  A different way to go would be to craft a model-theoretic version of all this, which would again force you to (syntactically) lay out these rules -- I doubt that's your fast-path though.
+
+4) Section 5 needs work.  I'm not sure what the goal of the section is, and I don't think it delivers a strong payoff on Section 4 (fixing the former will help with the latter).  Think about the outline of the section, and what you're trying to demonstrate.  It should show how I-confluence analysis empowers us to do better.  5.1 does a bit of that, but in a weird way -- via a throw-away language called CAQL that you don't seem to be advocating in practice.  5.2 and on seem like a bunch of technicalities, many of which feel "by reference" and at the level of Related Work.  Here's a proposal for a rewrite:
+        5.1) I-confluence for Set-based logs: examples and limitations.  Discuss Foreign Keys, uniqueness, indexing, mat views, etc.  But not increment/decrement.
+        5.2) Extension: I-confluent abstract data types.  Discuss increment/decrement, etc.  But not sequential values
+        5.3) Extension: Locally-coordinating Merge functions (e.g. causal and session-based).  What examples does this buy you?  I'm confused by the practicality/relevance of this discussion, to be honest.
+The result is a section that reveals the practicality of I-confluence piece by piece, showing how to accommodate increasingly sophisticated constraints easily.
+
+BTW, rather than define CAQL, I recommend developing "increasingly permissive subsets of SQL" -- basically don't define CAQL by name, just by SQL subsetting.
+
+5) The connection to CALM and even ACID 2.0 is not sufficiently explored.  I believe your insight is to "lift" these ideas into the realm of constraints rather than just logic+data, much as Bloom/CALM lifted order-insensitivity into the realm of logic+data rather than read/write registers.  Two points seem to be the crux of the matter:
+        a) Constraints hold *over time*, not just at the end of time (safety, not just liveness)
+        b) Constraints are a view over the logic.  They ignore/abstract details whose non-determinism is in some way irrelevant, and they arguably encourage "even higher-level thinking" as a result.
+Frankly, I think this is a very crisp alternate "lens" on the paper, and could even serve as a Section 1.1 to the intro ("Eternal CALM?").  Monotonicity certainly fits the constraints you consider in the paper.  Articulating a general monotonicity version of I-confluence might also help with a model-theoretic proof technique.
+
+More minor comments:
+        1) I hate that you emphasize CRDTs over CALM.  We have the broader and more practical view.  We also have more visibility outside of a relatively small world of distributed systems folks -- certainly in the DB community.
+        2) You occasionally drop into discussions of traditional read/write semantics without really telling us how to think about them in your worldview.  E.g. causality, session guarantees.  What if anything do we care about that stuff in the lens of I-confluence?
+
+        4) You never quite say "cheap local coordination is often acceptable in a distributed environment", but that's the crux of some of your later discussion.  You might want to highlight this and even benchmark it -- what's the ratio of an atomic local mutation in your system vs. a message?
+
+        5) Be careful to avoid what Neil got with the Bloom^L paper: people assume you are advocating ONLY I-confluence programming.  That's not what you're saying (nor is it what Neil was saying, and even you mis-cite him on that.)
+
+Joe

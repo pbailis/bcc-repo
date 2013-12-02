@@ -1,5 +1,5 @@
 
-\section{Freedom and \iconfluence}
+\section{Consistency without Coordination}
 \label{sec:bcc-theory}
 
 With a system model and formal goals in hand, we now address the
@@ -8,7 +8,7 @@ synchronous coordination? The answer depends on the set of operations
 the database may be expected to perform as well as the integrity
 constraints that the database is required to maintain.
 
-\subsection{\iconfluence}
+\subsection{\iconfluence Defined}
 
 To begin, we introduce a concept that will underly our main result:
 invariant confluence (hereafter,
@@ -84,7 +84,7 @@ a full discussion of practical uses in Section~\ref{sec:bcc-practice}.
 \label{fig:iconfluence}
 \end{figure}
 
-\subsection{Coordination}
+\subsection{\iconfluence and Coordination}
 
 We can apply the concept of \iconfluence our goals from
 Section~\ref{sec:model}:
@@ -192,14 +192,41 @@ invalid executions using only local information, a globally valid
 system \textit{must} coordinate in order to prevent the invalid
 execution.
 
-\iconfluence directly incorporates a user's application-level
-invariants in transaction execution. We discuss specific trade-offs in
+\iconfluence analysis effectively captures points of \textit{unsafe
+  non-determinism} in transaction execution. Total non-determinism, as
+we have seen in many of our examples thus far, can compromise
+application-level consistency. But not all non-determinism is bad: in
+many cases, allowing concurrency necessarily entails allowing
+non-determinism. \iconfluence analysis allows (non-determistic)
+divergence of database states but makes two powerful guarantees about
+those states. First, the requirement for global validity ensures
+safety (in the form of invariants). Second, the requirement for
+convergence ensures liveness (in the form of
+convergence). 
+
+In contrast, a requirement for total determinism (e.g., ensuring
+equivalent outcomes despite transaction execution order; in the
+context of term-rewriting systems, \textit{confluence}) undoubtedly
+aids in ease of programmability and
+debugging~\cite{blooml,calm,termrewriting} but is too heavyweight of a
+correctness criterion for many applications. As a classic example,
+serializability is non-deterministic at the level of database state
+because the final state may depend on the serial order that the system
+chooses. (The consensus problem exhibits a similar requirement: a
+value must be chosen, but \textit{which} value is not specified; a
+requirement for non-determinism is often referred to as
+non-triviality~\cite{paxos-commit}) Perhaps more importantly, ensuring
+deterministic outcomes does not necessarily guarantee
+application-level consistency (safety): there is no guarantee that the
+program outcome will obey invariants.
+
+The use of invariants in \iconfluence allows greater precision in
+analysis. We discuss specific trade-offs in
 Section~\ref{sec:relatedwork}, but this definition is more general
 than related concepts like state-based
 commutativity~\cite{weihl-thesis} (e.g., equivalence of return values)
-or traditional confluence~\cite{calm,termrewriting} (i.e.,
-deterministic program outcomes). For example, in Lamport's example
-from Section~\ref{sec:motivation}, the outcome of audit transactions
+or confluence, as above. For example, in Lamport's example from
+Section~\ref{sec:motivation}, the outcome of audit transactions
 differs depend on whether it runs before or after a given deposit
 transaction and is therefore not commutative or confluent with respect
 to deposit transactions. However, audit transactions and deposit
@@ -209,16 +236,3 @@ about invariants instead of equivalence of database states is key to
 achieving a \textit{necessary} and sufficient condition (instead of
 simply a sufficient condition).
 
-\minihead{Revisiting Payroll} Given \iconfluence, we can revisit our
-payroll example. As we showed by counterexample, uniqueness of
-arbitrary values is not \iconfluent: $\{$Stan:5$\}$ and $\{$Mary:5$\}$
-are both valid states that can be reached by valid sequences (starting
-at $\{\}$) but their merge---$\{$Stan:5, Mary:5$\}$ is not
-valid. Therefore, insertion of arbitrary values is not $I$-confluent
-for $I=\{$unique IDs$\}$. However, deletion of employees \textit{is}
-$I$-confluent: removing items from a bag of unique values cannot
-introduce duplicates. We can repeat the same exercise for foreign key
-constraints: inserting new records with valid department IDs cannot in
-fact introduce merge conflicts. The salary constraint is similarly
-easily validated for simple insert statements. In the next section, we
-will expand this analysis to a full SQL dialect.

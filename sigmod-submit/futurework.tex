@@ -1,33 +1,22 @@
 
-\section{Discussion and Future Work}
+\section{Future Work}
 \label{sec:discussion}
 
-% what does a coordination-avoiding database system look like?
+In this paper, we have focused on the problem of recognizing when it
+is possible to avoid distributed coordination. In this section, we
+discuss extensions to our approaches and outline areas for future
+work.
 
-\minihead{Future system design} Given our formal grounding
-\iconfluence and promising early results, what is the appropriate
-system architecture for a coordination-avoiding database
-\textit{system}? In our TPC-C proof-of-concept implementation, we
-manually analyzed each transaction component for \iconfluence and
-implemented it in a custom prototype: we would not expect this of a
-typical end-user of a relational database today. Instead, users should
-be able to express their invariants and the system should be able to
-avoid and resolve conflicts without their approval. While this may
-appear to be a far-fetched goal, our initial steps point towards a
-solution in the future. We have had success with a simple syntactic
-analysis of \lang that could be fed into a runtime system with
-knowledge of \iconfluence for each combination of operations and
-invariants. This system could in turn perform conflict resolution as
-suggested in Section~\ref{sec:conflicts} on behalf of the user. While
-automating this analysis is largely a matter of engineering at this
-point, we believe that it is feasible in the near-term.
-
-\minihead{Query planning for coordination} Automating coordination
-avoidance leads to a range of decisions: how should coordination
-(i.e., conflict avoidance) be performed given a particular workload
-and set of invariants? In our exploration of \iconfluence thus far, it
-appears that the right strategy will be largely workload-dependent,
-hinting at an opportunity for physical ``query planning'' in light of
+\minihead{Avoiding conflicts} Once a potentially conflicting set of
+subsequences is identified via \iconfluence analysis, how should the
+conflict be avoided? Our system model is amenable to standard
+backwards validation from optimistic concurrency
+control~\cite{bernstein-book}, but a range of existing techniques from
+the realm of traditional database systems such as
+locking~\cite{gray-virtues} and pre-scheduling~\cite{calvin} are also
+possible. The optimal choice of strategy---as is the case in all
+concurrency control---is workload-dependent, hinting at an opportunity
+for physical ``query planning'' in light of
 coordination-avoidance. For example, in a producer-consumer scenario
 with exactly-once consumption semantics, there are multiple strategies
 for coordination: all producers could coordinate, or all consumers, or
@@ -37,58 +26,46 @@ transactions. Revisiting heuristics- and statistics-based query
 planning, specifically targeting physical layout, choice of
 concurrency control, and recovery appears worthwhile. While recent
 work has focused on reducing distributed transactions via intelligent
-partitioning~\cite{schism}, we believe that this is only one aspect of a larger
-optimization problem.
+partitioning~\cite{schism}, we believe that this is only one aspect of
+a larger optimization problem.
 
-\minihead{Appropriate languages for analysis} In this work, we have
-focused on SQL as a language for analysis. This is indeed a
-database-centric approach to the problem of determining \iconfluence,
-but we believe it strikes a reasonable balance between pragmatism and
-analyzability. We have also considered languages that encourage the
-use of \iconfluent operators (e.g.,
-Bloom\textsuperscript{L}~\cite{blooml}) and, at the opposite end of
-the spectrum, more idiomatic programming languages like ORMs. Given
-the inherent expressivity limitations of the former and the limited
-tractibility of the latter (i.e., inherently undecidable programs), we
-believe that SQL marks a reasonable compromise. We have found that a
-variety of programs are expressible with the simple constructs found
-in \lang but also plan to grow the language as we encounter
-application logic that is not.
+\minihead{Amortizing coordination} We have analyzed conflicts on a
+per-transaction basis, but it is possible to amortize the overhead of
+coordination across multiple transactions. For example, the Escrow
+transaction method~\cite{escrow} reduces coordination by allocating a
+``share'' of non-\iconfluent operations between multiple
+processes. For example, in a bank account, a remaining balance of
+$\$100$ might be divided between $5$ bank servers, such that each
+server can dispense $\$20$ to users without requiring coordination to
+enforce an invariant of non-negative bank account balances. If any
+given server runs out of pre-allocated money, it can ask another
+server to ``refresh'' its current supply by borrowing more. This
+Escrow technique allows availability for otherwise non-\iconfluent
+operations up until a pre-determined number of concurrent
+operations. In the context of our \cfreedom analysis, this is
+equivalent to limiting the branching factor of (equivalently, the
+number of merges in) the execution trace to a (pre-determined)
+constant factor: in the example above, the number of concurrent
+withdrawals cannot exceed $5$ servers. We do not attempt a full
+formalism here but believe that adopting both Escrow and alternative
+time-, versioned-, and numerical- drift-based models~\cite{yu-conit}
+is an area for worthwhile future work.
 
-\minihead{Invariant Specification} One limitation of our current
-approach is that it requries users to fully specify any invariants
-that they are concerned with. Without invariants, we assume that all
-queries are \iconfluent and can be executed with \cfreedom. An
-alternative approach would start with an assumption that no
-transactions are \iconfluent and would execute all transactions under
-serializable isolation. Users could subsequently annotate their
-transactions as \iconfluent and enjoy the benefits of scalability as
-\cfreedom is recognized. We view these two approaches as complementary
-and, a complete coordination-avoiding system should easily accomodate
-both. Both approaches maintain the beneficial property that users
-reason about their applications (via invariants) rather than low-level
-isolation anomalies; indeed, the requirement for a full specification
-replaces the requirement for a full analysis of all possible
-read/write traces.
+\minihead{Future system design} Given our formal grounding
+\iconfluence and promising early results, what is the appropriate
+system architecture for a coordination-avoiding database
+\textit{system}? In our TPC-C proof-of-concept implementation, we
+analyzed each transaction component for \iconfluence and implemented
+it in a custom prototype: we would not expect this of a typical
+end-user of a relational database today. Instead, users should be able
+to express their invariants in a high-level language like SQL and the
+system should be able to avoid and resolve conflicts without their
+approval. Analysis tools could automatically inform system's conflict
+resolution policies as suggested above; we believe this is feasible in
+the near-term. This in turn raises several interesting design and
+engineering challenges: for example, as new invariants are added, the
+system must ensure that satisfiability is possible. While we have
+focused on SQL, we might also consider the use of restricted,
+\iconfluent operators (e.g., Bloom\textsuperscript{L}~\cite{blooml})
+and more data types.
 
-\minihead{Lifecycle Management} A common end-user requirement that has
-proven particularly important for real-world users is the ability to
-reason about new invariants as they are introduced into
-already-deployed databases. For example, if a user wants to add a
-given invariant/constraint, how will it impact running queries and
-other invariants in the system? As a baseline concern, we must ensure
-that the constraints in the database are satisfiable: a configuration
-with invariants that are not simultaneously achievable will become
-unavailable and, worse, represents inconsistent application
-state. This is manageable via standard (if expensive) satisfiability
-analyses but, more importantly, also means that the addition of new
-invariants cannot be performed in a \cfree manner. Towards the
-question of impact on running queries, we believe that lightweight
-logging of transactions will allow analysis of new queries as they are
-added to a database and, in general, can allow users to directly
-assess the scalability effects of (adding \textit{or} removing) a
-given invariant. In summary, we believe that coordination-avoidance
-via invariant specification is achievable in a sane operational manner
-but will require care in ensuring that the addition of new invariants
-does not compromise database integrity (or, if desirable, performance
-and availability).
