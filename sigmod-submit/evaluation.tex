@@ -150,7 +150,7 @@ describe below:
   \texttt{ORDER} table should be present in the \texttt{NEW-ORDER}
   table. In a traditional database system, we might use locks to
   atomically control the visibility of these updates to multiple
-  tables. However, our analysis of \lang tells us that we can maintain
+  tables. However, our SQL analysis tells us that we can maintain
   these constraints under insert with \cfreedom. Indeed, with the
   newly proposed \cfree ANON algorithm~\cite{ramp-txns}, we can ensure
   that all of these updates are visible, or none are.
@@ -162,7 +162,7 @@ describe below:
   \texttt{DISTRICT\_NEXT\_O\_ID} column must be incremented at the
   same time that corresponding rows are inserted into the
   \texttt{ORDER}, \texttt{NEW-ORDER}, and \texttt{ORDER-LINE}
-  tables. We know from our analysis of \lang that this sequential
+  tables. We know from our SQL analysis that this sequential
   assignment is not \cfree, so, for a compliant run, we will need to
   coordinate (others forego this sequential
   constraint~\cite{hat-vldb,silo} at the expense of compliance). A
