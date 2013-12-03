@@ -15,22 +15,22 @@ scalability, and availability.
 \minihead{Integrity constraints} Use of integrity constraints in
 database systems dates to at least 1974~\cite{florentin-constraints}
 and has been studied extensively (see \cite{tamer-book} for an
-excellent summary). As~\cite{ic-survey,ic-survey-two} survey, a large
-body of work examines how to perform query rewriting, transaction
-analysis, and database design to accommodate a range of integrity
+summary). As~\cite{ic-survey,ic-survey-two} survey, a large body of
+work examines how to perform query rewriting, transaction analysis,
+and database design to accommodate a range of integrity
 constraints. As \"{O}zsu and Valduriez~\cite{tamer-book} discuss, this
-work largely presumes single-node databases (i.e., atomic updates to
-shared state) and/or the use of global concurrency control (for both
-prevention- and detection-based
+work largely presumes single-node databases (i.e., atomic---and
+therefore non-\cfree---updates to shared state) and/or the use of
+global concurrency control (for both prevention- and detection-based
 approaches). Notably,~\cite{local-verification} avoids global
 concurrency control and studies the problem of verifying constraints
 in a shared-nothing, partitioned (but non-replicated) database
-system. Our goal in this paper is to determine when we can
-\textit{avoid} global concurrency control and \textit{any}
-coordination between replicas. However, for non-coordination-free
-operations, this sizeable body of literature provides a useful
-repository of techniques, particularly given the increased cost of
-coordination in a replicated environment.
+system. Our goal in this paper is to determine when we can avoid
+global concurrency control and any coordination between
+replicas. However, for non-coordination-free operations, this sizeable
+body of literature provides a useful repository of techniques,
+particularly given the increased cost of coordination in a replicated
+environment.
 
 % following serializability, looked at semantics for concurrency
 % control
@@ -38,7 +38,7 @@ coordination in a replicated environment.
 \minihead{Semantics-based Concurrency Control} A related body of
 research similarly re-defines correctness criteria for shared
 databases according to semantic definitions. \"{O}zsu and
-Valduriez~\cite{tamer-book} provide a brief summary of this work,
+Valduriez~\cite{tamer-book} also provide a brief summary of this work,
 which, again, largely focuses on global (i.e., atomic, serializable,
 or single-site) concurrency control strategies, but we discuss several
 notable approaches here.
@@ -104,8 +104,8 @@ by the literature on term rewriting and constraint programming. An
 will not violate a given invariant~\cite{obs-confluence}. This
 generalizes traditional Church-Rosser confluence, which ensures that
 any series of rewrites results in the \textit{same}
-output~\cite{termrewriting}. To map between a database and rewrite
-system, we can treat transactions as rewrite rules, the initial state
+output~\cite{termrewriting}. To map between database and rewrite
+systems, we can treat transactions as rewrite rules, the initial state
 of the database as the initial constraint state, and the database
 merge operator as a constraint \textit{join} operator that is defined
 for all database states. Unlike term rewriting systems, our \cfreedom
@@ -115,10 +115,10 @@ transactions can be introduced. We have found this literature to be a
 useful grounding for our own formalism and see further comparison to
 rewriting systems as an interesting starting point for future
 theoretical analysis. Similar rewrite system concepts---including
-confluence (CITE NEEDED)---have been successfully integrated into
-active database systems (e.g., triggers and rule processing), although
-we are not familiar with a concept analogous to \iconfluence in this
-literature.
+confluence~\cite{aiken-confluence}---have been successfully integrated
+into active database systems~\cite{activedb-book} (e.g., triggers and
+rule processing), although we are not familiar with a concept
+analogous to \iconfluence in this literature.
 
 \minihead{Program analysis} The problem of maintaining correctness
 despite concurrent modification is well studied in the programming
@@ -168,7 +168,7 @@ specified application-level invariants (liveness). Similarly,
 Commutative Replicated Data Type (CRDT) objects~\cite{crdt} ensure
 that, once a database quiesces writes and all servers exchange writes,
 the database will reflect all prior updates made to each CRDT. CRDTs
-are accordingly useful in merging divergent replicas on a per-type
+are accordingly useful in merging divergent replicas on a per-item
 basis but do not solve the problem of maintaining application-level
 consistency.
 

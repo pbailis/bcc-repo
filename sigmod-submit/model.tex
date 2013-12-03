@@ -10,14 +10,14 @@ accessing a shared database, which contains a \textit{versioned} set
 of data items. In our initial formulation, we will represent database
 state as a bag of mutations (much like a write-ahead
 log~\cite{gray-book}), but we will consider other, more pragmatic
-representations in Section~\ref{sec:bcc-practice}; we assume that the
-database is initially populated by an initial state $D_0$ (typically
-but not necessarily empty). Copies of database state can be combined
-via a ``merge'' operator ($\sqcup$: $DB \times DB \rightarrow DB$).
-For simplicity, we will require that merge be commutative,
-associative, and idempotent~\cite{calm,crdt}. In our ``bag of
-mutations'' model, merge is simple set union, but we will consider
-alternative implementations in Section~\ref{sec:bcc-practice}.
+representations in Section~\ref{sec:bcc-practice}. The database is
+initially populated by an initial state $D_0$ (typically but not
+necessarily empty), and copies of database state can be combined via a
+``merge'' operator ($\sqcup$: $DB \times DB \rightarrow DB$).  For
+simplicity, we require merge to be commutative, associative, and
+idempotent~\cite{calm,crdt}. In our ``bag of mutations'' model, merge
+is simple set union, but we will consider alternative implementations
+in Section~\ref{sec:bcc-practice}.
 
 \minihead{Transactions} Users submit requests to the database in the
 form of transactions, or groups of operations on data items that
@@ -46,17 +46,16 @@ predicates on database state: $I: DB \rightarrow \{true, false\}$.  As
 an example, an invariant might express the requirement that only one
 user in a database has a given ID. This directly captures the notion
 of ACID Consistency~\cite{bernstein-book,gray-virtues}, and we say
-that a database state is \textit{valid} under an invariant if it
-satisfies the predicate:
+that a database state is \textit{valid} under an invariant $I$ (or
+$I$-valid) if it satisfies the predicate:
 
 \begin{definition}
-A database state $D$ is \textit{valid} under $I_s$ if $I_s(D)$
-evaluates to true.
+A database state $D$ is \textit{valid} under $I_s$ if $I_s(D) \rightarrow true$.
 \end{definition}
 
 We wish to analyze sequences of valid transactions that transitively
-maintain validity of database state, so we will require that $D_0$ be
-valid. 
+maintain validity of database state, so we require that $D_0$ be valid
+under declared constraints.
 
 \miniheadnostop{Why specify invariants?} Much of the existing work on
 database concurrency control assumes a model whereby ``the [set of
@@ -80,35 +79,37 @@ we require only one set of invariants per application.\vspace{.5em}
 synchronization and coordination between multiple transactions. To
 begin, we consider a system model with multiple copies of database
 state (\textit{replicas}) that can each respond to transaction
-requests. While most treatments of database systems treat replicas as
-individual servers, a single-site database can also provide users with
-an interface that exposes multiple ``replicas''. A multi-versioned
-database system~\cite{bernstein-book} effectively provides each user
-with a logical replica of database state that is isolated from
-concurrent access and modification. A set of invariants and stored
-procedures that are achievable without coordination in a distributed
-context can also be executed in parallel on a single-site system
-without stalling due to concurrent operations.  In fact, our current
-prototype transaction model (Section~\ref{sec:evaluation}) is based on
-multi-versioning and snapshot reads (``logical replicas'') rather than
-physical multi-master replication. Accordingly, we assume that, if a
-client can access a physical server responsible for a given data item,
-it can access a replica for the item without blocking. Therefore, all
-concurrent operations will behave as if they are executed on separate
-replicas.
+requests (we do not further distinguish between partitioned and
+fully-replicated replicas~\cite{hat-vldb} as our results do not
+require it). While most treatments of database systems treat replicas
+as individual servers, a single-site (or mastered) database can also
+provide users with an interface that exposes multiple ``replicas''. A
+multi-versioned database system~\cite{bernstein-book} effectively
+provides each user with a logical replica of database state that is
+isolated from concurrent access and modification. A set of invariants
+and stored procedures that are executable without coordination in a
+distributed context can also be executed in parallel on a single-site
+system without stalling due to concurrent operations.  In fact, our
+current prototype transaction model (Section~\ref{sec:evaluation}) is
+based on multi-versioning and snapshot reads (``logical replicas'')
+rather than physical multi-master replication. Accordingly, we assume
+that, if a client can access a physical server responsible for a given
+data item, it can access a replica for the item without
+blocking. Therefore, all concurrent operations will behave as if they
+are executed on separate replicas.
 
-\minihead{Availability} To reflect the requirement
-that each user's transactions eventually receive a response, we need a
-definition of \textit{availability}. To prevent the system from simply
-aborting transactions (which provides a response---albeit a not very
-useful one), we adopt the following definition of
-availability~\cite{hat-vldb}\footnote{As Bailis et
+\minihead{Availability} To reflect the requirement that each user's
+transactions eventually receive a response, we need a definition of
+\textit{availability}. To prevent the system from simply aborting
+transactions (which guarantees a response---albeit a not very useful
+one), we adopt the following definition of
+availability\footnote{As Bailis et
   al. note~\cite{hat-vldb}, this definition precludes multi-server
   fault tolerance (durability). However, we can consider multi-server
   durability by extending this definition to include coordination with
   a (typically small~\cite{bigtable,spanner,dynamo}) fixed number of
   servers. This does not greatly affect scalability because, as more
-  replicas are added, durability-related communication is constant.}
+  replicas are added, durability-related communication is constant.}~\cite{hat-vldb}:
 
 \begin{definition} 
 A system provides \textit{transactional availability} if, whenever a
@@ -126,15 +127,16 @@ the replica state.
 \minihead{Convergence} Transactional availability allows replicas to
 maintain valid state \textit{independently} but, without additional
 constraints, it is vacuously possible to maintain ``consistent''
-database states by letting replicas diverge forever: for example,
-replicas $R_i$ and $R_j$ might each be valid but their combined
-contents may not be valid (e.g., a user $u_i$ on $R_i$ is assigned id
-$5$ and a separate user $u_j$ on $R_j$ is assigned the same id,
-satisfying the invariant that user ids are unique locally but not
-globally). In distributed systems parlance, this guarantees
-\textit{safety} but not \textit{liveness}~\cite{lamport-safety}. To
-ensure that replicas eventually agree---reflecting a shared, common
-set of database state---we adopt the following definition:
+database states by letting replicas diverge forever. For example,
+replicas $R_i$ and $R_j$ might each contain valid state but their
+combined contents may not be valid (e.g., a user $u_i$ on $R_i$ is
+assigned id $5$ and a separate user $u_j$ on $R_j$ is assigned the
+same ID, satisfying the invariant that user IDs are unique locally but
+not globally). In distributed systems parlance, this guarantees
+\textit{safety} (nothing bad happens) but not \textit{liveness}
+(something good happens)~\cite{lamport-safety}. To ensure that
+replicas eventually agree---reflecting a shared, common set of
+database state---we adopt the following definition:
 
 \begin{definition}A system is \textit{convergent} if, in the
 absence of new transactions and in the absence of indefinite
@@ -159,17 +161,16 @@ that does not communicate can maintain consistency on a per-replica
 (or set of replica basis), but, once the replicas converge, we have no
 guarantee of per-replica consistency. In the example above, once $R_1$
 and $R_2$ merge their divergent states, their converged state will be
-invalid. Our choice of convergence via merge operator and our initial
-bag representation mean that $R_1$ and $R_2$ cannot simply ``throw
-away'' writes (i.e., tentative updates~\cite{tamer-book}) to ensure
-consistency (again, a deliberate choice that we will revisit in
-Section~\ref{sec:merge}). To capture the requirement that replica
-states are valid not only during operation but also after merge, we
-introduce the following definition:
+invalid. Our choice of convergence via union-based merge requires that
+$R_1$ and $R_2$ cannot simply ``throw away'' writes (i.e., tentative
+updates~\cite{tamer-book}) to ensure consistency (again, a deliberate
+choice that we will revisit in Section~\ref{sec:merge}). To capture
+the requirement that replica states are valid not only during
+operation but also after merge, we introduce the following definition:
 
 \begin{definition}
-A system is \textit{globally valid} if all replicas always contain valid
-state with respect to declared invariants.
+A system is \textit{globally $I$-valid} if all replicas always contain
+$I$-valid state.
 \end{definition}
 
 \minihead{Coordination} A transactionally available, globally valid,
@@ -212,11 +213,12 @@ union, each replica contains the same database state.
 
 \begin{table}
 \begin{center}
+\small
 \begin{tabular}{|l|r|}
-\hline\textbf{Requirement} & \textbf{Effect}  \\\hline\hline
-Global validity & Invariants are never violated \\\hline
-Transactional availability & Non-trivial response guaranteed \\\hline
-Convergence & Replicas must reconcile \\\hline
+\hline\textbf{Requirement} & \textbf{Effect}  \\\hline
+Global validity & Invariants are never violated \\
+Transactional availability & Non-trivial response guaranteed \\
+Convergence & Replicas must reconcile \\
 Coordination-freedom & No synchronous coordination\\\hline
 \end{tabular}
 \end{center}\vspace{-1em}
@@ -228,11 +230,11 @@ Coordination-freedom & No synchronous coordination\\\hline
 \minihead{Summary} A globally valid, transactionally available,
 convergent, and \cfree system achieves our intended goals of perfect
 scalability, availability, and low latency. As we summarize in
-Table~\ref{table:requirements}, every instance of database state is
-valid with respect to invariants, each transaction receives a
-non-trivial response, database states eventually agree, and all
-transactions are processed without communication. The above
-definitions---while indeed somewhat pedagogical---rule out trivial
-implementations that satisfy our informal goals but compromise
-``useful'' behavior. Using this formalism, we can subsequently
-understand when these goals are achievable.
+Table~\ref{table:requirements}, every copy of database state is valid
+with respect to invariants, each transaction receives a non-trivial
+response, database states eventually agree, and all transactions are
+processed without communication. The above definitions---while
+somewhat pedagogical---rule out trivial implementations that satisfy
+our informal goals but compromise ``useful'' behavior. Using this
+formalism, we can subsequently understand when these goals are
+achievable.

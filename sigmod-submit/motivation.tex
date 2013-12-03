@@ -21,22 +21,22 @@ conservative approaches to maintaining consistency.
 % towards achieving consistency
 
 \minihead{Transactions and Isolation} The ACID transaction concept
-pioneered by System R relieved programmers of the requirement to
-explicitly specify their consistency constraints by encouraging the
-use of serializable transactions~\cite{gray-virtues}. Under
-serialiable isolation, the execution of a set of transactions is
-equivalent to some serial ordering between
-them~\cite{bernstein-book}. As long as each transaction leaves the
-database in a consistent state, serializable transactions ensure
-database consistency. Accordingly, traditional database systems treat
-isolation between concurrently executing transactions as a
-\textit{means} towards achieving data consistency. Serializable
-transactions are a \textit{sufficient} mechanism for ensuring
-consistency but are not strictly \textit{necessary}: as a classic
-example due to Lamport in 1976~\cite{lamport-audit}, an ``audit''
-transaction over shared bank account balances need not observe
-serializable state as long as no bank account balance it reads is
-negative.
+pioneered by Jim Gray and System R relieved programmers of the
+requirement to explicitly specify their consistency constraints by
+encouraging the use of serializable
+transactions~\cite{gray-virtues}. Under serialiable isolation, the
+execution of a set of transactions is equivalent to some serial
+ordering between them~\cite{bernstein-book}. As long as each
+transaction leaves the database in a consistent state, serializable
+transactions ensure database consistency. Accordingly, traditional
+database systems treat isolation between concurrently executing
+transactions as a \textit{means} towards achieving application
+consistency. Serializable transactions are a \textit{sufficient}
+mechanism for ensuring consistency but are not strictly
+\textit{necessary}: as a classic example due to Lamport in
+1976~\cite{lamport-audit}, an ``audit'' transaction over shared bank
+account balances need not observe serializable state as long as no
+bank account balance it reads is negative.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -62,37 +62,37 @@ operators opt for weaker models that offer higher performance, lower
 latency, and fewer aborts. On a single-node database, these models are
 often in the form of ``weak isolation'' such as Read Committed and
 Repeatable Read isolation~\cite{adya-isolation}. Modern distributed
-databases offer a range of data consistency models such as eventual
-consistency and regular register
-semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
-  subsequently refer to distributed systems consistency models such as
-  linearizability as \textit{isolation models} (or, more simply,
-  \textit{models}) and reserve the use of \textit{consistency} for
-  referring to application-level ``ACID'' consistency guarantees. This
-  is largely a product of scope: in a system where an end-user
-  application is not considered (e.g., the traditional distributed
-  systems literature), ``consistency'' is indeed best defined
-  according to reads and writes on opaque registers.}  There are
-infinitely many non-serializable models~\cite{hat-vldb}, but each
-exposes end users to isolation \textit{anomalies}, or behavior that
-could not have arisen in a serial execution. These anomalies
-complicate reasoning about application behavior. As Gray and Reuter
-pithily summarize: ``engineers can build distributed systems, but few
-users know how to program them or have algorithms that use
-them''~\cite{gray-book}. Users wishing to adopt one of these weaker
-models must manually map their application-level consistency criteria
-to the low-level traces of reads and writes that define each
-alternative level---an error-prone and laborious process, particularly
-for the non-specialist developer~\cite{consistency-borders}.
+databases offer a range of models such as eventual consistency and
+regular register semantics~\cite{hat-vldb}.\footnote{To prevent
+  confusion, we will subsequently refer to distributed systems
+  consistency models such as linearizability as \textit{isolation
+    models} (or, more simply, \textit{models}) and reserve the use of
+  \textit{consistency} for referring to application-level ``ACID''
+  consistency guarantees. This is largely a product of scope: in a
+  system where an end-user application is not considered (e.g., the
+  traditional distributed systems literature), ``consistency'' is
+  indeed best defined according to reads and writes on opaque
+  registers.}  There are infinitely many non-serializable
+models~\cite{hat-vldb}, but each exposes end users to isolation
+\textit{anomalies}, or behavior that could not have arisen in a serial
+execution. These anomalies complicate reasoning about application
+behavior. As Gray and Reuter pithily summarize: ``engineers can build
+distributed systems, but few users know how to program them or have
+algorithms that use them''~\cite{gray-book}. Users wishing to adopt
+one of these weaker models must manually map their application-level
+consistency criteria to the low-level traces of reads and writes that
+define each alternative level---an error-prone and laborious process,
+particularly for the non-specialist
+developer~\cite{consistency-borders}.
 
 % dividing line: coordination---define them
 
 \minihead{A Dividing Line: Coordination} While the literature contains
 a large spectrum of isolation models, a fundamental property divides
-the space: availability without coordination. We formally define
-coordination in Section~\ref{sec:model}, but, informally, we say that
-a database is \textit{coordination-free} if, given a copy of database
-state, a user's operations can always proceed without contacting (and,
+the space: coordination requirements. We formally define coordination
+in Section~\ref{sec:model}, but, informally, we say that a database is
+\textit{coordination-free} if, given a copy of database state, a
+user's operations can always proceed without contacting (and,
 therefore, possibly stalling) other users concurrently accessing
 shared state. This requirement has been captured in the distributed
 systems community as \textit{availability}, or ``always-on''
@@ -139,24 +139,24 @@ guarantees on single data items---and Snapshot Isolation---a common
 the convenience of ``strong'' isolation and coordination-freedom
 surfaces in common practice. Some applications seem to require
 serializability, while many applications run on systems providing
-weaker guarantees, like eventual consistency. Two trends in particular
-highlight a requirement for a combination of models. First, many
-deployments of weakly consistent stores are often coupled with
-deployments of strongly consistent counterparts (e.g., Riak, Redis,
-and Postgres in a single web service stack). While this ``polyglot
-persistence'' is influenced by many factors including data model and
-persistence format, availability and scalability are frequenly
-mentioned as imporant criteria when choosing between
-stores~\cite{polyglot}. Second, many databases today run at
-non-serializable isolation by default and often as the strongest level
-offered~\cite{hat-vldb}; even strongly consistent systesms like PNUTS
-have added options for weaker isolation~\cite{pnuts-update}. On the
-opposite side of the spectrum, recent database designs originally
-intended for highly available, scalable operation have begun to add
-stronger semantics (e.g., Riak and Cassandra independently added
-support for compare-and-swap, a critical building block for mutual
-exclusion and higher-level functionality like lock-based concurrency
-control).
+weaker guarantees, like eventual consistency~\cite{vogels-defs}. Two
+trends in particular highlight a requirement for a combination of
+models. First, many deployments of weakly consistent stores are often
+coupled with deployments of strongly consistent counterparts (e.g.,
+Riak, Redis, and Postgres in a single web service stack). While this
+``polyglot persistence''~\cite{polyglot} is influenced by many factors
+including data model and persistence format, availability and
+scalability are frequenly mentioned as imporant criteria when choosing
+between stores. Second, many databases today run at non-serializable
+isolation by default and often as the strongest level
+offered~\cite{hat-vldb} (e.g., even strongly consistent systems like
+PNUTS~\cite{pnuts} have added options for weaker
+isolation~\cite{pnuts-update}). On the opposite side of the spectrum,
+recent database designs originally intended for highly available,
+scalable operation have begun to add stronger semantics (e.g., Riak
+and Cassandra independently added support for compare-and-swap, a
+critical building block for mutual exclusion and higher-level
+functionality like lock-based concurrency control).
 %https://blog.heroku.com/archives/2010/7/20/nosql
 
 This use of mixed isolation models leads to the question: when is it

@@ -1,56 +1,56 @@
 
 \section{From Theory to Practice}
 \label{sec:bcc-practice}
+\label{sec:merge}
 
 Using \iconfluence as test for coordination requirements exposes a
 trade-off between the operations a user wishes to perform and the
 semantic guarantees she wishes to guarantee about her data.
 
-\minihead{Revisiting Payroll} Given \iconfluence, we can (briefly)
-revisit our payroll example. As we showed by counterexample,
-uniqueness of arbitrary values is not \iconfluent: $\{$Stan:5$\}$ and
-$\{$Mary:5$\}$ are both valid states that can be reached by valid
-sequences (starting at $\{\}$) but their merge---$\{$Stan:5,
-Mary:5$\}$ is not valid. Therefore, insertion of arbitrary values is
-not $I$-confluent for $I=\{$unique IDs$\}$. However, deletion of
-employees \textit{is} $I$-confluent: removing items from a bag of
-unique values cannot introduce duplicates. We can repeat the same
-exercise for foreign key constraints: inserting new records with valid
-department IDs cannot in fact introduce conflicts during merge. The
-salary constraint is similarly easily validated for simple insert
-statements.
+\minihead{Revisiting Payroll} We can (briefly) revisit our payroll
+example. As we showed by counterexample, uniqueness of arbitrary
+values is not \iconfluent: $\{$Stan:5$\}$ and $\{$Mary:5$\}$ are both
+valid states that can be reached by valid sequences (starting at
+$\{\}$) but their merge---$\{$Stan:5, Mary:5$\}$ is not
+valid. Therefore, insertion of arbitrary values is not $I$-confluent
+for $I=\{$unique IDs$\}$. However, deletion of employees \textit{is}
+$I$-confluent: removing items from a bag of unique values cannot
+introduce duplicates. We can repeat the same exercise for foreign key
+constraints: inserting new records with valid department IDs cannot in
+fact introduce conflicts during merge. The salary constraint is
+similarly easily validated for simple insert statements.
 
 At the extreme, if a user's transactions do not modify database state,
 she can guarantee any invariant that holds over the initial state,
 while, with no invariants, a user can perform any operations. However,
 the space between yields a spectrum of possible \iconfluent
-guarantees. In this section, we make this trade-off concrete by
-informally analyzing increasingly permissive subsets of SQL.
+guarantees. We proceed to make this trade-off concrete by informally
+analyzing increasingly permissive subsets of SQL.
 
-\subsection{\iconfluence for Sets}
+\subsection{\iconfluence for Relations}
 
 We begin by considering several constraints found in SQL that are
 expressible via standard relational constructs.
 
 \minihead{Equality} Applications often wish to disallow certain values
 from records. For example, an application writer might require that an
-id column assume a non-null value by marking the column as \texttt{NOT
-  NULL}. These equality (and, similarly, in-equality) constraints
-operate on a per-record basis. We can combine any two sets of records
-that each obey equality invariants via simple set union without
-compromising the invariant. Merging sets of opaque records does not
-change the value of any record. If individual replicas ensure that
-equality constraints hold during insertion and record modification,
-constraints will not be violated. We omit a formal proof, but
-per-record equality invariants for arbitrary values are \iconfluent.
+ID column assume a non-null value by marking the column as \texttt{NOT
+  NULL}. These equality (and in-equality) constraints operate on a
+per-record basis. We can combine any two sets of records that each
+obey equality invariants via simple set union without compromising the
+invariant. Merging sets of opaque records does not change the value of
+any record. If individual replicas ensure that equality constraints
+hold during insertion and record modification, constraints will not be
+violated. We omit a formal proof, but per-record equality invariants
+for arbitrary values are \iconfluent.
 
 \minihead{Uniqueness} Applications often wish to assert the uniqueness
 of values within a given record. For example, an application might
-desire unique user IDs. If we allow \textit{arbitrary} insertion and
-modification of unique values, then we can easily construct a
+desire that user IDs be unique. If we allow arbitrary insertion and
+modification of unique values, then we can easily construct
 non-\iconfluent sequences of transactions (e.g., simultaneously
 perform \texttt{insert id=0} and \texttt{insert id=0}). Uniqueness is
-not \iconfluent for inserts of unique values. 
+not \iconfluent for inserts of unique values.
 
 However, if we consider arbitrary \textit{generation} of IDs, whereby
 the database generates unique values on behalf of users (e.g., assign
@@ -74,17 +74,17 @@ constraint. A constraint requiring a dense, unique sequence of IDs
 (i.e., no gaps in the ID space) is not \iconfluent. However, as a
 consolation, if we can defer the ID assignment until the end of the
 transaction (Section~\ref{sec:evaluation}), resolving this
-``conflict'' does not necessarily require transaction abort. Rather,
-as long as transactions commit in the order in which they were
-assigned IDs, the constraint will hold.
+``conflict'' does not necessarily require transaction abort. As long
+as transactions commit and are disseminated to other replicas in the
+order in which they were assigned IDs, the constraint will hold.
 
 Uniqueness invariants are unsurprisingly \iconfluent under selection
 (i.e., read) and deletion.
 
 \minihead{Foreign Keys} Applications often wish to express
 relationships between records, captured in SQL by foreign key
-constraints. In our payroll example, each employee should belong to at
-least one department.
+constraints. In our payroll example, each employee belongs to a
+department.
 
 From the perspective of \iconfluence analysis, foreign key constraints
 concern the \textit{visibility} of related updates: if individual
@@ -134,9 +134,10 @@ might result in a database state reflecting only one transaction
 support these anomalies, many database designs have proposed the use
 of \textit{abstract data types}, providing merge functions for a
 variety of uses such as counters, sets, and
-maps~\cite{crdt,atomictransactions,weihl-thesis,blooml}. For example,
-a simple op-based CRDT counter might be built from a single integer
-that is incremented for each corresponding user-level
+maps~\cite{crdt,atomictransactions,weihl-thesis,blooml} that ensure
+that all operations are reflected in converged database state. For
+example, a simple op-based CRDT counter might be built from a single
+integer that is incremented for each corresponding user-level
 \texttt{increment} operation~\cite{crdt}.
 
 \iconfluence is applicable to these data types as well. For example,
@@ -169,33 +170,33 @@ declarative procedures and DDL; a basic prototype identifying
 support for conditional updates required less than a week to build.
 
 Through our treatment of abstract data types, we recognize that
-immutable/bag semantics are not always desirable from a
-programmability perspective. In practice, and in our analysis thus
-far, we have found abstract data types to be a useful workaround for
-avoiding anomalies due to non-bag merge semantics. Indeed, as others
-have noted~\cite{bayou,gray-book}, managing update conflicts requires
-care to avoid ``losing'' modifications and/or ending up with logically
-inconsistent data (e.g., ``return \texttt{NULL}'' is a safe if trivial
-merge function). \iconfluence analysis adds application-level
+immutable/bag semantics are not always desirable for
+programmability. In practice, and in our analysis thus far, we have
+found abstract data types to be a useful workaround for avoiding
+anomalies due to non-bag merge semantics. Indeed, as others have
+noted~\cite{bayou,gray-book}, managing update conflicts requires care
+to avoid ``losing'' modifications and/or ending up with logically
+inconsistent data (e.g., ``return \texttt{NULL}'' is a safe but
+trivial merge function). \iconfluence analysis adds application-level
 semantics (safety) to the process of merging (liveness) and can be
 viewed as determining when it is indeed safe to perform ``optimistic''
 replication and merge~\cite{optimistic}. However, unlike ``tentative
-update'' programming models, any successful (i.e., committed) update
-will not be rolled back in our system model.
+update'' programming models, successful (i.e., committed) updates will
+not be rolled back in our model.
 
 While our proposed invariants are entirely declarative, a class of
 useful semantics---recency guarantees---are not inherently
 declarative. Users often wish to read data that is up-to-date as of a
 given point in time (e.g., ``read latest''~\cite{pnuts}). While
-serializability and traditional isolation models frequently ignore
-these recency guarantees~\cite{adya-isolation}, they are indeed
-important to programmers. We can simulate recency requirements in
-\iconfluence analysis by logging the result of all reads with a
-timestamp and requiring that the logged timestamps obey their recency
-guarantees, but it is known that recency guarantees are unachievable
-with transactional availability~\cite{hat-vldb}. If users wish to
-``read their writes'' (i.e., ``session'' guarantees~\cite{bayou}),
-they can do so by maintaining affinity or
+serializability and traditional isolation models do not address these
+recency guarantees~\cite{adya-isolation}, they are indeed important to
+programmers. We can simulate recency requirements in \iconfluence
+analysis by logging the result of all reads with a timestamp and
+requiring that the logged timestamps obey their recency guarantees,
+but it is known that recency guarantees are unachievable with
+transactional availability~\cite{hat-vldb}. If users wish to ``read
+their writes'' (i.e., ``session'' guarantees~\cite{bayou}), they can
+do so by maintaining affinity or
 ``stickiness''~\cite{hat-vldb,vogels-defs} with a given set of
 replicas, while ``bounded staleness'' guarantees for reads are
 achievable with multi-versioning or read
@@ -209,9 +210,10 @@ delays.
 \begin{table}
 \definecolor{yesgray}{gray}{0.9}
 \begin{center}
+\small
 \begin{tabular}{|l|c|c|}
 \hline
-Constraint & Operation & \iconfluent? \\\hline
+\textbf{Constraint} & \textbf{Operation} & \textbf{\iconfluent?} \\\hline
 \rowcolor{yesgray}
 Equality, Inequality & Any & Yes\\
 Uniqueness & Choose specific value & No\\
