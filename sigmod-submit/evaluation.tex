@@ -264,19 +264,24 @@ specification) are all achievable via client-side caching as proposed
 by Bailis et al.~\cite{hat-vldb}.
 
 
-\minihead{Additional applications} While TPC-C is the de facto
-standard for transactional system performance, we are aware that it
-may be a simplification of real-world workloads. For greater variety,
-we examined the transactions in the OLTPBenchmark
-suite~\cite{oltpbench} and found that seven of ten benchmarks had no
-integrity constraints, one (\texttt{CH-bencCHmark}) matched TPC-C, and
-the remaining two specifications implied a requirement for
-coordination due to unique ID assignment (\texttt{AuctionMark}'s
-\texttt{new-purchase}, \texttt{SEATS}'s
-\texttt{NewReservation}). Moreover, the three ``consistency
-conditions'' in the newer TPC-E benchmark represent a subset of the
-twelve conditions from TPC-C that we consider here. It is possible
-(even likely) that these benchmarks are simply under-specified, but,
+\minihead{Additional applications} While TPC-C is the ``current
+industry standard for evaluating the performance of OLTP
+systems''~\cite{oltpbench}, we are aware that it may be a
+simplification of real-world workloads. For greater variety, we
+examined the transactions in the OLTPBenchmark suite~\cite{oltpbench}
+and found that, in nine of fourteen remaining (non TPC-C) benchmarks,
+the workload transactions did not involve integrity constraints (e.g.,
+did not modify primary key columns), one (\texttt{CH-bencCHmark})
+matched TPC-C, and two specifications implied (but did not explicitly
+state) a requirement for coordination due to unique ID assignment
+(\texttt{AuctionMark}'s \texttt{new-purchase}, \texttt{SEATS}'s
+\texttt{NewReservation}; achievable like TPC-C New-Order). The
+remaining two benchmarks, \texttt{sibench} and \texttt{smallbank} were
+specifically designed as research benchmarks for serializable
+isolation. The three ``consistency conditions'' in the newer TPC-E
+benchmark (not in OlTPBenchmark) represent a subset of the twelve
+conditions from TPC-C that we consider here. It is possible (and even
+likely) that these benchmarks are simply under-specified, but,
 according to official specification, TPC-C contains the most rigorous
 coordination-intensive invariants among the benchmarks we encountered.
 

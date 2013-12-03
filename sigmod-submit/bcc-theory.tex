@@ -36,7 +36,7 @@ maintaining validity:
 Given invariant $I$, transactions $T$, and database state $D$,
 $S_i(D)$ is an $I$-valid sequence of transactions in $T$ if $S_i(D) =
 t_{in}(\dots t_{i1}(D))$, $\{t_{i1}, \dots, t_{in}\} \in T$, and
-$\forall k \in [1, n], t_{ik}(\dots t_{i1}(D))$ is valid under $I$.
+$\forall k \in [1, n], t_{ik}(\dots t_{i1}(D))$ is $I$-valid.
 \end{definition}
 
 Using the concept of valid sequences, we can formalize the
