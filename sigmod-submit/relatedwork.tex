@@ -24,8 +24,10 @@ therefore non-\cfree---updates to shared state) and/or the use of
 global concurrency control (for both prevention- and detection-based
 approaches). Notably,~\cite{local-verification} avoids global
 concurrency control and studies the problem of verifying constraints
-in a shared-nothing, partitioned (but non-replicated) database
-system. Our goal in this paper is to determine when we can avoid
+in a shared-nothing, partitioned (but non-replicated) database system,
+while~\cite{kemme-si-ic} discusses the maintenance of common integrity
+constraints under replicated (non-\cfree~\cite{hat-vldb}) Snapshot
+Isolation. Our goal in this paper is to determine when we can avoid
 global concurrency control and any coordination between
 replicas. However, for non-coordination-free operations, this sizeable
 body of literature provides a useful repository of techniques,
@@ -61,20 +63,21 @@ by coordinating.
 
 Several systems use application-provided labels as a means towards
 determining when concurrent operations are safe. SDD-1~\cite{sdd1} and
-Garcia-Molina~\cite{garciamolina-semantics}'s compatibility
-  sets describe (manually-labeled) classes of transactions that can
-be safely interleaved as a series of atomic steps (producing
-``semantically consistent schedules''; equivalent to Korth's
-predicate-wise
+Garcia-Molina~\cite{garciamolina-semantics}'s compatibility sets
+describe (manually-labeled) classes of transactions that can be safely
+interleaved as a series of atomic steps (producing ``semantically
+consistent schedules''; equivalent to Korth's predicate-wise
 serializability~\cite{korth-serializability}). Bernstein and Lewis's
-Assertional Concurrency Control~\cite{decomp-semantics}
-furthers this analysis by leveraging axiomatic program analysis to
-decompose transactions into a set of atomic steps and requiring
-Hoare-style pre- and post-conditions for each individual
-operation. Our \iconfluence reasons about divergent (non-atomic)
-executions on multiple replicas but could be used to produce these
-compatibility sets. Requring a single database-wide set of invariants
-obviates the need for manually labeling transaction types.
+Assertional Concurrency Control~\cite{decomp-semantics} furthers this
+analysis by leveraging axiomatic program analysis to decompose
+transactions into a set of atomic steps and requiring Hoare-style pre-
+and post-conditions for each individual operation (which has also been
+applied to weak isolation on a single-site
+database~\cite{isolation-semantics}). Our \iconfluence reasons about
+divergent (non-atomic) executions on multiple replicas but could be
+used to produce these compatibility sets. Requring a single
+database-wide set of invariants obviates the need for manually
+labeling transaction types.
 
 Program decomposition via techniques like chopping~\cite{chopping}
 (which is automatic), nested atomic
@@ -84,19 +87,19 @@ assignment of New-Order), and a range of alternate extended
 is established that invariant-based conflicts can actually occur.
 
 \minihead{State-based Commutativity} Related work often reasons about
-the commutativity of transaction \textit{outcomes}: for example, two
-transactions provide state-based commutativity if their return value
-is the same the the final state of the database is equivalent despite
-reordering~\cite{weihl-data,weihl-thesis}. This state-based
-commutativity is a sufficient but not necessary condition for
-concurrent execution. Despite its conservativity, these techniques
-have been successfully applied in diverse fields including both
-database concurrency control and, recently, operating systems
-design~\cite{kohler-commutativity}. State-based commutativity analysis
-does not require the specification of application-level invariants
-but, as~\cite{kohler-commutativity} notes, is accordingly not
-necessary for maintaining correctness for all (and often common)
-applications~\cite{lamport-audit}.
+the commutativity of transaction \textit{outcomes}~\cite{boosting}:
+for example, two transactions provide state-based commutativity if
+their return value is the same the the final state of the database is
+equivalent despite reordering~\cite{weihl-data,weihl-thesis}. This
+state-based commutativity is a sufficient but not necessary condition
+for concurrent execution. Despite its conservativity, these techniques
+have been successfully applied in diverse fields including database
+concurrency control, concurrent programming~\cite{boosting}, recently,
+operating systems design~\cite{kohler-commutativity}. State-based
+commutativity analysis does not require the specification of
+application-level invariants but, as~\cite{kohler-commutativity}
+notes, is accordingly not necessary for maintaining correctness for
+all (and often common) applications~\cite{lamport-audit}.
 
 \minihead{Term rewriting} Our use of \iconfluence is directly inspired
 by the literature on term rewriting and constraint programming. An

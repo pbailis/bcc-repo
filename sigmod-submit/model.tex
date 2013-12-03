@@ -66,14 +66,15 @@ Eswaran et al.'s seminal paper on the topic of consistency argues that
 system itself''~\cite{eswaran-consistency}. Nevertheless, since 1976,
 databases have introduced support for a finite set of
 invariants~\cite{korth-serializability} in the form of primary key and
-foreign key, uniqueness, and row-level ``check'' constraints. We
-expand this set of invariants in Section~\ref{sec:bcc-practice} and
-demonstrate that a small set of invariants provides expressive power
-for many applications. It is possible to perform a conservative
-analysis if a complete specification of invariants is missing, but
-this will result in less useful results. Unlike more general forms of
-axiomatic logic (e.g., Hoare-style triples~\cite{decomp-semantics}),
-we require only one set of invariants per application.\vspace{.5em}
+foreign key, uniqueness, and row-level ``check''
+constraints~\cite{kemme-si-ic}. We expand this set of invariants in
+Section~\ref{sec:bcc-practice} and demonstrate that a small set of
+invariants provides expressive power for many applications. It is
+possible to perform a conservative analysis if a complete
+specification of invariants is missing, but this will result in less
+useful results. Unlike more general forms of axiomatic logic (e.g.,
+Hoare-style triples~\cite{decomp-semantics}), we require only one set
+of invariants per application.\vspace{.5em}
 
 \minihead{Replicas} In this paper, we are concerned with
 synchronization and coordination between multiple transactions. To
