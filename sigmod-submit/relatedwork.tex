@@ -114,14 +114,15 @@ merge operator as a constraint \textit{join} operator that is defined
 for all database states. Unlike term rewriting systems, our \cfreedom
 analysis reasons about finite but arbitrarily long sequences of
 transactions: our ``derivations'' are not finite as long as new
-transactions can be introduced. We have found this literature to be a
-useful grounding for our own formalism and see further comparison to
-rewriting systems as an interesting starting point for future
-theoretical analysis. Similar rewrite system concepts---including
-confluence~\cite{aiken-confluence}---have been successfully integrated
-into active database systems~\cite{activedb-book} (e.g., triggers and
-rule processing), although we are not familiar with a concept
-analogous to \iconfluence in this literature.
+transactions can be introduced (are not \textit{noetherian}). We have
+found this literature to be a useful grounding for our own formalism
+and see further comparison to rewriting systems as an interesting
+starting point for future theoretical analysis. Similar rewrite system
+concepts---including confluence~\cite{aiken-confluence}---have been
+successfully integrated into active database
+systems~\cite{activedb-book} (e.g., triggers and rule processing),
+although we are not familiar with a concept analogous to \iconfluence
+in this literature.
 
 \minihead{Program analysis} The problem of maintaining correctness
 despite concurrent modification is well studied in the programming
@@ -157,23 +158,23 @@ database systems.
 \minihead{Liveness and Convergence} The CALM
 Theorem~\cite{ameloot-calm} shows that monotonic logic results in
 deterministic program outcomes despite message re-ordering. Subsequent
-program analysis in the Bloom~\cite{calm},
-Bloom\textsuperscript{L}~\cite{blooml}, and Blazes~\cite{blazes}
-languages statically highlight non-monotonic, non-confluent
-operations. This is a useful \textit{liveness} guarantee---something
-good will happen~\cite{lamport-safety}---but does not prevent users
-from observing inconsistent database state---\textit{safety}, in the
-form of application-level integrity constraints.  Here, we wish to
-provide stronger guarantees (including safety) \textit{during
-  execution}. In doing so, we relax the requirement that quiescent
-database state be deterministic; we only require that it maintain the
-specified application-level invariants (liveness). Similarly,
-Commutative Replicated Data Type (CRDT) objects~\cite{crdt} ensure
-that, once a database quiesces writes and all servers exchange writes,
-the database will reflect all prior updates made to each CRDT. CRDTs
-are accordingly useful in merging divergent replicas on a per-item
-basis but do not solve the problem of maintaining application-level
-consistency.
+program analysis in the Bloom~\cite{calm}, and
+Bloom\textsuperscript{L}~\cite{blooml} languages and the
+Blazes~\cite{blazes} system statically highlight non-monotonic,
+non-confluent operations. This is a useful \textit{liveness}
+guarantee---something good will happen~\cite{lamport-safety}---but
+does not prevent users from observing inconsistent database
+state---\textit{safety}, in the form of application-level integrity
+constraints.  Here, we wish to provide stronger guarantees (including
+safety) \textit{during execution}. In doing so, we relax the
+requirement that quiescent database state be deterministic; we only
+require that it maintain the specified application-level invariants
+(liveness). Similarly, Commutative Replicated Data Type (CRDT)
+objects~\cite{crdt} ensure that, once a database quiesces writes and
+all servers exchange writes, the database will reflect all prior
+updates made to each CRDT. CRDTs are accordingly useful in merging
+divergent replicas on a per-item basis but do not solve the problem of
+maintaining application-level consistency.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability via ``optimistic

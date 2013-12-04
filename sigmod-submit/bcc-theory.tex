@@ -45,12 +45,13 @@ common ancestor are also valid under merge:
 
 \begin{definition}[\iconfluence]
 Transactions $T$ are \iconfluent with respect to invariant $I$ if, for
-all $I$-valid sequences $S_1(D_0)$, $S_2(D_0)$ of transactions in $T$,
-$I(S_1(D_0) \sqcup S_2(D_0))$ is $I$-valid.
+all $I$-valid database states $D_s$ and all $I$-valid sequences
+$S_1(D_s)$, $S_2(D_s)$ of transactions in $T$, $I(S_1(D_s) \sqcup
+S_2(D_s))$ is $I$-valid.
 \end{definition}
 
 Figure~\ref{fig:iconfluence} depicts an \iconfluent execution using
-two valid sequences each starting from the initial database state
+two valid sequences each starting from a shared database state
 $D_0$. This execution model will be familiar to users of fork-join
 programming models~\cite{hewitt-forkjoin} (e.g., version control
 systems like Git and Subversion). \iconfluence allows users to ``check
@@ -124,7 +125,11 @@ locally and replicas can simply merge independent modifications to
 guarantee convergence to a valid state. For the converse, we construct
 a scenario under which a replica cannot determine whether or not a
 non-\iconfluent update should succeed without contacting another
-replica, diverging forever, or compromising availability.
+replica, diverging forever, or compromising availability.\footnote{We
+  can likely apply Newman's lemma and only consider single-transaction
+  divergence (in the case of convergent and therefore ``terminating''
+  executions)~\cite{obs-confluence,termrewriting}, but this is not
+  necessary for our results.}
 
 \begin{proof}
 ($\Leftarrow$) We begin with the simpler proof, which is by
@@ -146,17 +151,17 @@ replica, diverging forever, or compromising availability.
   valid operation for a set of transactions $T$ with \cfreedom,
   transactional availability, and convergence, but $T$ is not
   $I$-confluent. Then there exists valid sequences $S_1,S_2$ in $T$
-  such that $I(S_1(D_0)) \wedge I(S_2(D_0)) \rightarrow true$ but
-  $I(S_1(D_0) \sqcup I(S_2(D_0)) \rightarrow false$.
+  such that $I(S_1(D_s)) \wedge I(S_2(D_s)) \rightarrow true$ but
+  $I(S_1(D_s) \sqcup I(S_2(D_s)) \rightarrow false$.
 
   Consider an execution $\alpha_1$ in which one client $C_1$ submits
   the transactions from $S_1$ to a replica $R_1$ and a second
   execution $\alpha_2$ in which a second client $C_2$ submits the
   transactions from $S_2$ to replica $R_2$ such that $R_1$ and $R_2$
-  each initially contain the $D_0$. To preserve transactional
+  each initially contain the $D_s$. To preserve transactional
   availability, in $\alpha_1$, $R_1$ must commit the transactions in
-  $S_1$ (resulting in $S_1(D_0)$), while, in $\alpha_2$, $R_2$ must
-  commit the transactions in $S_2$ (resulting in $S_2(D_0)$).
+  $S_1$ (resulting in $S_1(D_s)$), while, in $\alpha_2$, $R_2$ must
+  commit the transactions in $S_2$ (resulting in $S_2(D_s)$).
 
    We now consider a third execution, $\alpha_3$ to produce a
    contradiction. In $\alpha_3$, $C_1$ submits $S_1$ at the same time
