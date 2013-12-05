@@ -118,16 +118,17 @@ result, and we will spend much of the remainder of the paper applying
 it.
 
 Before doing so, we first prove Theorem~\ref{theorem:necessary}. The
-proof is based on both a proof by construction and classic
-partitioning arguments~\cite{gilbert-cap}. Informally, if \iconfluence
-holds, each replica can simply check each transaction's modifications
-locally and replicas can simply merge independent modifications to
-guarantee convergence to a valid state. For the converse, we construct
-a scenario under which a replica cannot determine whether or not a
-non-\iconfluent update should succeed without contacting another
-replica, diverging forever, or compromising availability.\footnote{We
-  can likely apply Newman's lemma and only consider single-transaction
-  divergence (in the case of convergent and therefore ``terminating''
+forwards direction uses a partitioning argument~\cite{gilbert-cap} to
+derive a contradiction, while the backwards direction is by
+construction. Informally, if \iconfluence holds, each replica can
+simply check each transaction's modifications locally and replicas can
+simply merge independent modifications to guarantee convergence to a
+valid state. For the converse, we construct a scenario under which a
+replica cannot determine whether or not a non-\iconfluent update
+should succeed without contacting another replica, diverging forever,
+or compromising availability.\footnote{We can likely apply Newman's
+  lemma and only consider single-transaction divergence (in the case
+  of convergent and therefore ``terminating''
   executions)~\cite{obs-confluence,termrewriting}, but this is not
   necessary for our results.}
 

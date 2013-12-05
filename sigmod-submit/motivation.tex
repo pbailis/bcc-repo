@@ -17,6 +17,37 @@ requires reasoning about and often controlling concurrent access to
 data: in this section, we discuss this trade-off and describe classic,
 conservative approaches to maintaining consistency.
 
+\minihead{A simple example} As a motivating example running throughout
+this paper, we consider a simple payroll application managing
+information about employees and departments. We specifically consider
+three aspects of the payroll application:
+\begin{myitemize}
+\item\textbf{Employee IDs:} Employees are assigned ID numbers that
+  should be unique with respect to all other assigned IDs (i.e., a
+  primary key constraint).
+\item\textbf{Departments:} Employees should belong to exactly one
+  department (i.e., a foreign key constraint). Employees can switch
+  departments by updating their department assignment.
+\item\textbf{Salaries:} Employees have salaries, and no employee
+  should have salary greater than $\$50,000$.
+\end{myitemize}
+A database supporting the payroll application will have to be careful
+in managing correctness as multiple users concurrently access the
+database state. For example, if Stan is assigned ID number $5$ and
+Mary is simultaneously assigned ID number $5$, then the database
+consistency will be compromised. On the other hand, properties like
+the department constraint are easier to maintain. For example,
+simultaneously adding Stan and Mary to the Engineering department is
+safe. Effectively, some combinations of transactions and invariants
+appear unsafe without coordination between concurrent operations,
+whereas others appear to be resilient to independent access and
+update.
+
+A primary goal of this paper is to formalize this trade-off and state
+a general property for deciding whether or not coordination is
+required. More succinctly, we will answer the question: when does
+correct transaction processing require synchronous coordination?
+
 % traditional programmability: serializability; isolation is means
 % towards achieving consistency
 
@@ -182,38 +213,3 @@ provided by most distributed isolation models).
 % advance, invariants are given to the database; goal will be to
 % minimize synchronize coordination
 
-
-\minihead{A simple example} As a running motivating example, we will
-consider a simple payroll application managing information about
-employees and departments. We consider three aspects of the payroll
-database:
-\begin{myitemize}
-\item\textbf{Employee IDs:} Employees are assigned ID numbers that
-  should be unique with respect to all other assigned IDs (i.e., a
-  primary key constraint).
-\item\textbf{Departments:} Employees should belong to exactly one
-  department (i.e., a foreign key constraint). Employees can switch
-  departments by updating their department assignment.
-\item\textbf{Salaries:} Employees have salaries, and no employee
-  should have salary greater than $\$50,000$.
-\end{myitemize}
-Even without further consideration of query language or data layout,
-there are several interesting properties of this application. Some
-properties, such as ID uniqueness, may be violated in the event of
-arbitrary updates: if Stan is assigned ID number $5$ and Mary is
-simultaneously assigned ID number $5$, then application-level
-consistency will be compromised. In this case, any replicas performing
-insertions for a specific ID should coordinate. Other properties, such
-as the department constraint, appear safe under concurrent insertions:
-so long as the employee's department field corresponds to an existing
-department, it appears (and, indeed, we will later prove) that
-concurrent insertions can saefly proceed independently. However,
-arbitrary operations like deletions of departments \textit{can}
-compromise the department constraint.
-
-This example demonstrates a trade-off between transaction expressivity
-and invariant strength: some combinations of transactions and
-invariants appear unsafe without coordination, whereas others appear
-to be resilient to independent access and update. The remainder of this paper
-will formalize this trade-off and state a general
-property for deciding whether or not coordination is required.

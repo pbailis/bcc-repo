@@ -36,13 +36,18 @@ expressible via standard relational constructs.
 from records. For example, an application writer might require that an
 ID column assume a non-null value by marking the column as \texttt{NOT
   NULL}. These equality (and in-equality) constraints operate on a
-per-record basis. We can combine any two sets of records that each
-obey equality invariants via simple set union without compromising the
-invariant. Merging sets of opaque records does not change the value of
-any record. If individual replicas ensure that equality constraints
-hold during insertion and record modification, constraints will not be
-violated. We omit a formal proof, but per-record equality invariants
-for arbitrary values are \iconfluent.
+per-record basis. We can apply \iconfluence analysis to show that
+equality constraints are achievable with \cfreedom. Assume two
+database states $S_1$ and $S_2$ each satisfy a per-record equality
+invariant $I_e$ but that $I_e(S_1 \sqcup S_2)\rightarrow false$. Then
+there exists at least one record $r \in S_1 \sqcup S_2$ such that the
+equality constraint fails. Union-based merge is non-destructive and
+does not change the value of a given record, so $r \in S_1$ or $r \in
+S_2$ (or both). But that would imply that one of $S_1$ or $S_2$
+violates $I_e$, a contradiction. Therefore, per-record equality
+invariants for arbitrary values are \iconfluent.
+
+For brevity, we omit formal proofs for remaining invariants.
 
 \minihead{Uniqueness} Applications often wish to assert the uniqueness
 of values within a given record. For example, an application might
@@ -65,7 +70,7 @@ replicas only assign IDs that are unique and within their respective
 portion of the ID namespace, then merging locally valid states will
 also be globally valid.
 
-We can consider further constraints on the unique values: for example,
+We can consider further invariants on the unique values: for example,
 an \texttt{AUTO\_INCREMENT} constraint dictates that values are
 assigned in increasing order. This represents a further refinement to
 the above examples. The former (specific value assignment) is still
@@ -145,16 +150,19 @@ it is easy to see that a row-level \texttt{>} threshold invariant is
 \iconfluent for \texttt{increment} and \texttt{update} but not
 \texttt{decrement}, while a row-level \texttt{<} threshold invariant
 is \iconfluent for \texttt{decrement} and \texttt{update} but not
-\texttt{increment}. These data types can be combined with standard
-relational constraints like materialized view maintenance (e.g., the
-``total salary'' row should contain the sum of employee salaries in
-the \texttt{employee} table). Importantly, while many implementations
-of these data types provide useful properties like convergence without
-compromising availability~\cite{blooml,crdt}, they do \textit{not}
-guarantee that invariants are not violated. Our prior CRDT counter
-supporting increment and decrement operations will guarantee that all
-operation invocations are reflected in the final CRDT state but will
-not guarantee (or enforce) that our given invariants hold.
+\texttt{increment}. We can similarly guarantee equality but not
+in-equality for counters supporting increment and decrement. These
+data types (including lists, sets, and maps) can be combined with
+standard relational constraints like materialized view maintenance
+(e.g., the ``total salary'' row should contain the sum of employee
+salaries in the \texttt{employee} table). Importantly, while many
+implementations of these data types provide useful properties like
+convergence without compromising availability~\cite{blooml,crdt}, they
+do \textit{not} guarantee that invariants are not violated. Our prior
+CRDT counter supporting increment and decrement operations will
+guarantee that all operation invocations are reflected in the final
+CRDT state but will not guarantee (or enforce) that our given
+invariants hold.
 
 \subsection{Discussion and Limitations}
 
@@ -208,14 +216,16 @@ delays.
 % understanding the limits -- merges, recency, escrow, immutability
 
 \begin{table}
-\definecolor{yesgray}{gray}{0.9}
+\definecolor{yesgray}{gray}{0.95}
 \begin{center}
 \small
-\begin{tabular}{|l|c|c|}
+\begin{tabular}{|l|l|c|}
 \hline
-\textbf{Constraint} & \textbf{Operation} & \textbf{\iconfluent?} \\\hline
+\textbf{Invariant} & \textbf{Operation} & \textbf{\iconfluent?} \\\hline
+
 \rowcolor{yesgray}
-Equality, Inequality & Any & Yes\\
+Equality & Any & Yes\\
+Inequality & Any & Yes \\
 Uniqueness & Choose specific value & No\\
 \rowcolor{yesgray}
 Uniqueness & Choose some value & Yes\\
@@ -224,19 +234,22 @@ Uniqueness & Choose some value & Yes\\
 Foreign Key & Insert & Yes\\
 Foreign Key & Delete & No\\
 \rowcolor{yesgray}
-Foreign Key & Delete Cascade & Yes\\
+Foreign Key & Cascading Delete & Yes\\
 \rowcolor{yesgray}
 Secondary Indexing & Update & Yes \\
 \rowcolor{yesgray}
-Materialized Views & Update & Yes \\
+Materialized Views & Update & Yes \\\hline\hline
 \rowcolor{yesgray}
-> & Increment & Yes\\
-< & Decrement & No \\
+> & Increment [Counter] & Yes\\
+< & Decrement [Counter] & No \\
 \rowcolor{yesgray}
-> & Increment & Yes \\
-< & Decrement & No \\\hline
+> & Increment [Counter] & Yes \\
+< & Decrement [Counter] & No \\
+\rowcolor{yesgray}
+\texttt{[NOT] CONTAINS} & Any [Set, List, Map] & Yes \\ 
+\texttt{HEAD=,TAIL=,length=} & Mutation [List] & No \\ \hline
 \end{tabular}
 \end{center}\vspace{-1em}
-\caption{\iconfluence for selected SQL and ADT invariants.}
+\caption{Example SQL (top) and ADT invariant \iconfluence.}
 \label{table:invariants}
 \end{table}

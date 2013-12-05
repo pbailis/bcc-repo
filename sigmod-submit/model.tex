@@ -44,10 +44,12 @@ over arbitrary database state that determine whether a given state is
 valid according to application rules. We model invariants as binary
 predicates on database state: $I: DB \rightarrow \{true, false\}$.  As
 an example, an invariant might express the requirement that only one
-user in a database has a given ID. This directly captures the notion
-of ACID Consistency~\cite{bernstein-book,gray-virtues}, and we say
-that a database state is \textit{valid} under an invariant $I$ (or
-$I$-valid) if it satisfies the predicate:
+user in a database has a given ID. In this case (and, indeed, in most
+invariants we consider), this invariant is naturally expressed as a
+part of the database schema (e.g., via DDL). This directly captures
+the notion of ACID Consistency~\cite{bernstein-book,gray-virtues}, and
+we say that a database state is \textit{valid} under an invariant $I$
+(or $I$-valid) if it satisfies the predicate:
 
 \begin{definition}
 A database state $D$ is \textit{$I$-valid} if $I(D) \rightarrow true$.
@@ -141,7 +143,8 @@ database state---we adopt the following definition:
 
 \begin{definition}A system is \textit{convergent} if, in the
 absence of new transactions and in the absence of indefinite
-communication delays, all replicas eventually contain the same state.
+communication delays, all correct replicas eventually contain the same
+state.
 \end{definition}
 
 This convergence, or \textit{eventual consistency}, requirement forces
@@ -189,7 +192,7 @@ following definition of coordination-freedom:
 
 \begin{definition}
 A system is \textit{\cfree} if replicas do not communicate in order to
-execute transactions.
+execute any finite number of transactions.
 \end{definition}
 
 Figure~\ref{fig:replicas} illustrates a coordination-free execution of
