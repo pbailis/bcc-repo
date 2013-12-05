@@ -34,12 +34,11 @@ control and any coordination between replicas.
 % control
 
 \minihead{Semantics-based Concurrency Control} A related body of
-research similarly re-defines correctness criteria for shared
-databases according to semantic definitions. \"{O}zsu and
-Valduriez~\cite{tamer-book} also provide a brief summary of this work,
-which, again, largely focuses on global (i.e., atomic, serializable,
-or single-site) concurrency control strategies, but we discuss several
-notable approaches here.
+research uses semantic information to re-define correctness criteria
+for shared databases. \"{O}zsu and Valduriez~\cite{tamer-book} provide
+a brief summary of this work, which, again, largely focuses on global
+(i.e., atomic, serializable, or single-site) concurrency control
+strategies, but we discuss several notable approaches here.
 
 Much of semantics-based concurrency control uses application semantics
 as a means to reduce conflicts during validation or execution of
@@ -67,7 +66,7 @@ nested atomic transactions~\cite{atomictransactions}) by requiring
 Hoare-style pre- and post-conditions for each individual operation and
 performing axiomatic program analysis (and has also been applied to
 single-site isolation models~\cite{isolation-semantics}). We use a
-single database-wide set of invariants, which obviates the need for
+single, database-wide set of invariants, which obviates the need for
 manually labeling transaction types. A range of extended transaction
 models~\cite{acta} can further reduce conflicts once it is established
 that invariant-based conflicts can actually occur.
@@ -93,31 +92,29 @@ literature on term rewriting and constraint programming. An
 will not violate a given invariant~\cite{obs-confluence}, generalizing
 Church-Rosser confluence~\cite{termrewriting}. We effectively treat
 transactions as rewrite rules, database states as constraint states,
-and the database merge operator as a \textit{join} operator defined
-for all database states.  Rewriting system concepts---including
-confluence~\cite{aiken-confluence}---have been successfully integrated
-into active database systems~\cite{activedb-book} (e.g., triggers and
-rule processing), although we are not familiar with a concept
-analogous to \iconfluence in this literature. We see rewriting systems
-as an interesting starting point for future theoretical analysis.
+and the database merge operator as a special \textit{join} operator
+defined for all database states.  Rewriting system
+concepts---including confluence~\cite{aiken-confluence}---have been
+successfully integrated into active database
+systems~\cite{activedb-book} (e.g., triggers and rule processing),
+although we are not familiar with a concept analogous to \iconfluence
+in this literature. We see rewriting systems as an interesting
+starting point for future theoretical analysis.
 
-\minihead{Program analysis} The problem of maintaining correctness
-despite concurrent modification is well studied in the programming
-languages community. In particular, \iconfluence condition is closely
-related to Owicki-Gries interference
-  freedom~\cite{owickigries}, whereby concurrent operations cannot
-interfere with one another's preconditions for execution as well as
-Lamport's monotone assertions~\cite{lamport-safety}. As
-Bernstein and Lewis~\cite{decomp-semantics} and Agrawal et
-al.~\cite{agarwal-consistency} demonstrate, much of this programming
-language theory on axomatic decomposition of concurrent programs can
-be successfully applied to transaction schedules, particularly when
-users specify guard pre-conditions on each transaction's
-operations. However, the program analysis community almost exclusively
-considers atomic update to shared state (as is reasonable on a
-multiprocessor system), so the techniques are not immediately portable
-to a model with replicated state that may diverge, as we consider
-here.
+\minihead{Program analysis} Maintaining correctness despite concurrent
+access is well studied in the programming languages community. In
+particular, \iconfluence condition is closely related to Owicki-Gries
+interference freedom~\cite{owickigries}, whereby concurrent operations
+cannot interfere with one another's preconditions for execution, as
+well as Lamport's monotone
+assertions~\cite{lamport-safety}. As~\cite{decomp-semantics}
+and~\cite{agarwal-consistency} demonstrate, much of this theory for
+axomatic decomposition of concurrent programs is applicable to
+analysis of transaction schedules. However, this literature (yet
+again) almost exclusively considers atomic update to shared state (as
+is reasonable on a multiprocessor system), so the techniques are not
+immediately portable to a model with replicated, diverging state as we
+consider here.
 
 \minihead{Hoping and Apologizing} In this work, we have assumed that
 database state should \textit{always} be consistent with respect to
@@ -137,18 +134,19 @@ Bloom\textsuperscript{L}~\cite{blooml} languages and the
 Blazes~\cite{blazes} system detect non-monotonic operations. This is a
 useful \textit{liveness} guarantee---something good will
 happen~\cite{lamport-safety}---but does not prevent users from
-observing inconsistent database state---\textit{safety}, in the form
-of application-level integrity constraints (during execution) and
-relax the requirement for deterministc outcomes. CRDT
-objects~\cite{crdt} similarly ensure that, once a database quiesces
-writes and all servers exchange writes, the database will reflect all
-prior updates made to each object. CRDTs are accordingly useful in
-providing convergence by merging divergent replicas on a per-item
-basis but do not maintain application-level consistency.
+observing inconsistent database state---\textit{safety}---both during
+execution and post-convergence. Here, we consider safety (in the form
+of application-level integrity constraints) and also allow
+non-deterministic (but safe) outcomes. CRDT objects~\cite{crdt}
+similarly ensure convergent outcomes that reflect all updates made to
+each object. This is useful in appropriately merging divergent
+replicas on a per-item basis (and managing replicated state without
+suffering from many forms of Lost Update) but does not guarantee
+application-level correctness.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability~\cite{gilbert-cap} via ``optimistic
-replication''~\cite{optimistic}, which is equivalent to our goals of
+replication''~\cite{optimistic}, which is complementary to our goal of
 coordination-freedom. Red-Blue Consistency~\cite{redblue} specifically
 examines mixed eventually consistent and linearizable models within a
 single store; we seek an understanding of \textit{when} coordination

@@ -25,7 +25,7 @@ three aspects of the payroll application:
 \item\textbf{Employee IDs:} Employees are assigned ID numbers that
   should be unique with respect to all other assigned IDs (i.e., a
   primary key constraint).
-\item\textbf{Departments:} Employees should belong to exactly one
+  \item\textbf{Departments:} Employees should belong to exactly one
   department (i.e., a foreign key constraint). Employees can switch
   departments by updating their department assignment.
 \item\textbf{Salaries:} Employees have salaries, and no employee
@@ -72,138 +72,112 @@ bank account balance it reads is negative.
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
 
-While serializability provides a remarkably powerful and convenient
-abstraction, it is accompanied by a hefty price tag. The requirement
-that transaction execution conform to a serial order imposes penalties
-on concurrent accesses to data items, resulting in aborts due to
-deadlocks and decreased throughput due to
-contention~\cite{bernstein-book,gray-book,gray-virtues}. The costs of
-serializability in a distributed environment are even more
-expensive---as we will shortly discuss, serializability is well known
-to be provably unachievable without synchronous coordination between
-replicas---due to the possibility of network partitions and
-millisecond-or-higher cross-server latencies (up to hundreds of
-milliseconds across datacenters)~\cite{hat-vldb,bobtail}.
-
-% spectrum of models; actually infinitely many of them
-% not necessarily even easy to program
-
-Given the cost of serializability, many database designs and systems
-operators opt for weaker models that offer higher performance, lower
-latency, and fewer aborts. On a single-node database, these models are
-often in the form of ``weak isolation'' such as Read Committed and
-Repeatable Read isolation~\cite{adya-isolation}. Modern distributed
-databases offer a range of models such as eventual consistency and
-regular register semantics~\cite{hat-vldb}.\footnote{To prevent
-  confusion, we will subsequently refer to distributed systems
-  consistency models such as linearizability as \textit{isolation
-    models} (or, more simply, \textit{models}) and reserve the use of
-  \textit{consistency} for referring to application-level ``ACID''
-  consistency guarantees. This is largely a product of scope: in a
-  system where an end-user application is not considered (e.g., the
-  traditional distributed systems literature), ``consistency'' is
-  indeed best defined according to reads and writes on opaque
-  registers.}  There are infinitely many non-serializable
-models~\cite{hat-vldb}, but each exposes end users to isolation
-\textit{anomalies}, or behavior that could not have arisen in a serial
-execution. These anomalies complicate reasoning about application
-behavior. As Gray and Reuter pithily summarize: ``engineers can build
-distributed systems, but few users know how to program them or have
-algorithms that use them''~\cite{gray-book}. Users wishing to adopt
-one of these weaker models must manually map their application-level
-consistency criteria to the low-level traces of reads and writes that
-define each alternative level---an error-prone and laborious process,
-particularly for the non-specialist
-developer~\cite{consistency-borders}.
-
-% dividing line: coordination---define them
-
-\minihead{A Dividing Line: Coordination} While the literature contains
-a large spectrum of isolation models, a fundamental property divides
-the space: coordination requirements. We formally define coordination
+\minihead{Coordination costs} While serializability provides a
+remarkably powerful and convenient abstraction, it is accompanied by a
+hefty price tag: a requirement for
+coordination~\cite{davidson-survey}. We formally define coordination
 in Section~\ref{sec:model}, but, informally, we say that a database is
-\textit{coordination-free} if, given a copy of database state, a
-user's operations can always proceed without contacting (and,
-therefore, possibly stalling) other users concurrently accessing
-shared state. This requirement has been captured in the distributed
-systems community as \textit{availability}, or ``always-on''
-operation: an available distributed system can perform operations on
-any non-failed server, despite arbitrary communication partitions
-between servers~\cite{gilbert-cap}. This focus on worst-case behavior
-yields benefits during normal operation as well; systems that do not
-require coordination can provide low latency: to serve a request, a
-server need not contact any others~\cite{pacelc}, and client requests
-can safely proceed in parallel. Over wide-area networks, this can
-correspond to hundreds of milliseconds lower
-latency~\cite{hat-vldb}. In contrast, a system that requires
-synchronous coordination risks unavailability in the presence of
+\textit{coordination-free} if each copy of shared database state can
+can execute operations without contacting (and, therefore, possibly
+stalling) other copies of state. This requirement has been captured in
+the distributed systems community as \textit{availability}, or
+``always-on'' operation: an available distributed system can perform
+operations on any non-failed server, despite arbitrary communication
+partitions between servers~\cite{gilbert-cap}. This also benefits
+normal operation: to serve a request, a \cfree server need not contact
+any others~\cite{pacelc}, so client requests can safely proceed in
+parallel. In contrast, a system that requires coordination (e.g.,
+provides serializability) faces unavailability in the presence of
 network partitions and partial failures, and, during normal operation,
-incurs higher latency due to communication delays and, possibly,
-resource contention. At scale, coordination may also surface in the
-form of variance and, possibly, unstable queuing effects~\cite{ladis}.
+incurs higher latency due to communication delays~\cite{hat-vldb} and,
+possibly, resource contention, unstable queuing effects~\cite{ladis},
+deadlocks, and spurious
+aborts~\cite{bernstein-book,gray-book,gray-virtues}.
 
 % cost of coordination? unavailability, latency, stalls : focus on
 % worst-case behavior yields average-case benefits
 
 % benefit of coordination-freedom: infinite scalability
 
-Most importantly, coordination-freedom is intrinsic to scalable
-execution. A model that is achievable without coordination can scale
-without barriers: if the demands for a given resource in a system grow
-beyond that of a single computer, another computer can be added to the
-system. The additional computer and the original (set of) computer(s)
-need not synchronously coordinate, so adding more computers results in
-a linear increase in capacity that can be repeated indefinitely. While
-the term ``scalability'' is often badly abused, coordination-freedom
-captures the essential property of a perfect scale-out system, even
-for single-record operations.  Unfortunately, not all models are
-achievable with coordination freedom. Serializability is provably at
-odds with availability~\cite{davidson-survey}, as are useful models
-like linearizability~\cite{gilbert-cap}---which provides real-time
-guarantees on single data items---and Snapshot Isolation---a common
-(weaker) replacement for serializability~\cite{hat-vldb}.
+\minihead{Coordination and scalability} Most importantly,
+coordination-freedom is intrinsic to scalable execution. A \cfree
+system can scale without barriers: if the demands for a given resource
+grow beyond that of a single computer, another computer can be added
+to the system. The additional computer and the original (set of)
+computer(s) need not synchronously coordinate, so adding more
+computers results in a linear increase in capacity that can be
+repeated indefinitely. While the term ``scalability'' is often abused,
+coordination-freedom captures the essential property of a perfect
+scale-out system, even for single-record operations.
+
+% spectrum of models; actually infinitely many of them
+% not necessarily even easy to program
+
+\minihead{Alternative models} Given the costs of coordination, many
+database designs and systems operators opt for weaker models that
+offer higher performance, lower latency, and fewer aborts. On a
+single-node database, these models are often in the form of ``weak
+isolation'' such as Read Committed and Repeatable Read
+isolation~\cite{adya-isolation}. Modern distributed databases offer a
+range of models such as eventual consistency and regular register
+semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
+  subsequently refer to distributed systems consistency models such as
+  linearizability as \textit{isolation models} (or, more simply,
+  \textit{models}) and reserve the use of \textit{consistency} for
+  referring to application-level ``ACID'' consistency guarantees. This
+  is largely a product of scope: in a system where an end-user
+  application is not considered (e.g., the traditional distributed
+  systems literature), ``consistency'' is indeed best defined
+  according to reads and writes on opaque registers.}  Not all weaker
+models are \cfree (e.g., Snapshot Isolation)~\cite{hat-vldb}, but all
+expose end users to isolation \textit{anomalies}, or behavior that
+could not have arisen in a serial execution.
+
+Unfortunately, determining whether weak isolation (and, moreover,
+which isolation model) is safe for a given application is
+difficult. Anomalies are often expressed in terms of (in-)admissible
+traces of reads and writes, and the distinctions between models are
+often subtle~\cite{adya-isolation,isolation-semantics} and vary
+between implementations~\cite{hat-vldb}. Users must manually translate
+from low-level traces to specific application behaviors, an
+error-prone and laborious process, particularly for the non-specialist
+developer~\cite{consistency-borders}. In the words of one senior
+database community member, foregoing serializability is tantamount to
+``falling off a cliff.'' If a developer chooses an incorrect model,
+she risks inconsistency or, alternatively, extraneous
+coordination. More fundamentally, any choice she makes ties her
+application implementation and database execution strategy to a fixed
+isolation model, which may not maintain correctness as application
+logic evolves or as multiple applications concurrently access shared
+data. As a final concern, the proliferation of isolation models and
+deployment of multiple systems to support varying performance and
+isolation requirements (so-called ``Polyglot
+Persistence'')~\cite{polyglot} hint that different operations---even
+within a single application---need a \textit{combination} of
+guarantees---one model does not fit all.
+
+% dividing line: coordination---define them
 
 % evidence for mixed models: polyglot persistence, adding support for
 % CAS, basis for lock manager, etc.
 
-\minihead{Life with and without Serializability} The trade-off between
-the convenience of ``strong'' isolation and coordination-freedom
-surfaces in common practice. Some applications seem to require
-serializability, while many applications run on systems providing
-weaker guarantees, like eventual consistency~\cite{vogels-defs}. Two
-trends in particular highlight a requirement for a combination of
-models. First, many deployments of weakly consistent stores are often
-coupled with deployments of strongly consistent counterparts (e.g.,
-Riak, Redis, and Postgres in a single web service stack). While this
-``polyglot persistence''~\cite{polyglot} is influenced by many factors
-including data model and persistence format, availability and
-scalability are frequenly mentioned as imporant criteria when choosing
-between stores. Second, many databases today run at non-serializable
-isolation by default and often as the strongest level
-offered~\cite{hat-vldb} (e.g., even strongly consistent systems like
-PNUTS~\cite{pnuts} have added options for weaker
-isolation~\cite{pnuts-update}). On the opposite side of the spectrum,
-recent database designs originally intended for highly available,
-scalable operation have begun to add stronger semantics (e.g., Riak
-and Cassandra independently added support for compare-and-swap, a
-critical building block for mutual exclusion and higher-level
-functionality like lock-based concurrency control).
-%https://blog.heroku.com/archives/2010/7/20/nosql
-
-This use of mixed isolation models leads to the question: when is it
-actually safe to forgo coordination (and therefore serializability)?
-Applications should ideally execute with as little coordination as
-possible, but non-serializable isolation anomalies can and will result
-in inconsistency for arbitrary applications: the question becomes,
-given an application, which anomalies are important? Our primary focus
-in this paper is to answer this question with a necessary and
-sufficient condition for coordination-freedom. To do so, we will also
-have to directly consider application semantics. We discuss this
-decision shortly, but we believe it is preferable to have a user
-enumerate properties of her application rather than reason about her
-application behavior at a lower level of abstraction---namely,
-non-serializable anomalies expressed the level of reads and writes (as
-provided by most distributed isolation models).
+\minihead{Correctness without coordination} We desire an alternative
+that manages the trade-off between coordination and correctness while
+reducing the tension between programmability and
+performance. Applications should ideally execute with as little
+coordination as possible, but non-serializable isolation anomalies can
+and will result in inconsistency for arbitrary applications. We must
+answer the question: given an application, which anomalies are
+important? Rather than require application writers to manually
+classify anomalies, we will instead formulate our criteria for
+coordination in terms of application-level semantics. Given a set of
+invariants describing application state (e.g., as part of the SQL
+DDL), we will present a necessary and sufficient condition for
+coordination-free execution. While this task requires some
+formalization (Sections~\ref{sec:model},\ref{sec:bcc-theory}), we
+demonstrate that it can yield pragmatic results both in languages like
+SQL (Section~\ref{sec:bcc-practice}) and in real system deployments
+(Section~\ref{sec:evaluation}).
 
 % if you give up serializability, can't guarantee correctness in an
 % arbitrary read/write model; users have to manage this trade-off for

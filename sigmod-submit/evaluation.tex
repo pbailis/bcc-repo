@@ -269,20 +269,21 @@ industry standard for evaluating the performance of OLTP
 systems''~\cite{oltpbench}, we are aware that it may be a
 simplification of real-world workloads. For greater variety, we
 examined the transactions in the OLTPBenchmark suite~\cite{oltpbench}
-and found that, in nine of fourteen remaining (non TPC-C) benchmarks,
-the workload transactions did not involve integrity constraints (e.g.,
-did not modify primary key columns), one (\texttt{CH-bencCHmark})
-matched TPC-C, and two specifications implied (but did not explicitly
-state) a requirement for coordination due to unique ID assignment
+and found (and confirmed with an author of~\cite{oltpbench}) that, in
+nine of fourteen remaining (non TPC-C) benchmarks, the workload
+transactions did not involve integrity constraints (e.g., did not
+modify primary key columns), one (\texttt{CH-bencCHmark}) matched
+TPC-C, and two specifications implied (but did not explicitly state) a
+requirement for coordination due to unique ID assignment
 (\texttt{AuctionMark}'s \texttt{new-purchase}, \texttt{SEATS}'s
 \texttt{NewReservation}; achievable like TPC-C New-Order). The
 remaining two benchmarks, \texttt{sibench} and \texttt{smallbank} were
 specifically designed as research benchmarks for serializable
 isolation. The three ``consistency conditions'' in the newer TPC-E
-benchmark (not in the OLTPBenchmark suite) represent a subset of the twelve
-conditions from TPC-C that we consider here. It is possible (and even
-likely) that these benchmarks are simply under-specified, but,
-according to official specification, TPC-C contains the most rigorous
+benchmark (not in the prior suite) represent a subset of the twelve
+conditions from TPC-C considered here. It is possible (even likely)
+that these benchmarks are simply under-specified, but, according to
+official specification, TPC-C contains the most rigorous
 coordination-intensive invariants among the benchmarks we encountered.
 
 Anecdotally, our conversations with end-users have not identified

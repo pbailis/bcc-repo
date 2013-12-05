@@ -1,4 +1,28 @@
 
+\minihead{Life with and without Serializability} The trade-off between
+the convenience of ``strong'' isolation and coordination-freedom
+surfaces in common practice. Some applications seem to require
+serializability, while many applications run on systems providing
+weaker guarantees, like eventual consistency~\cite{vogels-defs}. Two
+trends in particular highlight a requirement for a combination of
+models. First, many deployments of weakly consistent stores are often
+coupled with deployments of strongly consistent counterparts (e.g.,
+Riak, Redis, and Postgres in a single web service stack). While this
+``polyglot persistence''~\cite{polyglot} is influenced by many factors
+including data model and persistence format, availability and
+scalability are frequenly mentioned as imporant criteria when choosing
+between stores. Second, many databases today run at non-serializable
+isolation by default and often as the strongest level
+offered~\cite{hat-vldb} (e.g., even strongly consistent systems like
+PNUTS~\cite{pnuts} have added options for weaker
+isolation~\cite{pnuts-update}). On the opposite side of the spectrum,
+recent database designs originally intended for highly available,
+scalable operation have begun to add stronger semantics (e.g., Riak
+and Cassandra independently added support for compare-and-swap, a
+critical building block for mutual exclusion and higher-level
+functionality like lock-based concurrency control).
+%https://blog.heroku.com/archives/2010/7/20/nosql
+
 Using \iconfluence as test for coordination requirements exposes a
 trade-off between the operations a user wishes to perform and the
 semantic guarantees she wishes to guarantee about her data. At the
