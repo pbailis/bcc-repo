@@ -31,8 +31,9 @@ item. When required---and certainly in later sections of this
 paper---we will discuss specific operation types, but, in general, we
 will not make any specific assumptions about operations. A transaction
 can \textit{commit}, signaling success, or \textit{abort}, signaling
-failure. In our model, effects of aborted transactiosn will not be
-reflected in database state (i.e., aborted writes will be rolled
+failure. We do not consider the effects of incomplete or aborted
+transactions in database state except that executing transactions will
+observe their own modifications (i.e., aborted writes will be rolled
 back). This provides Read Committed isolation and does not affect our
 results (e.g., is achievable with availability by waiting to write
 until commit time~\cite{hat-vldb,spanner}).
@@ -59,60 +60,52 @@ We wish to analyze sequences of valid transactions that transitively
 maintain validity of database state, so we require that $D_0$ be valid
 under declared constraints.
 
-\miniheadnostop{Why specify invariants?} Much of the existing work on
-database concurrency control assumes a model whereby ``the [set of
-  invariants] is generally not known to the system but is embodied in
-the structure of the transaction''~\cite{traiger-tods}. Indeed,
-Eswaran et al.'s seminal paper on the topic of consistency argues that
-``a complete set of assertions would no doubt be as large as the
-system itself''~\cite{eswaran-consistency}. Nevertheless, since 1976,
+\miniheadnostop{Why specify invariants?} Many database concurrency
+control models assume that ``the [set of application invariants] is
+generally not known to the system but is embodied in the structure of
+the transaction''~\cite{traiger-tods}. Indeed, Eswaran et al.'s
+classic paper on the topic of consistency argues that ``a complete set
+of assertions would no doubt be as large as the system
+itself''~\cite{eswaran-consistency}. Nevertheless, since 1976,
 databases have introduced support for a finite set of
-invariants~\cite{korth-serializability} in the form of primary key and
-foreign key, uniqueness, and row-level ``check''
-constraints~\cite{kemme-si-ic}. We expand this set of invariants in
-Section~\ref{sec:bcc-practice} and demonstrate that a small set of
-invariants provides expressive power for many applications. It is
-possible to perform a conservative analysis if a complete
-specification of invariants is missing, but this will result in less
-useful results. Unlike more general forms of axiomatic logic (e.g.,
-Hoare-style triples~\cite{decomp-semantics}), we require only one set
-of invariants per application.\vspace{.5em}
+invariants~\cite{korth-serializability,decomp-semantics,garciamolina-semantics,ic-survey,ic-survey-two}
+in the form of primary key and foreign key, uniqueness, and row-level
+``check'' constraints~\cite{kemme-si-ic}. We expand this set of
+invariants in Section~\ref{sec:bcc-practice} and demonstrate that a
+small set of invariants provides expressive power for many
+applications. It is possible to perform a conservative analysis if a
+complete specification of invariants is missing, but this will result
+in less useful results.\vspace{.5em}
+
+% Unlike more general forms of axiomatic logic (e.g., Hoare-style triples~\cite{decomp-semantics,isolation-semantics}), we require only one set of invariants per application.
 
 \minihead{Replicas} In this paper, we are concerned with
-synchronization and coordination between multiple transactions. To
-begin, we consider a system model with multiple copies of database
-state (\textit{replicas}) that can each respond to transaction
-requests (we do not further distinguish between partitioned and
-fully-replicated replicas~\cite{hat-vldb} as our results do not
-require it). While most treatments of database systems treat replicas
-as individual servers, a single-site (or mastered) database can also
-provide users with an interface that exposes multiple ``replicas''. A
-multi-versioned database system~\cite{bernstein-book} effectively
-provides each user with a logical replica of database state that is
-isolated from concurrent access and modification. A set of invariants
-and stored procedures that are executable without coordination in a
-distributed context can also be executed in parallel on a single-site
-system without stalling due to concurrent operations.  In fact, our
-current prototype transaction model (Section~\ref{sec:evaluation}) is
-based on multi-versioning and snapshot reads (``logical replicas'')
-rather than physical multi-master replication. Accordingly, we assume
-that, if a client can access a physical server responsible for a given
-data item, it can access a replica for the item without
-blocking. Therefore, all concurrent operations will behave as if they
-are executed on separate replicas.
+synchronization and coordination between multiple transactions. We
+consider a system model with multiple copies of database state
+(\textit{replicas}) that can each respond to transaction requests. For
+the purposes of our formalism, each concurrent transaction will access
+a separate replica; this can be accomplished via multi-versioning or
+by physically replicating data~\cite{bernstein-book}. This allows
+applicability to both single-site database systems with appropriate
+support for concurrent execution on (logically) separate copies of
+data and traditional, replicated multi-master designs. We do not
+further distinguish between partitioned and fully-replicated
+systems~\cite{hat-vldb} as our results do not require it.
 
 \minihead{Availability} To reflect the requirement that each user's
 transactions eventually receive a response, we need a definition of
 \textit{availability}. To prevent the system from simply aborting
 transactions (which guarantees a response---albeit a not very useful
-one), we adopt the following definition of
-availability\footnote{As Bailis et
-  al. note~\cite{hat-vldb}, this definition precludes multi-server
-  fault tolerance (durability). However, we can consider multi-server
-  durability by extending this definition to include coordination with
-  a (typically small~\cite{bigtable,spanner,dynamo}) fixed number of
-  servers. This does not greatly affect scalability because, as more
-  replicas are added, durability-related communication is constant.}~\cite{hat-vldb}:
+one), we adopt the following definition of availability\footnote{As
+  Bailis et al. note~\cite{hat-vldb}, this basic definition precludes
+  fault tolerance (i.e., durability) guarantees beyond a single server
+  failure. To provide greater durability, we can relax this
+  requirement and allow communication with a fixed number of servers
+  (e.g., $F+1$ servers for $F$-fault tolerance; typically
+  small~\cite{bigtable,spanner,dynamo}) without affecting our
+  results. This does not affect scalability because, as more replicas
+  are added, the additional communication overhead is
+  constant.}~\cite{hat-vldb}:
 
 \begin{definition} 
 A system provides \textit{transactional availability} if, whenever a
@@ -148,12 +141,16 @@ state.
 \end{definition}
 
 This convergence, or \textit{eventual consistency}, requirement forces
-replicas to exchange state at some point in the future (i.e., via
-\textit{anti-entropy} processes)~\cite{vogels-defs}. To capture the
-process of reconciling divergent copies of database state, we use the
-previously discussed merge operator: given two copies of divergent
+replicas to exchange state at some point in the future (e.g., via
+\textit{anti-entropy} processes)~\cite{vogels-defs,bayou}. To capture
+the process of reconciling divergent copies of database state, we use
+the previously discussed merge operator: given two copies of divergent
 database state, replicas apply the merge operator to produce a single
-copy of database state. Our intial formulation of merge as a simple
+copy of database state. In our model, merge is atomically visible:
+either all effects of a merge operation are visible or none are. This
+assumption is not strictly necessary for all invariants but, as it is
+maintainable with availability~\cite{ramp-txns}, it accordingly does
+not affect our results. Our initial formulation of merge as a simple
 set union makes reconciliation simple, but, again, we will discuss
 alternative merge operators in Section~\ref{sec:merge}. Importantly,
 convergence can occur as an \textit{asynchronous} (i.e., background)
@@ -161,12 +158,12 @@ process and can safely stall at any point given that---at some point
 in the future---merging occurs.
 
 \minihead{Maintaining validity} A transactionally available system
-that does not communicate can maintain consistency on a per-replica
-(or set of replica basis), but, once the replicas converge, we have no
-guarantee of per-replica consistency. In the example above, once $R_1$
-and $R_2$ merge their divergent states, their converged state will be
+that does not communicate can maintain consistency on a per-replica,
+but, once the replicas converge, we have no guarantee of per-replica
+consistency. In our above convergence example, once $R_i$ and $R_j$
+merge their divergent states, their common, converged state will be
 invalid. Our choice of convergence via union-based merge requires that
-$R_1$ and $R_2$ cannot simply ``throw away'' writes (i.e., tentative
+$R_i$ and $R_j$ cannot simply ``throw away'' writes (i.e., tentative
 updates~\cite{tamer-book}) to ensure consistency (again, a deliberate
 choice that we will revisit in Section~\ref{sec:merge}). To capture
 the requirement that replica states are valid not only during
@@ -186,9 +183,10 @@ system will provide responses without synchronous communication
 between replicas. However, in the absence of (or given a network model
 that does not consider) network failures (i.e., an omission model), a
 system satisfying the above three properties can still coordinate
-between replicas, potentially compromising scalability. To rule out
-the possibility of coordination under both scenarios, we adopt the
-following definition of coordination-freedom:
+between replicas (e.g., perform serializable concurrency control),
+potentially compromising scalability. To rule out the possibility of
+coordination under both scenarios, we adopt the following definition
+of coordination-freedom:
 
 \begin{definition}
 A system is \textit{\cfree} if replicas do not communicate in order to
@@ -220,7 +218,7 @@ union, each replica contains the same database state.
 \small
 \begin{tabular}{|l|r|}
 \hline\textbf{Requirement} & \textbf{Effect}  \\\hline
-Global validity & Invariants are never violated \\
+Global validity & Committed database state obeys invariants  \\
 Transactional availability & Non-trivial response guaranteed \\
 Convergence & Replicas must reconcile \\
 Coordination-freedom & No synchronous coordination\\\hline

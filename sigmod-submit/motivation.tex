@@ -57,17 +57,18 @@ requirement to explicitly specify their consistency constraints by
 encouraging the use of serializable
 transactions~\cite{gray-virtues}. Under serialiable isolation, the
 execution of a set of transactions is equivalent to some serial
-ordering between them~\cite{bernstein-book}. As long as each
-transaction leaves the database in a consistent state, serializable
-transactions ensure database consistency. Accordingly, traditional
-database systems treat isolation between concurrently executing
-transactions as a \textit{means} towards achieving application
-consistency. Serializable transactions are a \textit{sufficient}
-mechanism for ensuring consistency but are not strictly
-\textit{necessary}: as a classic example due to Lamport in
-1976~\cite{lamport-audit}, an ``audit'' transaction over shared bank
-account balances need not observe serializable state as long as no
-bank account balance it reads is negative.
+ordering among them~\cite{bernstein-book}. As long as each transaction
+leaves the database in a consistent state, serializable transactions
+ensure database consistency. Accordingly, traditional database systems
+treat isolation between concurrently executing transactions as a
+\textit{means} towards achieving application consistency. Serializable
+transactions are a \textit{sufficient} mechanism for ensuring
+consistency but are not always \textit{necessary}: as a classic
+example due to Lamport in
+1976~\cite{lamport-audit,schneider-concurrent}, an ``audit''
+transaction that monitors bank accounts for embezzlement does not need
+to observe serializable state as long as account balances reflect
+deposits and transfers.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -114,24 +115,24 @@ scale-out system, even for single-record operations.
 % not necessarily even easy to program
 
 \minihead{Alternative models} Given the costs of coordination, many
-database designs and systems operators opt for weaker models that
-offer higher performance, lower latency, and fewer aborts. On a
-single-node database, these models are often in the form of ``weak
-isolation'' such as Read Committed and Repeatable Read
+database designs and systems operators opt for weaker isolation models
+that offer higher performance, lower latency, and fewer aborts. On a
+single-node database, these isolation models are often in the form of
+``weak isolation'' such as Read Committed and Repeatable Read
 isolation~\cite{adya-isolation}. Modern distributed databases offer a
-range of models such as eventual consistency and regular register
-semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
-  subsequently refer to distributed systems consistency models such as
-  linearizability as \textit{isolation models} (or, more simply,
-  \textit{models}) and reserve the use of \textit{consistency} for
-  referring to application-level ``ACID'' consistency guarantees. This
-  is largely a product of scope: in a system where an end-user
-  application is not considered (e.g., the traditional distributed
-  systems literature), ``consistency'' is indeed best defined
-  according to reads and writes on opaque registers.}  Not all weaker
-models are \cfree (e.g., Snapshot Isolation)~\cite{hat-vldb}, but all
-expose end users to isolation \textit{anomalies}, or behavior that
-could not have arisen in a serial execution.
+range of isolation models such as eventual consistency and regular
+register semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we
+  will subsequently refer to distributed systems consistency models
+  such as linearizability as \textit{isolation models} and reserve the
+  use of \textit{consistency} for referring to application-level
+  ``ACID'' consistency guarantees. This is largely a product of scope:
+  in a system where an end-user application is not considered (e.g.,
+  the traditional distributed systems literature), ``consistency'' is
+  indeed best defined according to reads and writes on opaque
+  registers.}  Not all weaker models are \cfree (e.g., Snapshot
+Isolation)~\cite{hat-vldb}, but all expose end users to isolation
+\textit{anomalies}, or behavior that could not have arisen in a serial
+execution.
 
 Unfortunately, determining whether weak isolation (and, moreover,
 which isolation model) is safe for a given application is
@@ -142,16 +143,16 @@ between implementations~\cite{hat-vldb}. Users must manually translate
 from low-level traces to specific application behaviors, an
 error-prone and laborious process, particularly for the non-specialist
 developer~\cite{consistency-borders}. In the words of one senior
-database community member, foregoing serializability is tantamount to
-``falling off a cliff.'' If a developer chooses an incorrect model,
-she risks inconsistency or, alternatively, extraneous
-coordination. More fundamentally, any choice she makes ties her
-application implementation and database execution strategy to a fixed
-isolation model, which may not maintain correctness as application
-logic evolves or as multiple applications concurrently access shared
-data. As a final concern, the proliferation of isolation models and
-deployment of multiple systems to support varying performance and
-isolation requirements (so-called ``Polyglot
+member of the database community, the usability consequences of
+choosing weak isolation are tantamount to ``falling off a cliff.''If a
+developer chooses an incorrect model, she risks inconsistency or,
+alternatively, extraneous coordination. More fundamentally, any choice
+she makes ties her application implementation and database execution
+strategy to a fixed isolation model, which may not maintain
+correctness as application logic evolves or as multiple applications
+concurrently access shared data. As a final concern, the proliferation
+of isolation models and deployment of multiple systems to support
+varying performance and isolation requirements (so-called ``Polyglot
 Persistence'')~\cite{polyglot} hint that different operations---even
 within a single application---need a \textit{combination} of
 guarantees---one model does not fit all.

@@ -102,11 +102,12 @@ in this literature. We see rewriting systems as an interesting
 starting point for future theoretical analysis.
 
 \minihead{Program analysis} Maintaining correctness despite concurrent
-access is well studied in the programming languages community. In
-particular, \iconfluence condition is closely related to Owicki-Gries
-interference freedom~\cite{owickigries}, whereby concurrent operations
-cannot interfere with one another's preconditions for execution, as
-well as Lamport's monotone
+access is well studied in the programming languages
+community~\cite{schneider-correctness}. In particular, \iconfluence
+condition is closely related to Owicki-Gries interference
+freedom~\cite{owickigries}, whereby concurrent operations cannot
+interfere with one another's preconditions for execution, as well as
+Lamport's monotone
 assertions~\cite{lamport-safety}. As~\cite{decomp-semantics}
 and~\cite{agarwal-consistency} demonstrate, much of this theory for
 axomatic decomposition of concurrent programs is applicable to
@@ -157,5 +158,7 @@ application-level consistency and instead focused on low-level
 read/write isolation anomalies.  Johnson et al. have examined the
 communication patterns of transactions~\cite{shore-communication}; we
 focus on all-or-nothing communication requirements, but their
-observations are useful for non-\iconfluent applications.
+observations are useful for non-\iconfluent applications. A range of
+mechanisms provide execution for non-\cfree
+operations~\cite{silo,spanner,mdcc,bernstein-book,gray-book,hstore,megastore}.
 

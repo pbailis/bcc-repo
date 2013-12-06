@@ -189,10 +189,10 @@ or compromising availability.\footnote{We can likely apply Newman's
 converged state, then replicas must coordinate in order to ensure that
 only one of the decisions is to commit. If two such decisions exist,
 it is unsafe for those operations to proceed in parallel, without
-coordination. Given the existence of an unsafe and the inability to
-distinguish between safe and invalid executions using only local
-information, a globally valid system \textit{must} coordinate in order
-to prevent the invalid execution.
+coordination. Given the existence of an unsafe execution and the
+inability to distinguish between safe and invalid executions using
+only local information, a globally valid system \textit{must}
+coordinate in order to prevent the invalid execution.
 
 \iconfluence analysis effectively captures points of \textit{unsafe
   non-determinism} in transaction execution. Total non-determinism, as

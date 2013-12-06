@@ -104,7 +104,7 @@ throughput drops to only $120$ transactions per second (resp. $200$
 for \cpc): the long-tail of network latency surfaces as the number of
 messages sent increases. In the wide area, the effects are stark: if
 only coordinating within the continental US from Virginia to Oregon,
-\dpc message delays incur a latency of around $83$ milliseconds per
+\dpc message delays incur a latency of approximately $83$~ms per
 commit, resulting in a throughput of $12$ operations per second. If
 coordinating between all eight EC2 availability zones, throughput
 drops to slightly over $2$ transaction per second in both algorithms.
@@ -112,9 +112,9 @@ drops to slightly over $2$ transaction per second in both algorithms.
 While this study is based solely on reported latencies, deployment
 reports corroborate our findings. For example, Google's F1 uses
 optimistic concurrency control via WAN with commit latencies of
-$50$ to $150$ms. As the authors discuss, this limits throughput to between
+$50$ to $150$~ms. As the authors discuss, this limits throughput to between
 $6-20$ transactions per second per data item~\cite{f1}. Megastore's
-average write latencies of $100$ to $400$ms suggest similar throughputs to
+average write latencies of $100$ to $400$~ms suggest similar throughputs to
 those that we have predicted~\cite{megastore}. Indeed,
 \textit{aggregate throughput} may be substantially greater as multiple
 2PC rounds for disjoint sets of data items may safely proceed in

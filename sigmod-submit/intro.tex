@@ -12,7 +12,7 @@ availability in the presence of partial failure, and requires
 potentially high latency as communication costs increase (e.g.,
 wide-area networks)~\cite{hat-vldb,gilbert-cap}. A system without
 synchronous coordination---that is \textit{\cfree}---can scale
-indefinitely: adding more query processing capacity (e.g., servers)
+aggressively: adding more query processing capacity (e.g., servers)
 does not incur additional overhead as queries can execute
 independently. In contrast with scale-out across multiple data items
 (as in ``shared-nothing''
@@ -64,7 +64,7 @@ integrity constraints)~\cite{traiger-tods}, or predicates representing
 application-level correctness criteria that should always hold true
 across database state(s). For example, users might inform the database
 that usernames should be unique and that each customer should belong
-to a bank branch.
+to a bank branch (e.g., via schema annotations).
 
 To provide a formal basis for coordination-avoidance, we develop a
 necessary and sufficient condition for \cfree execution under a given
@@ -105,12 +105,12 @@ coordination: surprisingly, many are executable without
 coordination. As a case study, we focus on the TPC-C
 benchmark~\cite{tpcc}, which has seen substantial popularity in the
 database community as a gold standard for new concurrency control
-algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore}. We show
-that, in fact, ten of twelve of TPC-C's integrity constraints are
+algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore,oltpbench}. We
+show that, in fact, ten of twelve of TPC-C's integrity constraints are
 \iconfluent and, more importantly, compliant TPC-C can be implemented
 without synchronous coordination across servers. As a proof of
 concept, we scale a simple coordination-avoiding database prototype
-linearly, to over $1.8M$ New-Order transactions per second on a
+linearly, to over $1.6M$ New-Order transactions per second on a
 $100$-node EC2 cluster. We also discuss other applications and
 demonstrate the costs of coordination by analyzing upper bounds on
 throughput due to to atomic commitment overhead.

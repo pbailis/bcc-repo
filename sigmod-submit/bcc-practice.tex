@@ -60,10 +60,10 @@ not \iconfluent for inserts of unique values.
 However, if we consider arbitrary \textit{generation} of IDs, whereby
 the database generates unique values on behalf of users (e.g., assign
 a new user an ID), we can indeed achieve uniqueness---with a notion of
-replica membership (e.g., server IDs), deterministically (e.g.,
-combining a unique replica ID with a sequence number) or with high
-probability (e.g., via UUIDs). The difference is subtle (``grant this
-record this specific, unique ID'' versus ``grant this record some
+replica membership (e.g., server or replica IDs), deterministically
+(e.g., combining a unique replica ID with a sequence number) or with
+high probability (e.g., via UUIDs). The difference is subtle (``grant
+this record this specific, unique ID'' versus ``grant this record some
 unique ID''), but, in a system model with membership or random number
 generation (as is pragmatic for most contexts), is powerful. If
 replicas only assign IDs that are unique and within their respective
@@ -79,9 +79,7 @@ constraint. A constraint requiring a dense, unique sequence of IDs
 (i.e., no gaps in the ID space) is not \iconfluent. However, as a
 consolation, if we can defer the ID assignment until the end of the
 transaction (Section~\ref{sec:evaluation}), resolving this
-``conflict'' does not necessarily require transaction abort. As long
-as transactions commit and are disseminated to other replicas in the
-order in which they were assigned IDs, the constraint will hold.
+``conflict'' does not necessarily require transaction abort. 
 
 Uniqueness invariants are unsurprisingly \iconfluent under selection
 (i.e., read) and deletion.
@@ -128,17 +126,18 @@ be expensive but is indeed possible in a convergent setting.
 Thus far, we have only considered bags of modifications stored in
 relations. We can express many useful constraints over these bags, and
 the model is a natural fit for, say, immutable
-databases~\cite{gray-virtues,gray-book} (which, as we have seen, are
-not \iconfluent for all invariants). However, in practice, many
-database systems do not expose bag semantics, leading to a variety of
-interesting anomalies. For example, if we implement a bank account
-balance using a ``last writer wins'' merge policy~\cite{vogels-defs},
-then merging the result of two concurrent withdrawal transactions
-might result in a database state reflecting only one transaction
-(i.e., the Lost Update phenomenon)~\cite{adya-isolation,hat-vldb}. To
-support these anomalies, many database designs have proposed the use
-of \textit{abstract data types}, providing merge functions for a
-variety of uses such as counters, sets, and
+databases~\cite{gray-virtues,gray-book} (which, as the prior section
+demonstrated, are not \iconfluent for all invariants). However, in
+practice, many database systems do not expose bag semantics, leading
+to a variety of interesting anomalies. For example, if we implement a
+bank account balance using a ``last writer wins'' merge
+policy~\cite{vogels-defs}, then merging the result of two concurrent
+withdrawal transactions might result in a database state reflecting
+only one transaction (i.e., the Lost Update
+phenomenon)~\cite{adya-isolation,hat-vldb}. To support these
+anomalies, many database designs have proposed the use of
+\textit{abstract data types}, providing merge functions for a variety
+of uses such as counters, sets, and
 maps~\cite{crdt,atomictransactions,weihl-thesis,blooml} that ensure
 that all operations are reflected in converged database state. For
 example, a simple op-based CRDT counter might be built from a single
@@ -158,7 +157,7 @@ standard relational constraints like materialized view maintenance
 salaries in the \texttt{employee} table). Importantly, while many
 implementations of these data types provide useful properties like
 convergence without compromising availability~\cite{blooml,crdt}, they
-do \textit{not} guarantee that invariants are not violated. Our prior
+do \textit{not} guarantee that invariants are not violated. The prior
 CRDT counter supporting increment and decrement operations will
 guarantee that all operation invocations are reflected in the final
 CRDT state but will not guarantee (or enforce) that our given

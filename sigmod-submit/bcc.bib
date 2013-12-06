@@ -613,7 +613,7 @@ note = {\url{http://thrift.apache.org} (2012)}}
 } 
 
 @inproceedings{pnuts,
- author = {Cooper, Brian F. and Ramakrishnan, Raghu and Srivastava, Utkarsh and Silberstein, Adam and Bohannon, Philip and Jacobsen, Hans-Arno and Puz, Nick and Weaver, Daniel and Yerneni, Ramana},
+ author = {Cooper, Brian F. and others},
  title = {{PNUTS}: {Yahoo!'s} hosted data serving platform},
  booktitle={VLDB 2008}
 } 
@@ -743,7 +743,7 @@ booktitle={PDP 2004}}
 
 @inproceedings{weihl-data,
   title={Data-dependent concurrency control and recovery},
-  author={Weihl, William E},
+  author={Weihl, William},
   booktitle={PODC 1983}}
 
 @article{isolation-semantics,
@@ -754,12 +754,23 @@ year={2004},
 volume={16}, 
 number={9}}
 
+@article{garcia-readonly,
+  title={Read-only transactions in a distributed database},
+  author={Garcia-Molina, Hector and Wiederhold, Gio},
+  journal={ACM TODS},
+  volume={7},
+  number={2},
+  pages={209--234},
+  year={1982},
+  publisher={ACM}
+}
+
 @techreport{lamport-audit,
-institution={MIT},
+institution={CCA},
 year={1976},
 title={Towards a theory of correctness for multi-user database systems},
 author={Leslie Lamport},
-note={Described in ~\cite{agarwal-consistency,weihl-data}}}
+note={Described in ~\cite{agarwal-consistency,schneider-concurrent,weihl-data}}}
 
 @article{agarwal-consistency,
  author = {Agrawal, Divyakant and others},
@@ -1212,13 +1223,12 @@ booktitle = {ICDE 2011}}
   pages     = {113--156},
 }
 
-@online{dga-response,
-title = {A Brief response to {``COPS and PNUTS''}},
-author = {David G. Andersen},
-year = {2011},
-month={December},
-howpublished={\url{http://dga.livejournal.com/45496.html}}}
-
+@inproceedings{mdcc,
+  title={Mdcc: Multi-data center consistency},
+  author={Kraska, Tim and others},
+  booktitle={EuroSys 2013},
+  pages={113--126}
+}
 
 @inproceedings{ramp-txns,
 title={Anonymized}}
@@ -1492,6 +1502,13 @@ note = {Technical Report, May 2013}}
  year = {1990},
  pages = {299--319}
 } 
+
+@book{schneider-concurrent,
+  title={On concurrent programming},
+  author={Schneider, Fred B},
+  year={1997},
+  publisher={Springer}
+}
 
 
 @online{fb-numfriends,

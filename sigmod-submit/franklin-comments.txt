@@ -1,0 +1,17 @@
+At this point I'm really wondering if we are going to see any principled discussion of what kinds of constraints can be handled and what kinds can't?   Everytime I see an example of one that can, I start thinking about simple modifications to it that cannot.   You need to convince me that the universe of constraints this works for is sufficiently interesting
+
+Not sure what you mean by "conflict" here - in "conflict serializability" you can commit them both - just need to order them the same
+
+
+This paragraph is really unparsable… need to clean this whole section up
+
+
+
+TODO
+
+SECTION 5: change lead-in so that the remainder is clear and the first subsection doesn't fall flat
+
+SECTION 6: 1.) how expensive is coordination 2.) does it work for applications? reason why they're in there---great throughput with no contention, but, once happens, drops dramatically; 6.2 is: how do we get performance back; 6.3 is discussion
+
+
+Check out what DELETE CASCADE alternatives there might be
