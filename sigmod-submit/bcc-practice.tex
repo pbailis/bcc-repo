@@ -5,7 +5,20 @@
 
 Using \iconfluence as test for coordination requirements exposes a
 trade-off between the operations a user wishes to perform and the
-semantic guarantees she wishes to guarantee about her data.
+semantic guarantees she wishes to guarantee about her data. At the
+extreme, if a user's transactions do not modify database state, she
+can guarantee any invariant that holds over the initial state, while,
+with no invariants, a user can safely perform any operations she
+likes. While these extremes are trivial, the space in-between contains
+a spectrum of interesting and---as we discuss here---useful
+combinations to explore. Until now, we have been largely concerned
+with formalizing \iconfluence for abstract operations; in this
+section, we begin to make these trade-off complete. We examine a
+series of practical invariants by exploring increasingly permissive
+subsets of SQL, starting from our payroll example and ending with
+abstract data types and a discussion of possible limitations and
+extensions. We will use these results in our analysis of several
+applications in Section~\ref{sec:evaluation}.
 
 \minihead{Revisiting Payroll} We can (briefly) revisit our payroll
 example. As we showed by counterexample, uniqueness of arbitrary
@@ -19,13 +32,6 @@ introduce duplicates. We can repeat the same exercise for foreign key
 constraints: inserting new records with valid department IDs cannot in
 fact introduce conflicts during merge. The salary constraint is
 similarly easily validated for simple insert statements.
-
-At the extreme, if a user's transactions do not modify database state,
-she can guarantee any invariant that holds over the initial state,
-while, with no invariants, a user can perform any operations. However,
-the space between yields a spectrum of possible \iconfluent
-guarantees. We proceed to make this trade-off concrete by informally
-analyzing increasingly permissive subsets of SQL.
 
 \subsection{\iconfluence for Relations}
 
