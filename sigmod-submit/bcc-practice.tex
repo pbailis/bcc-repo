@@ -15,23 +15,10 @@ combinations to explore. Until now, we have been largely concerned
 with formalizing \iconfluence for abstract operations; in this
 section, we begin to make these trade-off complete. We examine a
 series of practical invariants by exploring increasingly permissive
-subsets of SQL, starting from our payroll example and ending with
-abstract data types and a discussion of possible limitations and
-extensions. We will use these results in our analysis of several
-applications in Section~\ref{sec:evaluation}.
-
-\minihead{Revisiting Payroll} We can (briefly) revisit our payroll
-example. As we showed by counterexample, uniqueness of arbitrary
-values is not \iconfluent: $\{$Stan:5$\}$ and $\{$Mary:5$\}$ are both
-valid states that can be reached by valid sequences (starting at
-$\{\}$) but their merge---$\{$Stan:5, Mary:5$\}$ is not
-valid. Therefore, insertion of arbitrary values is not $I$-confluent
-for $I=\{$unique IDs$\}$. However, deletion of employees \textit{is}
-$I$-confluent: removing items from a bag of unique values cannot
-introduce duplicates. We can repeat the same exercise for foreign key
-constraints: inserting new records with valid department IDs cannot in
-fact introduce conflicts during merge. The salary constraint is
-similarly easily validated for simple insert statements.
+subsets of SQL and ending with abstract data types, revisiting our
+payroll example along the way. We conclude with a discussion of
+possible limitations and extensions and will use these results in our
+analysis of several applications in Section~\ref{sec:evaluation}.
 
 \subsection{\iconfluence for Relations}
 
@@ -59,9 +46,14 @@ For brevity, we omit formal proofs for remaining invariants.
 of values within a given record. For example, an application might
 desire that user IDs be unique. If we allow arbitrary insertion and
 modification of unique values, then we can easily construct
-non-\iconfluent sequences of transactions (e.g., simultaneously
-perform \texttt{insert id=0} and \texttt{insert id=0}). Uniqueness is
-not \iconfluent for inserts of unique values.
+non-\iconfluent sequences of transactions. For example, in our payroll
+example, we already violated uniqueness of employee IDs:
+$\{$Stan:5$\}$ and $\{$Mary:5$\}$ are both valid states that can be
+reached by valid sequences (starting at $\{\}$) but their
+merge---$\{$Stan:5, Mary:5$\}$ is not valid. Uniqueness is not
+\iconfluent for inserts of unique values. However, deletion of unique
+records \textit{is} $I$-confluent: removing items from a bag of unique
+values cannot introduce duplicates.
 
 However, if we consider arbitrary \textit{generation} of IDs, whereby
 the database generates unique values on behalf of users (e.g., assign
@@ -99,13 +91,10 @@ From the perspective of \iconfluence analysis, foreign key constraints
 concern the \textit{visibility} of related updates: if individual
 database states maintain referential integrity, a non-destructive
 merge function (like our bag union) cannot cause tuples to
-``disappear'' and compromise the constraint. Indeed, foreign key
-constraints are \iconfluent under insertion and selection. Implicitly,
-this may require merging all of a remote replica's data at once (e.g.,
-merging the \texttt{employee} table then the \texttt{department} table
-might result in inconsistency) but is achievable (even in a
-partitioned environment) without compromising availability via
-multi-versioning~\cite{ramp-txns,hat-vldb}.
+``disappear'' and compromise the constraint. Foreign key constraints
+are \iconfluent under insertion and selection. This means that, in our
+payroll example, employees can be added to and change departments---so
+long as the departments table does not change.
 
 Deletion and modification are more challenging. A na\"{\i}ve
 implementation of deletion (i.e., via tombstoning records) might lead
@@ -155,19 +144,20 @@ it is easy to see that a row-level \texttt{>} threshold invariant is
 \iconfluent for \texttt{increment} and \texttt{update} but not
 \texttt{decrement}, while a row-level \texttt{<} threshold invariant
 is \iconfluent for \texttt{decrement} and \texttt{update} but not
-\texttt{increment}. We can similarly guarantee equality but not
-in-equality for counters supporting increment and decrement. These
-data types (including lists, sets, and maps) can be combined with
-standard relational constraints like materialized view maintenance
-(e.g., the ``total salary'' row should contain the sum of employee
-salaries in the \texttt{employee} table). Importantly, while many
-implementations of these data types provide useful properties like
-convergence without compromising availability~\cite{blooml,crdt}, they
-do \textit{not} guarantee that invariants are not violated. The prior
-CRDT counter supporting increment and decrement operations will
-guarantee that all operation invocations are reflected in the final
-CRDT state but will not guarantee (or enforce) that our given
-invariants hold.
+\texttt{increment}. In our payroll example, we can provide \cfree
+support for concurrent salary raises but not concurrent salary
+demotions. We can similarly guarantee equality but not in-equality for
+counters supporting increment and decrement. These data types
+(including lists, sets, and maps) can be combined with standard
+relational constraints like materialized view maintenance (e.g., the
+``total salary'' row should contain the sum of employee salaries in
+the \texttt{employee} table). Importantly, while many implementations
+of these data types provide useful properties like convergence without
+compromising availability~\cite{blooml,crdt}, they do \textit{not}
+guarantee that invariants are not violated. The prior CRDT counter
+supporting increment and decrement operations will guarantee that all
+operation invocations are reflected in the final CRDT state but will
+not guarantee (or enforce) that our given invariants hold.
 
 \subsection{Discussion and Limitations}
 
@@ -178,9 +168,14 @@ comprehensive, but we have found them to be surprisingly expressive
 for many applications (Section~\ref{sec:evaluation}). Moreover, as
 many are common to existing SQL dialects, we have found it easy to
 automate this process via syntactic, rule-based analysis of
-declarative procedures and DDL; a basic prototype identifying
-\iconfluence for all of the above constraints in addition to limited
-support for conditional updates required less than a week to build.
+declarative procedures and DDL; building a prototype analysis tool
+that identifies \iconfluence for all of the above constraints in
+addition to limited support for conditional updates required less than
+a week to build. An alternative approach would use automatic (and,
+likely, undecidable) analysis for arbitrary program logic. We believe
+this is feasible for restricted languages (possibly SQL as well) but,
+given our initial success in classifying a (growing) set of invariants
+on an as-needed basis, we have reserved this as future work.
 
 Through our treatment of abstract data types, we recognize that
 immutable/bag semantics are not always desirable for

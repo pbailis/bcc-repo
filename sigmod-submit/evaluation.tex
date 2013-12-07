@@ -5,16 +5,24 @@
 If achievable, coordination-freedom enables scalability limited to
 that of available hardware: namely, server and network capacity. This
 is powerful: a \cfree application can scale out without sacrificing
-correctness, latency, or availability. However, this raises two
-important questions: what happens if \cfreedom is not possible (i.e.,
-\iconfluence does not hold), and how commonly can \cfreedom be
-achieved? In this section, we begin to answer both of these questions
-via both simple modeling and via a real-world, proof-of-concept
-implementation of what is traditionally considered a challenging OLTP
-benchmark. The former is the realm of traditional concurrency control,
-while the latter offers a glimpse at what is attainable via
-coordination-avoiding database systems, which coordinate only when
-necessary.
+correctness, latency, or availability. In
+Section~\ref{sec:bcc-practice}, we saw how many combinations of
+invariants and transactions were not \iconfluent and how others were
+not; in this section, we examine the implications of these results.
+
+We begin by looking at the real-world costs of coordination: what
+happens if \iconfluence does not hold? We quantify upper bounds on
+throughput under common network delays. We next examine several
+applications to understand whether their transactions are
+implementable in a \cfree manner. We first focus on the current
+standard for transactional performance---the TPC-C benchmark---and
+show---both via \iconfluence analysis and by linearly scaling a
+proof-of-concept implementation on public cloud infrastructure---that,
+in contrast with classic, coordination-intensive execution strategies,
+it is indeed achievable without distributed coordination. We next
+examine several other benchmarks as recently proposed in the
+literature~\cite{oltpbench} and discuss the implications of these
+results on \cfreedom in real world deployments.
 
 \subsection{Costs of Coordination}
 
@@ -79,19 +87,19 @@ scalability, we performed a simple analysis of achievable throughput
 using recently published datasets of real-world communication delay
 from both local-area~\cite{bobtail} and wide-area~\cite{hat-vldb}
 networks. We use Monte Carlo analysis to determine the latency of
-traditional two-phase commit~\cite{bernstein-book} (\dpc) and
-decentralized two-phase commit~\cite{paxos-commit} (\cpc). We consider
+traditional two-phase commit~\cite{bernstein-book} (\cpc) and
+decentralized two-phase commit~\cite{paxos-commit} (\dpc). We consider
 groups of increasing numbers of participants and assume that
 transactions are perfectly pipelined such that each participant
 \texttt{prepare}s the next transaction immediately after it has
-\texttt{commit}ted the prior transaction. Therefore, two-phase commit
-requires two message delays ($N$ \textit{prepared} messages from all
-nodes to a ``coordinating'' participant and $N$ messages to send the
-\texttt{commit} response), while three-phase commit requires one
-message delay ($N^2$ messages in an all-to-all broadcast of
-\texttt{prepared} messages). We strictly consider network latency
-(i.e., local processing time incurred by locking, latching,
-validation, or I/O delays would only increase latency).
+\texttt{commit}ted the prior transaction. Therefore, \cpc requires two
+message delays ($N$ \textit{prepared} messages from all nodes to a
+``coordinating'' participant and $N$ messages to send the
+\texttt{commit} response), while \dpc requires one message delay
+($N^2$ messages in an all-to-all broadcast of \texttt{prepared}
+messages). We strictly consider network latency (i.e., local
+processing time incurred by locking, latching, validation, or I/O
+delays would only increase latency).
 
 Figure~\ref{fig:2pc} show our results for both local-area
 (\ref{fig:2pc}a) and wide-area (\ref{fig:2pc}b) networks.  In the
@@ -263,27 +271,27 @@ transaction. The TPC-C isolation requirements (reflecting the ANSI SQL
 specification) are all achievable via client-side caching as proposed
 by Bailis et al.~\cite{hat-vldb}.
 
+\subsection{Discussion}
 
-\minihead{Additional applications} While TPC-C is the ``current
-industry standard for evaluating the performance of OLTP
-systems''~\cite{oltpbench}, we are aware that it may be a
-simplification of real-world workloads. For greater variety, we
-examined the transactions in the OLTPBenchmark suite~\cite{oltpbench}
-and found (and confirmed with an author of~\cite{oltpbench}) that, in
-nine of fourteen remaining (non TPC-C) benchmarks, the workload
-transactions did not involve integrity constraints (e.g., did not
-modify primary key columns), one (\texttt{CH-bencCHmark}) matched
-TPC-C, and two specifications implied (but did not explicitly state) a
-requirement for coordination due to unique ID assignment
-(\texttt{AuctionMark}'s \texttt{new-purchase}, \texttt{SEATS}'s
-\texttt{NewReservation}; achievable like TPC-C New-Order). The
-remaining two benchmarks, \texttt{sibench} and \texttt{smallbank} were
-specifically designed as research benchmarks for serializable
-isolation. The three ``consistency conditions'' in the newer TPC-E
-benchmark (not in the prior suite) represent a subset of the twelve
-conditions from TPC-C considered here. It is possible (even likely)
-that these benchmarks are simply under-specified, but, according to
-official specification, TPC-C contains the most rigorous
+While TPC-C is the ``current industry standard for evaluating the
+performance of OLTP systems''~\cite{oltpbench}, we are aware that it
+may be a simplification of real-world workloads. For greater variety,
+we examined the transactions in the OLTPBenchmark
+suite~\cite{oltpbench} and found (and confirmed with an author
+of~\cite{oltpbench}) that, in nine of fourteen remaining (non TPC-C)
+benchmarks, the workload transactions did not involve integrity
+constraints (e.g., did not modify primary key columns), one
+(\texttt{CH-bencCHmark}) matched TPC-C, and two specifications implied
+(but did not explicitly state) a requirement for coordination due to
+unique ID assignment (\texttt{AuctionMark}'s \texttt{new-purchase},
+\texttt{SEATS}'s \texttt{NewReservation}; achievable like TPC-C
+New-Order). The remaining two benchmarks, \texttt{sibench} and
+\texttt{smallbank} were specifically designed as research benchmarks
+for serializable isolation. The three ``consistency conditions'' in
+the newer TPC-E benchmark (not in the prior suite) represent a subset
+of the twelve conditions from TPC-C considered here. It is possible
+(even likely) that these benchmarks are simply under-specified, but,
+according to official specification, TPC-C contains the most rigorous
 coordination-intensive invariants among the benchmarks we encountered.
 
 Anecdotally, our conversations with end-users have not identified

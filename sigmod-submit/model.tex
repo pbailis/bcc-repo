@@ -22,10 +22,12 @@ in Section~\ref{sec:bcc-practice}.
 \minihead{Transactions} Users submit requests to the database in the
 form of transactions, or groups of operations on data items that
 should be executed together: we define a transaction $T$ as a
-transformation on state: $T: DB \rightarrow DB$. Individual operations
-are often in the form of writes (which add new versions to the
-database) or reads (which return a specific set of versions from the
-database), but operations can also operate on abstract data types,
+transformation on state: $T: DB \rightarrow DB$. Accordingly, a
+transaction's effects take the form of mutations reflected in the
+database state (i.e., transactions produce write sets). Individual
+operations are often in the form of writes (which add new versions to
+the database) or reads (which return a specific set of versions from
+the database), but operations can also operate on abstract data types,
 such as incrementing a counter item or adding an item to a set
 item. When required---and certainly in later sections of this
 paper---we will discuss specific operation types, but, in general, we
@@ -194,11 +196,12 @@ execute any finite number of transactions.
 \end{definition}
 
 Figure~\ref{fig:replicas} illustrates a coordination-free execution of
-two transactions $T_1$ and $T_2$ on two separate replicas of
-(complete) database state. Each transaction commits on its local
-replica, which subsequently forwards the new database state to the
-other replica in the background. By applying the merge operator of set
-union, each replica contains the same database state.
+two transactions $T_1$ and $T_2$ on two separate, convergent replicas
+of (complete) database state. Each transaction commits on its local
+replica, and the result of each transaction is reflected in the local
+state. After the transactions have completed, the replicas exchange
+state and, after applying the merge operator of set union, each
+replica contains the same database state.
 
 \begin{figure}
 \begin{center}

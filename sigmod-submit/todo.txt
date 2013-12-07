@@ -1,17 +1,14 @@
 
-Intro:
+DONE
 
---Needs to be more crisp, less repetitive (e.g., "necessary and sufficient")
---Top-down pitch: serializability is not achievable, instead users give invariants, system decides when to coordinate, and result is that you only coordinate when necessary (e.g., back to the world of traditional concurrency control)
---Txn concept is not declarative enough
---Punchline: most workloads satisify invariants (most constraints are okay)
---Focus on workloads
+1.) Change section 5 lead-in.
+2.) Change section 6 lead-in.
+6.) Discuss undecidability.
 
-Motivation:
---"Transactions and Isolation" can be shortened
---Example: more punchy results
+TO DO
 
-Model:
---Shorten it!
---"Merge" twice
+
+3.) Shorted section 6.1.
+4.) Elaborate on "discussion" to Section 6.
+5.) Add more formalism to section 5.
 
