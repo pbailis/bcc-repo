@@ -81,19 +81,18 @@ in Section~\ref{sec:model}, but, informally, we say that a database is
 \textit{coordination-free} if each copy of shared database state can
 can execute operations without contacting (and, therefore, possibly
 stalling) other copies of state. This requirement has been captured in
-the distributed systems community as \textit{availability}, or
-``always-on'' operation: an available distributed system can perform
-operations on any non-failed server, despite arbitrary communication
-partitions between servers~\cite{gilbert-cap}. This also benefits
-normal operation: to serve a request, a \cfree server need not contact
-any others~\cite{pacelc}, so client requests can safely proceed in
-parallel. In contrast, a system that requires coordination (e.g.,
-provides serializability) faces unavailability in the presence of
-network partitions and partial failures, and, during normal operation,
-incurs higher latency due to communication delays~\cite{hat-vldb} and,
-possibly, resource contention, unstable queuing effects~\cite{ladis},
-deadlocks, and spurious
-aborts~\cite{bernstein-book,gray-book,gray-virtues}.
+distributed systems as \textit{availability}, or ``always-on''
+operation: an available system can perform operations on any
+non-failed server, despite arbitrary communication partitions between
+them~\cite{gilbert-cap}. This also benefits normal operation: to serve
+a request, a \cfree server need not contact any others~\cite{pacelc},
+so client requests can safely proceed in parallel. In contrast, a
+system that requires coordination (e.g., provides serializability)
+faces unavailability in the presence of network partitions and partial
+failures, and, during normal operation, incurs higher latency due to
+communication delays~\cite{hat-vldb} and, possibly, resource
+contention, unstable queuing effects~\cite{ladis}, deadlocks, and
+spurious aborts~\cite{bernstein-book,gray-book,gray-virtues}.
 
 % cost of coordination? unavailability, latency, stalls : focus on
 % worst-case behavior yields average-case benefits
@@ -117,19 +116,15 @@ scale-out system, even for single-record operations.
 \minihead{Alternative models} Given the costs of coordination, many
 database designs and systems operators opt for weaker isolation models
 that offer higher performance, lower latency, and fewer aborts. On a
-single-node database, these isolation models are often in the form of
-``weak isolation'' such as Read Committed and Repeatable Read
-isolation~\cite{adya-isolation}. Modern distributed databases offer a
-range of isolation models such as eventual consistency and regular
-register semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we
-  will subsequently refer to distributed systems consistency models
-  such as linearizability as \textit{isolation models} and reserve the
-  use of \textit{consistency} for referring to application-level
-  ``ACID'' consistency guarantees. This is largely a product of scope:
-  in a system where an end-user application is not considered (e.g.,
-  the traditional distributed systems literature), ``consistency'' is
-  indeed best defined according to reads and writes on opaque
-  registers.}  Not all weaker models are \cfree (e.g., Snapshot
+single-node database, weaker models include Read Committed and
+Repeatable Read isolation~\cite{adya-isolation}, while modern
+distributed databases offer a range of isolation models such as
+eventual consistency and regular register
+semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
+  refer to distributed systems consistency models such as
+  linearizability as \textit{isolation models} and reserve the use of
+  \textit{consistency} for referring to application-level ``ACID''
+  consistency.}  Not all weaker models are \cfree (e.g., Snapshot
 Isolation)~\cite{hat-vldb}, but all expose end users to isolation
 \textit{anomalies}, or behavior that could not have arisen in a serial
 execution.

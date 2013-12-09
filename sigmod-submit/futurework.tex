@@ -24,8 +24,8 @@ and distribution of the producing and consuming
 transactions. Revisiting heuristics- and statistics-based query
 planning, specifically targeting physical layout, choice of
 concurrency control, and recovery appears worthwhile. While recent
-work has focused on reducing distributed coordination via intelligent
-partitioning~\cite{schism}, we believe that this is only one aspect of
+work has used intelligent partitioning to reduce distributed
+coordination~\cite{schism}, we believe that this is only one aspect of
 a larger optimization problem.
 
 \minihead{Amortizing coordination} We have analyzed conflicts on a
@@ -33,37 +33,30 @@ per-transaction basis, but it is possible to amortize the overhead of
 coordination across multiple transactions. For example, the Escrow
 transaction method~\cite{escrow} reduces coordination by allocating a
 ``share'' of non-\iconfluent operations between multiple
-processes. For example, in a bank account, a remaining balance of
-$\$100$ might be divided between $5$ bank servers, such that each
-server can dispense $\$20$ to users without requiring coordination to
-enforce a non-negative balance invariant. If any given server runs out
-of pre-allocated money, it can ask another server to ``refresh'' its
-current supply by borrowing more~\cite{mdcc}. This Escrow technique
-allows \cfreedom for otherwise non-\iconfluent operations up until a
-pre-determined number of concurrent operations. In the context of our
-\cfreedom analysis, this is equivalent to limiting the branching
-factor of (equivalently, the number of merges in) the execution trace
-to a (pre-determined) constant factor: in the example above, the
-number of concurrent withdrawals cannot exceed $5$ servers. We do not
-attempt a full formalism here but believe that adapting Escrow and
-alternative time-, versioned-, and numerical- drift-based
-models~\cite{yu-conit} is a promising area for future work.
+processes. For example, in a bank application, a balance of $\$100$
+might be divided between $5$ servers, such that each server can
+dispense $\$20$ without requiring coordination to enforce a
+non-negative balance invariant (servers can coordinate to ``refresh''
+supply~\cite{mdcc}). This technique (and related techniques) allow
+\cfreedom for otherwise non-\iconfluent operations up until a
+pre-determined level of concurrency. In the context of our \cfreedom
+analysis, this is similar to limiting the branching factor of the
+execution trace to a some finite factor. We do not attempt a further
+comparison here but believe that adapting Escrow and alternative
+time-, versioned-, and numerical- drift-based models~\cite{yu-conit}
+is a promising area for future work.
 
-\minihead{Future system design} Given our formal grounding
-\iconfluence and promising early results, what is the appropriate
-system architecture for a coordination-avoiding database
-\textit{system}? In our TPC-C proof-of-concept implementation, we
-analyzed each transaction component for \iconfluence and implemented
-it in a custom prototype: we would not expect this of a typical
-end-user of a relational database today. Instead, users should be able
-to express their invariants in a high-level language like SQL and the
-system should be able to avoid and resolve conflicts without their
-approval. Analysis tools could automatically inform system's conflict
-resolution policies as suggested above; we believe this is feasible in
-the near-term. This in turn raises several interesting design and
-engineering challenges: for example, as new invariants are added, the
-system must ensure that satisfiability is possible. While we have
-focused on SQL, we might also consider the use of restricted,
+\minihead{Future system design} Given our formal grounding and early
+quantitative results, what is the appropriate system architecture for
+a coordination-avoiding database \textit{system}? Users could express
+their invariants in a high-level language like SQL and the system
+could in turn avoid and resolve conflicts without their further
+involvement. Analysis tools could automatically inform system's
+conflict resolution policies as suggested above. We believe this is
+feasible in the near-term but, in turn, raises several interesting
+design and engineering challenges: for example, as new invariants are
+added, the system must ensure that satisfiability is possible. While
+we have focused on SQL, we might also consider the use of restricted,
 \iconfluent operators (e.g., Bloom\textsuperscript{L}~\cite{blooml})
 and more data types.
 

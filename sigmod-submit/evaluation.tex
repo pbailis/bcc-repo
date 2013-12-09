@@ -26,13 +26,6 @@ results on \cfreedom in real world deployments.
 
 \subsection{Costs of Coordination}
 
-When an application is \iconfluent and therefore executable with
-\cfreedom, scalability is effectively guaranteed: given an appropriate
-execution plan, there is no fundamental reason why the application
-cannot attain indefinite scale-out. We will shortly quantify these
-benefits in a real-world system, but, for now, we evaluate the
-alternative: what happens if a system must coordinate?
-
 \begin{figure}
   \includegraphics[width=\columnwidth]{figs/singledc-twopc.pdf}\\ {\centering
     \textbf{\scriptsize a.) Local-area network scenario based on
@@ -49,57 +42,41 @@ alternative: what happens if a system must coordinate?
 \label{fig:2pc}
 \end{figure}
 
-As studied in traditional database systems, one of the primary
-challenges in scaling database systems to both multiple replicas and
-across multiple partitions is the atomic commitment problem: if a
-given transaction might abort, all servers it accesses (whether
-replicas of the same item or replicas of different items) must agree
-to unilaterally commit or abort the
-transaction~\cite{bernstein-book}. This \textit{atomic commitment}
-problem is well-studied in both the database and distributed systems
-literature, with many variants including two-phase commit,
-decentralized two-phase commit, and three-phase
-commit~\cite{atomictransactions,paxos-commit,traiger-tods}. For each
-pair of conflicting transactions, the servers responsible for the
-conflicting operations must choose which (if either) should commit
-(and, in database systems, is often coupled with a decision about the
-commit order~\cite{hat-vldb,calvin,traiger-tods}). Regardless of
-implementation technique, if multiple servers participate in the
-commit decision (e.g., locking across partitions or employing multiple
-active validators), they must undergo atomic commitment (whereas a
-single-server implementation would be limited in throughput to its
-capacity). Therefore, the duration of atomic commitment determines the
-the maximum achievable throughput for modifications to a given data
-item. If atomic commit take $10$ms, then, for abortable updates, we
-can achieve throughput of $100$ transactions per second per item. Of
-course, there are many possible optimizations to this simple rule of
-thumb, including batching and reordering of
-commits~\cite{calvin}. Moreover, given non-conflicting transactions,
-aggregate system throughput can be much higher than the per-item
-throughput limitations~\cite{spanner, f1}. However, for arbitrary
-schedules of transactions, atomic commitment latency is a reasonable
-upper bound on per-item throughput for conflicting, distributed
-operations.
+What happens if a system must coordinate? One of the primary
+challenges in scaling non-\cfree transactions is the atomic commitment
+problem: if a given transaction might abort, all servers it accesses
+(whether replicas of the same item or replicas of different items)
+must agree to unilaterally commit or abort the
+transaction~\cite{bernstein-book}. For example, in a serializable
+database system, a system might check for read-write conflicts and
+abort a transaction if any are found. In a coordination-avoiding
+system, a system will have to check that non-\iconfluent transactions
+do not execute concurrently and violate a given invariant (i.e.,
+requiring mutual exclusion during commitment). This \textit{atomic
+  commitment} problem is well studied in both the database and
+distributed systems literature, with many
+variants~\cite{atomictransactions,paxos-commit,traiger-tods} and poses
+a scalability limitation because its latency limits
+throughput. Indeed, multiple atomic commitment rounds can often
+proceed in parallel (e.g., any two \iconfluent transactions can
+independently commit), but, at the granularity of a single record
+(i.e., a worst-case scenario), atomic commitment becomes a
+bottleneck. There are many possible optimizations including batching
+and reordering of commits~\cite{calvin}, but, for arbitrary schedules
+of transactions, atomic commitment induces an upper bound on per-item
+throughput for conflicting operations.
 
-To better understand the relationship between atomic commitment
-(necessitated by non-\iconfluent, abortable transactions) and
-scalability, we performed a simple analysis of achievable throughput
-using recently published datasets of real-world communication delay
-from both local-area~\cite{bobtail} and wide-area~\cite{hat-vldb}
-networks. We use Monte Carlo analysis to determine the latency of
-traditional two-phase commit~\cite{bernstein-book} (\cpc) and
-decentralized two-phase commit~\cite{paxos-commit} (\dpc). We consider
-groups of increasing numbers of participants and assume that
-transactions are perfectly pipelined such that each participant
-\texttt{prepare}s the next transaction immediately after it has
-\texttt{commit}ted the prior transaction. Therefore, \cpc requires two
-message delays ($N$ \textit{prepared} messages from all nodes to a
-``coordinating'' participant and $N$ messages to send the
-\texttt{commit} response), while \dpc requires one message delay
-($N^2$ messages in an all-to-all broadcast of \texttt{prepared}
-messages). We strictly consider network latency (i.e., local
-processing time incurred by locking, latching, validation, or I/O
-delays would only increase latency).
+We performed a simple analysis using recently published datasets of
+real-world communication delay from both local-area~\cite{bobtail} and
+wide-area~\cite{hat-vldb} networks. We used Monte Carlo analysis to
+simulate both traditional two-phase commit (using a coordinator, two
+delays of $N$ messages each)~\cite{bernstein-book} (\cpc) and
+decentralized two-phase commit (without a coordinator, one delay of
+$N^2$ messages)~\cite{paxos-commit} (\dpc), assuming perfect
+pipelining (i.e., send \texttt{prepared} immediately after
+\texttt{commit}, with no aborts) and only considering network latency
+(i.e., local processing time due to locking, latching, validation, or
+I/O delays would only increase latency).
 
 Figure~\ref{fig:2pc} show our results for both local-area
 (\ref{fig:2pc}a) and wide-area (\ref{fig:2pc}b) networks.  In the
@@ -119,90 +96,91 @@ drops to slightly over $2$ transaction per second in both algorithms.
 
 While this study is based solely on reported latencies, deployment
 reports corroborate our findings. For example, Google's F1 uses
-optimistic concurrency control via WAN with commit latencies of
-$50$ to $150$~ms. As the authors discuss, this limits throughput to between
+optimistic concurrency control via WAN with commit latencies of $50$
+to $150$~ms. As the authors discuss, this limits throughput to between
 $6-20$ transactions per second per data item~\cite{f1}. Megastore's
-average write latencies of $100$ to $400$~ms suggest similar throughputs to
-those that we have predicted~\cite{megastore}. Indeed,
-\textit{aggregate throughput} may be substantially greater as multiple
-2PC rounds for disjoint sets of data items may safely proceed in
+average write latencies of $100$ to $400$~ms suggest similar
+throughputs to those that we have predicted~\cite{megastore}. Again,
+\textit{aggregate} throughput may be greater as multiple 2PC rounds
+for disjoint sets of data items may safely proceed in
 parallel. However, \textit{worst-case} access patterns will indeed
-greatly limit scalability: as many before us have noted, adding more
-active servers/replicas in non-\cfree models like serializability can
-greatly reduce throughput~\cite{abadi-vll,calvin,jones-dtxn}.
+greatly limit scalability.
 
 \subsection{Proof of Concept}
 
-As a proof of concept application of \cfreedom analysis, we next show
-that the classic benchmark for OLTP performance is not particularly
-challenging from a distributed coordination perspective. The TPC-C
-benchmark is often used as the gold standard for database concurrency
-control both in research and in industry~\cite{tpcc}, and in recent
-years has been used as a yardstick for distributed database
-performance (e.g., Calvin~\cite{calvin}, H-Store~\cite{hstore},
-Silo~\cite{silo}). Accordingly, we begin by determining the
-fundamental scalability limitations of the backbone of this benchmark,
-the New-Order transaction.
+If \cfree execution makes scaling easy and, as the prior section
+showed, non-\iconfluent operation is expensive, where do real
+applications fall? We discuss several in the next section but, here,
+as proof of concept application of \cfreedom analysis, we perform a
+brief case study of the classic benchmark for OLTP performance. The
+TPC-C benchmark is often used as the gold standard for database
+concurrency control~\cite{oltpbench} both in research and in
+industry~\cite{tpcc}, and in recent years has been used as a yardstick
+for distributed database performance~\cite{calvin,hstore,silo}: how
+much coordination does TPC-C require? Little.
 
-New-Order corresponds to the placement of an order in a wholesale
-supplier application. Each new order randomly chooses a set of items,
-decrements their stock, and records the order request in a designated
-table. There are three challenging components of New-Order, which we
-describe below:
+TPC-C requires the maintenance of twelve ``consistency criteria,'' or
+invariants during the processing of transactions representing business
+activities of a wholesale supplier. In light of our analysis from
+Section~\ref{sec:bcc-practice}, none is particularly challenging;
+space constraints prohibit a full discussion, but we sketch relevant
+constraints and execution strategies below:
 \begin{itemize}
 
-\item \textit{Foreign key constraints (Consistency Criteria
-  3.3.2.\{4-7, 11\}).} New-Order requires maintaining foreign key constraints:
-  when an order is recorded in the \texttt{ORDER} table, the
-  corresponding orders for each item should be reflected in the
-  \texttt{ORDER-LINE} table. Similarly, the new order in the
-  \texttt{ORDER} table should be present in the \texttt{NEW-ORDER}
-  table. In a traditional database system, we might use locks to
-  atomically control the visibility of these updates to multiple
-  tables. However, our SQL analysis tells us that we can maintain
-  these constraints under insert with \cfreedom. Indeed, with the
-  newly proposed \cfree ANON algorithm~\cite{ramp-txns}, we can ensure
-  that all of these updates are visible, or none are.
+\item \textit{Foreign key constraints (Consistency Constraints
+  3.3.2.\{4-7, 11\}).} When a new customer order is placed, it is
+  recorded in the \texttt{ORDER} table and corresponding entries for
+  each item in the order should be recorded in the \texttt{ORDER-LINE}
+  table. Similarly, the new order's ID should appear in the
+  \texttt{NEW-ORDER} table. In a traditional database system, we might
+  use locks to atomically control the visibility of these updates to
+  multiple tables. However, our earlier analysis tells us that we can
+  maintain these foreign key constraints under insert with
+  \cfreedom. Indeed, with the newly proposed ANON
+  algorithm~\cite{ramp-txns}, we can enforce these invariants without
+  synchronous coordination.
 
-\item \textit{Sequential ID assignment (Consistency Criteria
-  3.3.2.2-3).} Each New-Order executed in a pre-determined
-  per-warehouse requires a sequentially assigned ID (e.g.,
+\item \textit{Sequential ID assignment (Consistency Constraints
+  3.3.2.2-3).} Each new order placed in each warehouse's ten districts
+  requires a sequentially assigned ID (e.g.,
   \texttt{AUTO\_INCREMENT}). This poses a challenge: the
   \texttt{DISTRICT\_NEXT\_O\_ID} column must be incremented at the
   same time that corresponding rows are inserted into the
   \texttt{ORDER}, \texttt{NEW-ORDER}, and \texttt{ORDER-LINE}
-  tables. We know from our SQL analysis that this sequential
+  tables. From Section~\ref{sec:bcc-practice}, this sequential
   assignment is not \cfree, so, for a compliant run, we will need to
-  coordinate (others forego this sequential
-  constraint~\cite{hat-vldb,silo} at the expense of compliance). A
-  strawman approach would hold locks for the duration of each
-  New-Order, but this greatly reduces throughput. We wait to assign
-  the district's next ID until commit time. When inserting rows into
-  the \texttt{ORDER}, \texttt{NEW-ORDER}, and \texttt{ORDER-LINE}
-  tables, the database assigns a temporary, uniquely generated key
-  and, upon commit, adds a reference (in a separate table) that
-  resolves this temporary key to point to the true sequential
-  key. Accordingly, the database only holds locks for a single atomic
-  increment of the district ID counter.
+  coordinate (others ignore these constraints~\cite{hat-vldb,silo} at
+  the expense of compliance). A traditional approach would hold locks
+  for the duration of each transaction, but this greatly reduces
+  throughput~\cite{abadi-vll}. Instead, a coordination-avoiding
+  strategy can wait to assign the next ID until commit time. When
+  inserting rows into the order tables, the database assigns a
+  temporary, uniquely generated key and, upon commit, updates a
+  reference (in a separate table) that maps this temporary key to
+  point to the true sequential key. (A similar process can be
+  maintained for order delivery.) Accordingly, the database only holds
+  locks for a single atomic increment of the district ID counter.
 
-\item \textit{Materialized view maintenance (Consistency Criteria
+\item \textit{Materialized view maintenance (Consistency Constraints
   3.3.2.\{1, 8-10, 12\})}. Throughout transaction execution, a variety
   of materialized counters should be maintained (e.g., \texttt{W\_YTD
     = sum(D\_YTD}). With appropriate counter data types as in
-  Section~\ref{sec:merge}, these constraints are all achievable with
-  \cfreedom.
+  Section~\ref{sec:merge} and the ANON algorithm above, these
+  constraints are all achievable with \cfreedom.
 \end{itemize}
 
-All told, TPC-C New-Order coordination can be limited to a single,
-atomic increment-and-get operation on each district's order sequence
-number. Our \cfreedom analysis shows that ten of twelve required
-constraints are achievable without synchronous coordination and the
+All told, only two of TPC-C's invariants require coordination, and,
+under standard partitioning strategies~\cite{calvin,schism}, this
+synchronous coordination can be limited to a non-abortable, atomic
+increment-and-get operation on each district's order sequence number
+(on a single server). Our \cfreedom analysis shows that the remaining
+ten invariants are achievable without synchronous coordination and the
 remainder (3.3.2.2-3) are satisfiable via non-abortable single-site
-operation. Hence, scalability for a single warehouse is limited to
-atomic increment-and-get on a single machine. Indeed, when we execute
-the above query plan on a linearizable main-memory database prototype
-(Figure~\ref{fig:clients}; we disregard think time and per-warehouse
-client limits, as is
+operation. Indeed, when we execute the above query plan for backbone
+of and the only distributed transaction in the workload (New-Order, as
+focused on in~\cite{calvin}) on a linearizable, main-memory database
+prototype (Figure~\ref{fig:clients}; we disregard think time and
+per-warehouse client limits, as is
 standard~\cite{calvin,hstore,abadi-vll,jones-dtxn}), we indeed
 bottleneck on sequence number assignment. On EC2 cc2.8xlarge
 instances, as depicted, we achieve over $12K$ New-Order transactions
@@ -231,19 +209,19 @@ throughput overheads ranging from 66--88\%~\cite{abadi-vll}.
 \end{figure}
 
 Unsurprisingly, a coordination-avoiding strategy allows linear scaling
-to 100 machines (Figure~\ref{fig:scaleout}). On a cluster of 100 EC2
-cc2.8xlarge servers spanning three \texttt{us-west} availability zones
-($5$ warehouses per server), we achieve over 1.6 million New-Order
-transactions per second. We achieve 89.5\% of perfect scaling from one
-to 100 machines and perfect scaling from ten to 100 machines. At peak,
-each server is CPU bound due to our current, admittedly fairly
-inefficient implementation. Nonetheless, in a scale-out system,
-single-node performance tuning is dwarfed by the power of
-coordination-avoiding operations. A comparison with a system providing
-serializability or even Snapshot Isolation would be unfair, but we are
-unaware of any other compliant TPC-C implementation that achieves
-greater than $500K$ New-Order transactions per second (e.g., Oracle
-11G, Calvin~\cite{calvin}, Silo's non-FastIDs~\cite{silo},
+(Figure~\ref{fig:scaleout}). On 100 EC2 \texttt{cc2.8xlarge} servers
+in three \texttt{us-west} availability zones ($5$ warehouses per
+server), we achieve over 1.6 million New-Order transactions per
+second. We achieve 89.5\% of perfect scaling from one to 100 machines
+and perfect scaling from ten to 100 machines. At peak, each server is
+CPU bound due to our current, admittedly fairly inefficient
+implementation. Nonetheless, in a scale-out system, single-node
+performance tuning is dwarfed by the power of coordination-avoiding
+operations. A comparison with a system providing serializability or
+even Snapshot Isolation would be unfair, but we are unaware of any
+other compliant TPC-C implementation that achieves greater than $500K$
+New-Order transactions per second (e.g., Oracle 11G,
+Calvin~\cite{calvin}, Silo's non-FastIDs~\cite{silo},
 VLL~\cite{abadi-vll}). In contrast, we present these results as a
 proof of concept that executing even ``challenging'' workloads like
 TPC-C that contain many complex integrity constraints are not at odds
@@ -258,25 +236,32 @@ with scalability if implemented in a coordination-avoiding manner.
 \label{fig:scaleout}
 \end{figure}
 
-\minihead{Additional transactions} We have focused here on New-Order
-as it is the subject of considerable attention and is the only
-distributed transaction in the benchmark. However, the remainder of
-the TPC-C transactions are largely uninteresting from the perspective
-of coordination. We omit a full analysis, but all operations except
-for the Delivery transaction are implementable via a combination of
-foreign key updates and commutative counter increment/decrement, and
-the Delivery transaction is easily implemented (as acknowledged in the
-benchmark specification~\cite{abadi-vll}) as a single-partition
+\minihead{Additional transactions} Our empirical results have focused
+on New-Order as it is the only distributed transaction in the
+benchmark. However, the remainder of the TPC-C transactions are
+largely uninteresting for our purposes: all operations except for the
+Delivery transaction are implementable via a combination of foreign
+key updates and commutative counter increment/decrement, and the
+Delivery transaction is easily implemented (as acknowledged in the
+benchmark specification~\cite{tpcc}) as a single-partition
 transaction. The TPC-C isolation requirements (reflecting the ANSI SQL
-specification) are all achievable via client-side caching as proposed
-by Bailis et al.~\cite{hat-vldb}.
+specification) are all achievable via client-side
+caching~\cite{hat-vldb}.
 
 \subsection{Discussion}
 
-While TPC-C is the ``current industry standard for evaluating the
-performance of OLTP systems''~\cite{oltpbench}, we are aware that it
-may be a simplification of real-world workloads. For greater variety,
-we examined the transactions in the OLTPBenchmark
+These results begin to quantify the effects of coordination-avoiding
+concurrency control. When conflicts cannot be avoided, atomic
+commitment is expensive: by considering \textit{application-level}
+invariants, we only have to pay the price of atomic commitment when it
+is provably necessary. Yet this in turn means that coordination is
+application-specific. We were surprised that the ``current industry
+standard for evaluating the performance of OLTP
+systems''~\cite{oltpbench} was achievable in such a scalable manner,
+but we are also aware that TPC-C may be a simplification of real-world
+workloads.
+
+For greater variety, we examined the transactions in the OLTPBenchmark
 suite~\cite{oltpbench} and found (and confirmed with an author
 of~\cite{oltpbench}) that, in nine of fourteen remaining (non TPC-C)
 benchmarks, the workload transactions did not involve integrity
@@ -300,6 +285,9 @@ and a simple thought experiment identifying the invariants required
 for, say, a social networking site, are fairly simple (e.g., username
 uniqueness, foreign key constraints between updates, privacy
 settings). Nonetheless, we view the further study of real-world
-invariants to be a necessary area for future investigation.
+invariants to be a necessary area for future investigation. In the
+interim, these preliminary results hint at what is possible with
+coordination-avoidance as well as the costs of coordination if
+\cfreedom is unachievable.
 
 

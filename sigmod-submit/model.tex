@@ -66,18 +66,18 @@ under declared constraints.
 control models assume that ``the [set of application invariants] is
 generally not known to the system but is embodied in the structure of
 the transaction''~\cite{traiger-tods}. Indeed, Eswaran et al.'s
-classic paper on the topic of consistency argues that ``a complete set
-of assertions would no doubt be as large as the system
+classic paper on database consistency argues that ``a complete set of
+assertions would no doubt be as large as the system
 itself''~\cite{eswaran-consistency}. Nevertheless, since 1976,
 databases have introduced support for a finite set of
 invariants~\cite{korth-serializability,decomp-semantics,garciamolina-semantics,ic-survey,ic-survey-two}
-in the form of primary key and foreign key, uniqueness, and row-level
-``check'' constraints~\cite{kemme-si-ic}. We expand this set of
+in the form of primary key, foreign key, uniqueness, and row-level
+``check'' constraints~\cite{kemme-si-ic}. We discuss specific
 invariants in Section~\ref{sec:bcc-practice} and demonstrate that a
 small set of invariants provides expressive power for many
 applications. It is possible to perform a conservative analysis if a
-complete specification of invariants is missing, but this will result
-in less useful results.\vspace{.5em}
+full specification of invariants is missing, but this will result in
+less useful results.\vspace{.5em}
 
 % Unlike more general forms of axiomatic logic (e.g., Hoare-style triples~\cite{decomp-semantics,isolation-semantics}), we require only one set of invariants per application.
 
@@ -92,18 +92,17 @@ applicability to both single-site database systems with appropriate
 support for concurrent execution on (logically) separate copies of
 data and traditional, replicated multi-master designs. We do not
 further distinguish between partitioned and fully-replicated
-systems~\cite{hat-vldb} as our results do not require it.
+systems~\cite{hat-vldb}.
 
 \minihead{Availability} To reflect the requirement that each user's
 transactions eventually receive a response, we need a definition of
 \textit{availability}. To prevent the system from simply aborting
 transactions (which guarantees a response---albeit a not very useful
-one), we adopt the following definition of availability\footnote{As
-  Bailis et al. note~\cite{hat-vldb}, this basic definition precludes
-  fault tolerance (i.e., durability) guarantees beyond a single server
-  failure. To provide greater durability, we can relax this
-  requirement and allow communication with a fixed number of servers
-  (e.g., $F+1$ servers for $F$-fault tolerance; typically
+one), we adopt the following definition of availability\footnote{This
+  basic definition precludes fault tolerance (i.e., durability)
+  guarantees beyond a single server failure~\cite{hat-vldb}. We can
+  relax this requirement and allow communication with a fixed number
+  of servers (e.g., $F+1$ servers for $F$-fault tolerance; typically
   small~\cite{bigtable,spanner,dynamo}) without affecting our
   results. This does not affect scalability because, as more replicas
   are added, the additional communication overhead is

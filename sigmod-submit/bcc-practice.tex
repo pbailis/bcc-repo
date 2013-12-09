@@ -157,7 +157,7 @@ compromising availability~\cite{blooml,crdt}, they do \textit{not}
 guarantee that invariants are not violated. The prior CRDT counter
 supporting increment and decrement operations will guarantee that all
 operation invocations are reflected in the final CRDT state but will
-not guarantee (or enforce) that our given invariants hold.
+not guarantee (or enforce) that invariants hold.
 
 \subsection{Discussion and Limitations}
 
@@ -177,8 +177,7 @@ this is feasible for restricted languages (possibly SQL as well) but,
 given our initial success in classifying a (growing) set of invariants
 on an as-needed basis, we have reserved this as future work.
 
-Through our treatment of abstract data types, we recognize that
-immutable/bag semantics are not always desirable for
+Immutable/bag semantics are not always best for
 programmability. In practice, and in our analysis thus far, we have
 found abstract data types to be a useful workaround for avoiding
 anomalies due to non-bag merge semantics. Indeed, as others have
@@ -192,25 +191,25 @@ replication and merge~\cite{optimistic}. However, unlike ``tentative
 update'' programming models, successful (i.e., committed) updates will
 not be rolled back.
 
-While our proposed invariants are entirely declarative, a class of
-useful semantics---recency guarantees---are not inherently
-declarative. Users often wish to read data that is up-to-date as of a
-given point in time (e.g., ``read latest''~\cite{pnuts}). While
-serializability and traditional isolation models do not address these
-recency guarantees~\cite{adya-isolation}, they are indeed important to
-programmers. We can simulate recency requirements in \iconfluence
-analysis by logging the result of all reads with a timestamp and
-requiring that the logged timestamps obey their recency guarantees,
-but it is known that recency guarantees are unachievable with
-transactional availability~\cite{hat-vldb}. If users wish to ``read
-their writes'' (i.e., ``session'' guarantees~\cite{bayou}), they can
-do so by maintaining affinity or
+Our proposed invariants are declarative, but a class of useful
+semantics---recency guarantees---are operational. Users often wish to
+read data that is up-to-date as of a given point in time (e.g., ``read
+latest''~\cite{pnuts}). While serializability and traditional
+isolation models do not directly address these recency
+guarantees~\cite{adya-isolation}, they are often important to
+programmers. We can possibly simulate recency guarantees in
+\iconfluence analysis by logging the result of all reads with a
+timestamp and requiring that the logged timestamps obey their recency
+guarantees, but it is known that these guarantees are unachievable
+with transactional availability~\cite{hat-vldb}. If users wish to
+``read their writes'' (i.e., ``session'' guarantees~\cite{bayou}),
+they can do so by maintaining affinity or
 ``stickiness''~\cite{hat-vldb,vogels-defs} with a given set of
 replicas, while ``bounded staleness'' guarantees for reads are
 achievable with multi-versioning or read
 replicas~\cite{pnuts}. Otherwise, linearizable
 semantics~\cite{spanner} will require coordination. Indeed, when
-``consistency'' means ``recency,'' we cannot circumvent speed-of-light
+``consistency'' means ``recency,'' systems cannot circumvent speed-of-light
 delays.
 
 % understanding the limits -- merges, recency, escrow, immutability

@@ -87,23 +87,21 @@ notes, is not necessary for maintaining correctness for all
 applications~\cite{lamport-audit}.
 
 \minihead{Term rewriting} Our use of \iconfluence is inspired by the
-literature on term rewriting and constraint programming. An
-\iconfluent rewrite system guarantees that arbitrary rule application
-will not violate a given invariant~\cite{obs-confluence}, generalizing
-Church-Rosser confluence~\cite{termrewriting}. We effectively treat
-transactions as rewrite rules, database states as constraint states,
-and the database merge operator as a special \textit{join} operator
-defined for all database states.  Rewriting system
-concepts---including confluence~\cite{aiken-confluence}---have been
-successfully integrated into active database
-systems~\cite{activedb-book} (e.g., triggers and rule processing),
-although we are not familiar with a concept analogous to \iconfluence
-in this literature. We see rewriting systems as an interesting
-starting point for future theoretical analysis.
+literature on term rewriting systems. An \iconfluent rewrite system
+guarantees that arbitrary rule application will not violate a given
+invariant~\cite{obs-confluence}, generalizing Church-Rosser
+confluence~\cite{termrewriting}. We instead treat transactions as
+rewrite rules, database states as constraint states, and the database
+merge operator as a special \textit{join} operator defined for all
+states.  Rewriting system concepts---including
+confluence~\cite{aiken-confluence}---have been successfully integrated
+into active database systems~\cite{activedb-book} (e.g., triggers,
+rule processing), but we are not familiar with a concept analogous to
+\iconfluence in this literature.
 
 \minihead{Program analysis} Maintaining correctness despite concurrent
 access is well studied in the programming languages
-community~\cite{schneider-correctness}. In particular, \iconfluence
+community~\cite{schneider-concurrent}. In particular, \iconfluence
 condition is closely related to Owicki-Gries interference
 freedom~\cite{owickigries}, whereby concurrent operations cannot
 interfere with one another's preconditions for execution, as well as
@@ -125,7 +123,7 @@ state~\cite{epsilon-divergence} or can provide compensating
 transactions to account for concurrent behavior (e.g.,
 Sagas~\cite{sagas})~\cite{ic-survey,ic-survey-two}. These strategies
 require that programmers reason about inconsistent state or otherwise
-write compensatory code.
+write compensatory code, which we avoid.
 
 \minihead{Liveness and Convergence} The CALM
 Theorem~\cite{ameloot-calm} states that monotonic logic provides

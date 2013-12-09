@@ -5,10 +5,10 @@ DONE
 2.) Change section 6 lead-in.
 6.) Discuss undecidability.
 
+3.) Shorted section 6.1.
+
 TO DO
 
-
-3.) Shorted section 6.1.
 4.) Elaborate on "discussion" to Section 6.
 5.) Add more formalism to section 5.
 
