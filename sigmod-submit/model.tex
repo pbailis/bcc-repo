@@ -3,7 +3,7 @@
 \label{sec:model}
 
 In this section, we present our model for transactions, invariants,
-and coordination.
+and coordination that we will employ in the remainder of this paper.
 
 \minihead{Databases} In this paper, we consider a set of users
 accessing a shared database, which contains a \textit{versioned} set
@@ -17,7 +17,7 @@ necessarily empty), and copies of database state can be combined via a
 simplicity, we require merge to be commutative, associative, and
 idempotent~\cite{calm,crdt}. In our ``bag of mutations'' model, merge
 is simple set union (allowing multiple ``versions'' of each data
-item~\cite{adya-phd}), but we will consider alternative
+item~\cite{adya-isolation}), but we will consider alternative
 implementations in Section~\ref{sec:bcc-practice}.
 
 \minihead{Transactions} Users submit requests to the database in the
@@ -25,21 +25,25 @@ form of transactions, or groups of operations on data items that
 should be executed together: we define a transaction $T$ as a
 transformation on state: $T: DB \rightarrow DB$. Accordingly, a
 transaction's effects take the form of mutations reflected in the
-database state (i.e., transactions produce write sets). Individual
-operations are often in the form of writes (which add new versions to
-the database) or reads (which return a specific set of versions from
-the database), but operations can also operate on abstract data types,
-such as incrementing a counter item or adding an item to a set
-item. When required---and certainly in later sections of this
-paper---we will discuss specific operation types, but, in general, we
-will not make any specific assumptions about operations. A transaction
-can \textit{commit}, signaling success, or \textit{abort}, signaling
-failure. We do not consider the effects of incomplete or aborted
-transactions in database state except that executing transactions will
-observe their own modifications (i.e., aborted writes will be rolled
-back). This provides Read Committed isolation and does not affect our
-results (e.g., is achievable with availability by waiting to write
-until commit time~\cite{hat-vldb,spanner}).
+database state. In this model, transactions are executed on a specific
+replica (i.e., database state), and, later, we will use the merge
+operator to disseminate their effects (i.e., write sets) between
+replicas.
+
+Individual operations are often in the form of writes (which add new
+versions to the database) or reads (which return a specific set of
+versions from the database), but operations can also operate on
+abstract data types, such as incrementing a counter item or adding an
+item to a set item. When required---and certainly in later sections of
+this paper---we will discuss specific operation types, but, in
+general, we will not make any specific assumptions about operations. A
+transaction can \textit{commit}, signaling success, or \textit{abort},
+signaling failure. We do not consider the effects of incomplete or
+aborted transactions in database state except that executing
+transactions will observe their own modifications (i.e., aborted
+writes will be rolled back). This provides Read Committed isolation
+and does not affect our results (e.g., is achievable with availability
+by waiting to write until commit time~\cite{hat-vldb,spanner}).
 
 \minihead{Invariants} As we have discussed, users accessing a shared
 database have notions of correctness, which we capture in our system
