@@ -3,7 +3,7 @@ from multidc_common import lats
 from random import random
 from pylab import *
 
-TRIALS = 10000
+TRIALS = 100000
 
 ms=6
 lw=1
@@ -98,7 +98,7 @@ def gendc2pc_decent(regions):
             if s1 == s2:
                 continue
             committime.append(prev_dctimes[s2]+gen_delay(s2, s1))
-        dctimes[s1] = max(committime)
+        dctimes[s1] = max(prev_dctimes[s1], max(committime))
 
     return max(dctimes.values())
 
@@ -116,9 +116,10 @@ for i in range(2, len(regions)+1):
     setup_2pc_decent()
     for it in range(0, TRIALS):
         time = gendc2pc_decent(regions[:i])
+    print "DECENT", len(regions), float(TRIALS)/time*1000, time/float(TRIALS)
     dctwopcthrus_decent.append(float(TRIALS)/time*1000)
 
-plot(dctwopcthrus_decent, 's-', color="green", markeredgecolor="green", markerfacecolor='None', label="2 delays", markersize=ms)
+plot(dctwopcthrus_decent, 's-', color="green", markeredgecolor="green", markerfacecolor='None', label="D-2PC", markersize=ms)
 
 twopcstds = []
 classictwopcthrus = []
@@ -130,10 +131,11 @@ for i in range(2, len(regions)+1):
     for it in range(0, TRIALS):
         time = gen2pc_classic("virgina", regions[:i])
 
+    print "CLASSIC", len(regions), float(TRIALS)/time*1000, time/float(TRIALS)
     classictwopcthrus.append(float(TRIALS)/time*1000)
 
 
-plot(classictwopcthrus, 'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="3 delays", markersize=ms)
+plot(classictwopcthrus, 'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="C-2PC", markersize=ms)
 
 legend(loc="upper right", numpoints=2, frameon=False, handlelength=2)
 

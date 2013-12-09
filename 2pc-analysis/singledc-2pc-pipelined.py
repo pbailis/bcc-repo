@@ -6,7 +6,7 @@ matplotlib.rcParams['figure.figsize'] = 5, 4
 matplotlib.rcParams['lines.linewidth'] = 1
 
 
-TRIALS = 10000
+TRIALS = 100000
 MIN_NODES=2
 MAX_NODES = 21
 
@@ -93,7 +93,8 @@ def gen2pc_decent(numnodes, model):
                 continue
             commitwait.append(prev_ctimes[j]+model.gen_delay())
         
-        ctimes[i] = max(commitwait)
+        ctimes[i] = max(max(commitwait), prev_ctimes[i])
+    
 
     return max(ctimes.values())
 
@@ -110,9 +111,10 @@ for model in MODELS:
         setup_2pc(nodes)
         for it in range(0, TRIALS):
             time = gen2pc_decent(nodes, model)
+        print "DECENT", nodes, float(TRIALS)/time*1000, time/float(TRIALS)
         thrus.append(float(TRIALS)/time*1000)
 
-    plot([i for i in NODELIST], thrus,  's-', color="green", markeredgecolor="green", markerfacecolor='None', label="2 delays", markersize=ms)
+    plot([i for i in NODELIST], thrus,  's-', color="green", markeredgecolor="green", markerfacecolor='None', label="D-2PC", markersize=ms)
 
     thrus = []
 
@@ -121,10 +123,10 @@ for model in MODELS:
         for it in range(0, TRIALS):
             time = gen2pc_classic(nodes, model)
         
-        print nodes, time
+        print "CLASSIC", nodes, float(TRIALS)/time*1000, time/float(TRIALS)
         thrus.append(float(TRIALS)/time*1000)
 
-    plot([i for i in NODELIST], thrus,'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="3 delays", markersize=ms)
+    plot([i for i in NODELIST], thrus,'o-', color="blue", markeredgecolor="blue", markerfacecolor='None', label="C-2PC", markersize=ms)
 
 
 ylabel("Maximum Throughput (txns/s)")

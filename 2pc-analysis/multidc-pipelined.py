@@ -3,7 +3,7 @@ from multidc_common import lats
 from random import random
 from pylab import *
 
-TRIALS = 100
+TRIALS = 10000
 
 ms=6
 lw=1
@@ -44,21 +44,15 @@ def gen_delay(from_region, to_region):
     maxpctproportion = (chosen_pct-minpct)/float(maxpct-minpct)
     return minpctvalue*(1-maxpctproportion)+maxpctvalue*maxpctproportion
 
+# 3rtt
 def gen2pc(home, others):
     time = 0
     prepares = []
     for other in others:
         if other == home:
             continue
-        prepares.append(gen_delay(home, other)+gen_delay(other, home))
-    time += max(prepares)
-    commits = []
-    for other in others:
-        if other == home:
-            continue
-        commits.append(gen_delay(home, other))
-    time += max(commits)
-    return time
+        prepares.append(gen_delay(other, home)+gen_delay(home, other))
+    return max(prepares)
 
 def find_closest_dc(dc):
     mindc = None
@@ -71,17 +65,13 @@ def find_closest_dc(dc):
 
     return mindc
 
+# 2rtt
 def gendc2pc(home, others):
     prepares = []
     for preparer in others:
-        if home==preparer:
-            preparetime = 0
-        else:
-            preparetime = gen_delay(home, preparer)
-
         for committer in others:
             if preparer != committer:
-                prepares.append(preparetime+gen_delay(preparer, committer))
+                prepares.append(gen_delay(preparer, committer))
     return max(prepares)
 
 def average(lst):
@@ -122,6 +112,6 @@ xticks(range(0, 7), ["+OR", "+CA", "+IR", "+SP", "+TO", "+SI", "+SY"])
 xlabel("Participating Datacenters (+VA)")
 ylabel("Maximum Throughput (txn/s)")
 
-subplots_adjust(bottom=.1, right=0.95, top=0.9, left=adjleft)
+subplots_adjust(bottom=.1, right=0.95, top=0.9, left=.1)
 
 savefig("multidc-twopc.pdf",  bbox_inches='tight', pad_inches=.1)
