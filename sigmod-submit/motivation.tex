@@ -5,10 +5,9 @@
 % application-level consistency is key requirement
 
 As repositories for application state, databases are tasked with the
-challenging goals of maintaining correct, durable data despite
-concurrency, failures, and, often,
-distribution~\cite{bernstein-book}. Core to the utility of a database
-system is its ability to maintain application data that is
+challenging goal of managing data despite concurrency, failures, and,
+often, distribution~\cite{bernstein-book}. Core to the utility of a
+database system is its ability to maintain application data that is
 \textit{consistent}---that is, data that is well-formed according to
 application semantics~\cite{gray-virtues}. By entrusting databases
 with their data, applications are freed from the requirement to
@@ -17,10 +16,10 @@ requires reasoning about and often controlling concurrent access to
 data: in this section, we discuss this trade-off and describe classic,
 conservative approaches to maintaining consistency.
 
-\minihead{A simple example} As a motivating example running throughout
-this paper, we consider a simple payroll application managing
-information about employees and departments. We specifically consider
-three aspects of the payroll application:
+\minihead{A simple example} As a motivating example we will revisit
+throughout this paper, consider a simple payroll application managing
+information about employees and departments. We will focus on three
+specific features of the application:
 \begin{myitemize}
 \item\textbf{Employee IDs:} Employees are assigned ID numbers that
   should be unique with respect to all other assigned IDs (i.e., a
@@ -34,7 +33,7 @@ three aspects of the payroll application:
 A database supporting the payroll application will have to be careful
 in managing correctness as multiple users concurrently access the
 database state. For example, if Stan is assigned ID number $5$ and
-Mary is simultaneously assigned ID number $5$, then the database
+Mary is simultaneously assigned ID number $5$, then the application's
 consistency will be compromised. On the other hand, properties like
 the department constraint are easier to maintain. For example,
 simultaneously adding Stan and Mary to the Engineering department is
@@ -52,7 +51,7 @@ correct transaction processing require synchronous coordination?
 % towards achieving consistency
 
 \minihead{Transactions and Isolation} The ACID transaction concept
-pioneered by Jim Gray and System R relieved programmers of the
+pioneered by Jim Gray and System R relieves programmers of the
 requirement to explicitly specify their consistency constraints by
 encouraging the use of serializable
 transactions~\cite{gray-virtues}. Under serialiable isolation, the
