@@ -13,12 +13,12 @@ likes. While these extremes are trivial, the space in-between contains
 a spectrum of interesting and---as we discuss here---useful
 combinations to explore. Until now, we have been largely concerned
 with formalizing \iconfluence for abstract operations; in this
-section, we begin to make these trade-off complete. We examine a
+section, we begin to make these trade-offs concrete. We examine a
 series of practical invariants by exploring increasingly permissive
 subsets of SQL and ending with abstract data types, revisiting our
-payroll example along the way. We conclude with a discussion of
-possible limitations and extensions and will use these results in our
-analysis of several applications in Section~\ref{sec:evaluation}.
+payroll example along the way. We also discuss limitations and
+possible extensions and will use these results in our analysis of
+several applications in Section~\ref{sec:evaluation}.
 
 \subsection{\iconfluence for Relations}
 
@@ -171,22 +171,25 @@ automate this process via syntactic, rule-based analysis of
 declarative procedures and DDL; building a prototype analysis tool
 that identifies \iconfluence for all of the above constraints in
 addition to limited support for conditional updates required less than
-a week to build. An alternative approach would use automatic (and,
-likely, undecidable) analysis for arbitrary program logic. We believe
-this is feasible for restricted languages (possibly SQL as well) but,
-given our initial success in classifying a (growing) set of invariants
-on an as-needed basis, we have reserved this as future work.
+a week to build. As an alternative to our current approach, we have
+considered using automatic (and, likely, undecidable) analysis for
+arbitrary program logic. We believe this is feasible for restricted
+languages (possibly SQL as well) but, given our initial success in
+classifying a (growing) set of invariants on an as-needed basis, we
+have reserved this as future work.
 
-Immutable/bag semantics are not always best for
-programmability. In practice, and in our analysis thus far, we have
-found abstract data types to be a useful workaround for avoiding
-anomalies due to non-bag merge semantics. Indeed, as others have
-noted~\cite{bayou,gray-book}, managing update conflicts requires care
-to avoid ``losing'' modifications and/or ending up with logically
-inconsistent data (e.g., ``return \texttt{NULL}'' is a safe but
-trivial merge function). \iconfluence analysis adds application-level
-semantics (safety) to the process of merging (liveness) and can be
-viewed as determining when it is indeed safe to perform ``optimistic''
+Immutable/bag semantics simplify reasoning about merge but are not
+always ideal for programmability. As many have
+noted~\cite{bayou,gray-book}, merging concurrent updates using
+destructive operators (e.g., ``last write wins'') requires care to
+avoid ``losing'' modifications (e.g., Lost Update) and/or ending up
+with logically inconsistent data (e.g., ``return \texttt{NULL}'' is a
+safe but trivial merge function that loses data). In practice, and in
+our analysis thus far, we have found abstract data types to be a
+useful workaround for avoiding anomalies due to non-bag merge
+semantics. \iconfluence analysis adds application-level semantics
+(safety) to the process of merging (liveness) and can be viewed as a
+tool that decides when it is indeed safe to perform ``optimistic''
 replication and merge~\cite{optimistic}. However, unlike ``tentative
 update'' programming models, successful (i.e., committed) updates will
 not be rolled back.

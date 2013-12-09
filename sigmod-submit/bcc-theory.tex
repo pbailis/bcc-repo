@@ -4,13 +4,13 @@
 
 With a system model and formal goals in hand, we now address the
 question: when does transaction processing require synchronous
-coordination? The answer depends on the set of operations the database
-may be expected to perform as well as the integrity constraints that
-the database is required to maintain. Unsurprisingly, combinations
-fall into both categories. Our contribution here is to formalize a
-criterion that will answer this question for specific transactions and
-invariants---while only reasoning about transaction logic and
-invariants.
+coordination? The answer depends not only on the transactions that a
+database may be expected to perform and not only on the integrity
+constraints that the database is required to maintain but instead
+depends on the \textit{combination} of the two. Our contribution here
+is to formalize a criterion that will answer this question for
+specific combinations---while only reasoning about and using the
+abstractions of transaction logic and invariants.
 
 \subsection{\iconfluence: Criteria Defined}
 
@@ -23,8 +23,8 @@ is, if the effects of two valid series of transactions ($S_i$, $S_j$)
 that operate independently on the same copy of valid database state
 produce valid outputs ($I(S_i(D))$ and $I(S_j(D))$ hold), their
 effects can safely be combined to produce a valid database state
-($I(S_i(D) \sqcup S_j(D))$ holds). \iconfluence will form the formal
-basis of a relationship between \cfreedom and an application.
+($I(S_i(D) \sqcup S_j(D))$ holds). \iconfluence will form the basis of
+an application's potential for \cfree execution.
 
 We first define a valid sequence of transactions, representing the
 result of applying a set of transactions to database state such that

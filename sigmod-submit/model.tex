@@ -16,8 +16,9 @@ necessarily empty), and copies of database state can be combined via a
 ``merge'' operator ($\sqcup$: $DB \times DB \rightarrow DB$).  For
 simplicity, we require merge to be commutative, associative, and
 idempotent~\cite{calm,crdt}. In our ``bag of mutations'' model, merge
-is simple set union, but we will consider alternative implementations
-in Section~\ref{sec:bcc-practice}.
+is simple set union (allowing multiple ``versions'' of each data
+item~\cite{adya-phd}), but we will consider alternative
+implementations in Section~\ref{sec:bcc-practice}.
 
 \minihead{Transactions} Users submit requests to the database in the
 form of transactions, or groups of operations on data items that

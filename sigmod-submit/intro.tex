@@ -73,14 +73,15 @@ set of invariants, called \textit{invariant confluence}. This
 can be safely executed independently and in parallel and subsequently
 ``merged'' into consistent database state. We prove that a database
 system can maintain invariants during \cfree, available, and
-convergent operation if and only if the invariants are
-\iconfluent. Accordingly, \iconfluence analysis can capture the
-potential scalability of a given application: if an application passes
-the \iconfluence test, it can be executed without coordination. If an
-application fails the test, it will (provably) \textit{have} to
-coordinate in order to guarantee correctness. This provides the
-foundation for \textit{coordination-avoiding} database designs that
-coordinate only when required. As we discuss in
+convergent operation if and only if the invariants are \iconfluent
+with respect to an application's transactions. Accordingly,
+\iconfluence analysis can capture the potential scalability of a given
+application: if an application passes the \iconfluence test, it can be
+executed without coordination. If an application fails the test, it
+will (provably) \textit{have} to coordinate in order to guarantee
+correctness. Analyzing invariants and transactions \textit{together}
+provides the foundation for \textit{coordination-avoiding} database
+designs that coordinate only when required. As we discuss in
 Section~\ref{sec:relatedwork}, our core results marry concepts from
 rule-based rewriting systems~\cite{obs-confluence,termrewriting},
 distributed computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb},

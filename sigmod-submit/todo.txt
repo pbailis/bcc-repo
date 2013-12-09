@@ -1,4 +1,20 @@
 
+TO DO
+
+1) Use the formalism presented in section 3 and 4 in some of the examples in
+Section 5. Otherwise, as a reader I feel a bit cheated as you ask me
+to go through all the formalism, and then not use it again..
+
+Agreed! Working on it. There's a tough trade-off between brevity and giving the reader some satisfaction for all of our formalization.
+
+2) I'd emphasize the solution for sequential ID assignment where 
+you assign first a temporary unique iD, and then assign a sequential 
+ID on commit. This seems the most interesting of the examples.
+
+Agreed. I can pull this out sooner. Also, if I put it in the "Practice" section instead of the evaluation, it'll come as less of a dirty trick :)
+
+
+
 DONE
 
 1.) Change section 5 lead-in.
@@ -7,8 +23,6 @@ DONE
 
 3.) Shorted section 6.1.
 
-TO DO
 
 4.) Elaborate on "discussion" to Section 6.
 5.) Add more formalism to section 5.
-
