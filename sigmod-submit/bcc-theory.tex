@@ -22,9 +22,9 @@ valid database states can be merged into a valid database state. That
 is, if the effects of two valid series of transactions ($S_i$, $S_j$)
 that operate independently on the same copy of valid database state
 produce valid outputs ($I(S_i(D))$ and $I(S_j(D))$ hold), their
-effects can safely be combined to produce a valid database state
-($I(S_i(D) \sqcup S_j(D))$ holds). \iconfluence will form the basis of
-an application's potential for \cfree execution.
+effects can safely be combined (via merge) to produce a valid database
+state ($I(S_i(D) \sqcup S_j(D))$ holds). \iconfluence will form the
+basis of an application's potential for \cfree execution.
 
 We first define a valid sequence of transactions, representing the
 result of applying a set of transactions to database state such that

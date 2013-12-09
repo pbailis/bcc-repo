@@ -1,22 +1,22 @@
 
 \begin{abstract}
 Concurrent access to shared state results in a fundamental trade-off
-between coordination---surfacing in the form of availability, latency,
-and scalability---and application-level consistency, or semantic
-guarantees for end users. Traditional mechanisms such as serializable
-transactions are sufficient to ensure application-level consistency
-but require synchronous coordination, while weaker mechanisms in turn
-may sacrifice consistency for asynchronous coordination and greater
-scale. In this paper, we identify a necessary and sufficient condition
-for achieving \cfree execution without violating application-level
-consistency: \fullnameconfluence. By explicitly considering
-application-level invariants, \fullnameconfluence analysis allows
-databases to coordinate between operations only when anomalies that
-might violate invariants are possible. This provides a formal basis
-for coordination-avoiding database systems, which coordinate only when
-it is provably necessary to do so. We demonstrate the utility of
-\fullnameconfluence analysis on a subset of SQL and via a
-coordination-avoiding proof-of-concept database prototype that scales
-linearly to over a million TPC-C New-Order transactions per second on
-100 servers.
+between coordination---surfacing in the form of reduced availability,
+decreased scalability, and increased latency---and application-level
+consistency, or semantic guarantees for end users. Traditional
+mechanisms such as serializable transactions are sufficient to ensure
+application-level consistency but require synchronous coordination,
+while weaker mechanisms may sacrifice consistency for less
+coordination and greater scale. In this paper, we identify a necessary
+and sufficient condition for achieving \cfree execution without
+violating application-level consistency: \fullnameconfluence. By
+explicitly considering application-level invariants,
+\fullnameconfluence analysis allows databases to coordinate between
+operations only when anomalies that might violate invariants are
+possible. This provides a formal basis for coordination-avoiding
+database systems, which coordinate only when it is necessary
+to do so. We demonstrate the utility of \fullnameconfluence analysis
+on a subset of SQL and via a coordination-avoiding proof-of-concept
+database prototype that scales linearly to over a million TPC-C
+New-Order transactions per second on 100 servers.
 \end{abstract}

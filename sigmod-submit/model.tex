@@ -169,7 +169,8 @@ $R_i$ and $R_j$ cannot simply ``throw away'' writes (i.e., tentative
 updates~\cite{tamer-book}) to ensure consistency (again, a deliberate
 choice that we will revisit in Section~\ref{sec:merge}). To capture
 the requirement that replica states are valid not only during
-operation but also after merge, we introduce the following definition:
+(divergent) operation but also after merge, we introduce the following
+definition:
 
 \begin{definition}
 A system is \textit{globally $I$-valid} if all replicas always contain
