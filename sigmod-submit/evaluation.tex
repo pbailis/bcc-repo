@@ -216,17 +216,17 @@ in three \texttt{us-west} availability zones ($5$ warehouses per
 server), we achieve over 1.6 million New-Order transactions per
 second. We achieve 89.5\% of perfect scaling from one to 100 machines
 and perfect scaling from ten to 100 machines. At peak, each server is
-CPU bound due to our current, admittedly fairly inefficient
+CPU bound due to our admittedly fairly inefficient
 implementation. Nonetheless, by avoiding distributed coordination, we
-can scale out. A comparison with a system providing serializability or
-even Snapshot Isolation would be unfair, but we are unaware of any
-other compliant TPC-C implementation that achieves greater than $500K$
+the system scales out. A comparison with a serializable or Snapshot
+Isolated system would be unfair, but we are unaware of any other
+compliant TPC-C implementation that achieves greater than $500K$
 New-Order transactions per second (e.g., Oracle 11G,
 Calvin~\cite{calvin}, Silo's non-FastIDs~\cite{silo},
 VLL~\cite{abadi-vll}). In contrast, we present these results as a
 proof of concept that executing even ``challenging'' workloads like
-TPC-C that contain many complex integrity constraints are not at odds
-with scalability if implemented in a coordination-avoiding manner.
+TPC-C that contain complex integrity constraints are not at odds with
+scalability if implemented in a coordination-avoiding manner.
 
 \begin{figure}
 \begin{center}
@@ -237,15 +237,15 @@ with scalability if implemented in a coordination-avoiding manner.
 \label{fig:scaleout}
 \end{figure}
 
-\minihead{Additional transactions} However, the remainder of the TPC-C
-transactions are not distributed and are uninteresting: all operations
-except for the Delivery transaction are implementable via a
-combination of foreign key updates and commutative counter
-increment/decrement, and the Delivery transaction is easily
-implemented (as acknowledged in the benchmark
-specification~\cite{tpcc}) as a single-partition transaction. The
-TPC-C isolation requirements (reflecting the ANSI SQL specification)
-are all achievable via client-side caching~\cite{hat-vldb}.
+\minihead{Additional transactions} The remainder of the TPC-C
+transactions are not distributed and are largely
+uninteresting~\cite{calvin}: all transactions except Delivery are
+implementable via a combination of foreign key updates and commutative
+counter increment/decrement, and Delivery is easily implemented (as
+acknowledged in the benchmark specification~\cite{tpcc}) as a
+single-partition transaction. The TPC-C isolation requirements
+(reflecting the ANSI SQL specification) are all achievable via
+client-side caching~\cite{hat-vldb}.
 
 \subsection{Discussion}
 
@@ -259,7 +259,7 @@ industry standard for evaluating the performance of OLTP
 systems''~\cite{oltpbench}, but we are also aware that TPC-C may be a
 simplification of real-world workloads.
 
-For greater variety, we examined the transactions in the OLTPBenchmark
+For greater variety, we examined the OLTPBenchmark
 suite~\cite{oltpbench} and found (and confirmed with an author
 of~\cite{oltpbench}) that, nine of fourteen remaining (non TPC-C)
 benchmarks, the workload transactions did not involve integrity

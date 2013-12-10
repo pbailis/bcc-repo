@@ -163,17 +163,16 @@ or compromising availability.\footnote{We can likely apply Newman's
   in which a client submits $S_0$ to $R_1$. To maintain transactional
   availability and convergence, $R_1$ must commit $S_0$ and, after
   some period of time, exchange writes with $R_2$. At the end of
-  $\alpha_0$, $R_1$ and $R_2$ will both contain $D_s$.
-
-  Next, we consider an execution $\alpha_1$ beginning after
-  convergence in $\alpha_0$ in which one client $C_1$ submits the
-  transactions from $S_1$ to a replica $R_1$. We also consider a
-  second execution $\alpha_2$ also beginning after convergence in
-  $\alpha_0$ in which a second client $C_2$ submits the transactions
-  from $S_2$ to replica $R_2$. To preserve transactional availability,
-  in $\alpha_1$, $R_1$ must commit the transactions in $S_1$
-  (resulting in $S_1(D_s)$), while, in $\alpha_2$, $R_2$ must commit
-  the transactions in $S_2$ (resulting in $S_2(D_s)$).
+  $\alpha_0$, $R_1$ and $R_2$ will both contain $D_s$. Next, we
+  consider an execution $\alpha_1$ beginning after convergence in
+  $\alpha_0$ in which one client $C_1$ submits the transactions from
+  $S_1$ to a replica $R_1$. We also consider a second execution
+  $\alpha_2$ also beginning after convergence in $\alpha_0$ in which a
+  second client $C_2$ submits the transactions from $S_2$ to replica
+  $R_2$. To preserve transactional availability, in $\alpha_1$, $R_1$
+  must commit the transactions in $S_1$ (resulting in $S_1(D_s)$),
+  while, in $\alpha_2$, $R_2$ must commit the transactions in $S_2$
+  (resulting in $S_2(D_s)$).
 
    We now consider a third execution, $\alpha_3$ to produce a
    contradiction. In $\alpha_3$, which begins immediately after

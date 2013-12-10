@@ -9,13 +9,9 @@ challenging goal of managing data despite concurrency, failures, and,
 often, distribution~\cite{bernstein-book}. Core to the utility of a
 database system is its ability to maintain application data that is
 \textit{consistent}---that is, data that is well-formed according to
-application semantics~\cite{gray-virtues}. By entrusting databases
-with their data, applications are freed from the requirement to reason
-about correctness despite concurrency. Maintaining consistency
-inherently requires reasoning about and often controlling concurrent
-access to data: in this section, we discuss this trade-off and
-describe classic, conservative approaches to maintaining consistency
-and motivate an alternative approach.
+application semantics~\cite{gray-virtues}. In this section, we discuss
+this trade-off, describe classic, conservative approaches to
+maintaining consistency, and motivate an alternative approach.
 
 \minihead{A simple example} As an example we will revisit throughout
 this paper, consider a simple payroll application managing information
@@ -64,11 +60,12 @@ isolation between concurrently executing transactions as a
 \textit{means} towards achieving application consistency. Serializable
 transactions are a \textit{sufficient} mechanism for ensuring
 consistency but are not always \textit{necessary}: as a classic
-example due to Lamport in
-1976~\cite{lamport-audit,schneider-concurrent}, an ``audit''
+example due to Lamport in 1976~\cite{lamport-audit}, an ``audit''
 transaction that monitors bank accounts for embezzlement does not need
-to observe serializable state as long as account balances reflect all
-visible deposits and transfers.
+to observe serializable state as long as balances it reads reflect
+deposits (for a simpler example, observe that audit transactions
+wishing to only read positive balances can execute independently of
+transactions that modify balances).
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -161,18 +158,18 @@ guarantees---one model does not fit all.
 an alternative that manages the trade-off between coordination and
 correctness while reducing the tension between programmability and
 performance. Applications should ideally execute with as little
-coordination as possible, but non-serializable isolation anomalies can
-and will result in inconsistency for arbitrary applications. We must
-answer the question: given an application, which anomalies are
-important? Rather than require application writers to manually
-classify anomalies, we will instead formulate our criteria for
-coordination in terms of application-level semantics. Given a set of
-invariants describing application state (e.g., as part of the SQL
-DDL), we will present a necessary and sufficient condition for
-coordination-free execution. While this task requires some
-formalization (Sections~\ref{sec:model},\ref{sec:bcc-theory}), we
-demonstrate that it can yield pragmatic results both in languages like
-SQL (Section~\ref{sec:bcc-practice}) and in real system deployments
+coordination as possible, but isolation anomalies can and will result
+in inconsistency for arbitrary applications. We must answer the
+question: given an application, which anomalies are important? Rather
+than require application writers to manually classify anomalies, we
+will instead formulate our criteria for coordination in terms of
+application-level semantics. Given a set of invariants describing
+application state (e.g., as part of the SQL DDL), we will present a
+condition for coordination-free execution of transactions. While this
+task requires some formalization
+(Sections~\ref{sec:model},\ref{sec:bcc-theory}), we demonstrate that
+it can yield pragmatic results both in languages like SQL
+(Section~\ref{sec:bcc-practice}) and in real system deployments
 (Section~\ref{sec:evaluation}).
 
 % if you give up serializability, can't guarantee correctness in an

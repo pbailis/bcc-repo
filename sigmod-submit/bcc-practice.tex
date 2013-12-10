@@ -54,8 +54,7 @@ $\{$Mary:5$\}$ are both valid states that can be reached by valid
 sequences (starting at $\{\}$) but their merge---$\{$Stan:5,
 Mary:5$\}$ is not $I$-valid. Therefore, uniqueness is not \iconfluent
 for inserts of unique values. However, deletion of unique records
-\textit{is} $I$-confluent: removing items from a bag of unique values
-cannot introduce duplicates.
+\textit{is} $I$-confluent: removing items cannot introduce duplicates.
 
 However, if we consider arbitrary \textit{generation} of IDs, whereby
 the database generates unique values on behalf of users (e.g., assign
@@ -74,11 +73,11 @@ We can consider further invariants on the unique values: for example,
 an \texttt{AUTO\_INCREMENT} constraint might require that values are
 assigned in increasing order (i.e., unique and no sequential
 gaps). This represents a further refinement to the above examples. The
-former (unique value assignment) is still not \iconfluent, while the
-latter (sequentiality) depends the invariant's semantics. A constraint
-requiring a dense, unique sequence of IDs (i.e., no gaps in the ID
-space) is not \iconfluent. However, as a consolation, if we can defer
-the ID assignment until the end of the transaction
+unique value assignment is still not \iconfluent, while sequentiality
+depends the invariant's semantics. A constraint requiring a dense,
+unique sequence of IDs (i.e., no gaps in the ID space) is not
+\iconfluent. However, as a consolation, if we can defer the ID
+assignment until the end of the transaction
 (Section~\ref{sec:evaluation}), resolving this ``conflict'' does not
 necessarily require transaction abort.
 
@@ -112,13 +111,13 @@ concepts to update (and cascading updates).
 we can consider the problem of maintaining materialized views. A user
 may wish to pre-compute the cardinality of a given relation or query
 in order to speed performance via a materialized
-view~\cite{tamer-book}. When data changes, the materialized view should
-change. Merging divergent ``primary'' data should update the
+view~\cite{tamer-book}. When data changes, the materialized view
+should change. Merging divergent ``primary'' data should update the
 (divergent) materialized views. The updated materialized views can be
 computed and installed at the same time as the changes to the primary
 data are installed (a problem related to maintaining foreign key
 constraints): there are no ``conflicts'' in a view. Accordingly, view
-maintenance (although potentiallye expensive) is indeed possible in a
+maintenance (while potentially expensive) is possible in a
 convergent setting.
 
 \subsection{\iconfluence for Data Types}
@@ -186,17 +185,17 @@ this as future work.
 Immutable/bag semantics simplify reasoning about merge but are not
 always ideal for programmability. As many have
 noted~\cite{bayou,tamer-book,dynamo}, merging concurrent updates using
-destructive operators (e.g., ``last write wins,'' as in our Lost
-Update example above) requires care to avoid logically inconsistent
-data (e.g., ``return \texttt{NULL}'' is a safe but trivial merge
-function that loses data). In practice, and in our analysis thus far,
-we have found ADTs to be a useful workaround for avoiding anomalies
-due to non-bag merge semantics. While we use these ADTs for merge,
-\iconfluence analysis adds application-level semantics (safety) and
-can be viewed as a tool for deciding when ``optimistic'' replication
-and merge is safe~\cite{optimistic}. Unlike ``tentative update''
-programming models, successful (i.e., committed) updates will not be
-rolled back.
+destructive operators (e.g., ``last write wins,'' as in the Lost
+Update above) requires care to avoid logically inconsistent data
+(e.g., ``return \texttt{NULL}'' is a safe but unhelpful merge). In
+practice, and in our analysis thus far, we have found ADTs to be a
+useful workaround for avoiding anomalies due to non-bag merge
+semantics. While we use these ADTs for merge, \iconfluence analysis
+adds application-level semantics (safety) and can be viewed as a tool
+for deciding when ``optimistic'' replication and merge is
+safe~\cite{optimistic}. Unlike ``tentative update''
+models~\cite{tamer-book}, successful (i.e., committed) updates will
+not be rolled back.
 
 Finally, our proposed invariants are declarative, but a class of
 useful semantics---recency guarantees---are operational. Users often

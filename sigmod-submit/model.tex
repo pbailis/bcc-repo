@@ -27,24 +27,24 @@ should be executed together: we define a transaction $T$ as a
 transformation on state: $T: DB \rightarrow DB$. Accordingly, a
 transaction's effects take the form of mutations reflected in the
 database state. Transactions are executed on a specific replica (i.e.,
-database state), and, later, we will use communication coupled with
-the merge operator to disseminate the effects of transactions (i.e.,
-write sets) between replicas.
+database state), and, later, we will use communication and the merge
+operator to disseminate the effects of transactions (i.e., write sets)
+between replicas.
 
-Individual operations are often in the form of writes (which add new
-versions to the database) or reads (which return a specific set of
-versions from the database), but operations can also operate on
-abstract data types, such as incrementing a counter item or adding an
-item to a set item. When required---and certainly in later sections of
-this paper---we will discuss specific operations but otherwise treat
-transactions as opaque database transformations. A transaction can
-\textit{commit}, signaling success, or \textit{abort}, signaling
-failure. We do not consider the effects of incomplete or aborted
-transactions in database state except that executing transactions will
-observe their own modifications (i.e., aborted writes will be rolled
-back). This provides Read Committed isolation and does not affect our
-results (e.g., is achievable with availability by waiting to write
-until commit time~\cite{hat-vldb,spanner}).
+A transaction may ocntain writes (which add new versions to the
+database) or reads (which return a specific set of versions from the
+database) but may also operate on abstract data types, by, say,
+incrementing a counter or adding a value to a set. When required---and
+certainly in later sections of this paper---we will discuss specific
+operations but otherwise treat transactions as opaque database
+transformations. A transaction can \textit{commit}, signaling success,
+or \textit{abort}, signaling failure. We do not consider the effects
+of incomplete or aborted transactions in database state except that
+executing transactions will observe their own modifications (i.e.,
+aborted writes will be rolled back). This provides Read Committed
+isolation and is achievable with availability by waiting to reveal
+writes to other transactions until commit
+time~\cite{hat-vldb,spanner}.
 
 \minihead{Invariants} As we have discussed, users accessing a shared
 database have notions of correctness, which we capture in our system
@@ -122,10 +122,9 @@ to an \textit{abort} operation in $T$ or if committing the transaction
 would violate a declared invariant over replica state.
 \end{definition}
 
-The above definition stipulates that a transaction can only abort if
-it explicitly chooses to abort itself (e.g., a given item does not
-exist in a warehouse) or if the effects of the transaction would
-invalidate the replica state.
+Under the above definition, a transaction can only abort if it
+explicitly chooses to abort itself (e.g., a given item does not exist
+in a warehouse) or committing would invalidate the replica state.
 
 \minihead{Convergence} Transactional availability allows replicas to
 maintain valid state \textit{independently} but, without additional
@@ -214,10 +213,9 @@ contains the same state.
 \includegraphics[width=.85\columnwidth]{figs/replicas.pdf}
 \end{center}\vspace{-1em}
 \caption{An example coordination-free execution of two transactions,
-  $T_1$ and $T_2$ on two replicas of database state. Each transaction
-  commits on a replica, then, after commit, the replicas exchange
-  their new writes asynchronously and converge on a common database
-  state ($D_3$).}
+  $T_1$ and $T_2$, on two replicas. Each transaction commits
+  on a replica, then, after commit, the replicas asynchronously
+  exchange state and converge to a common state ($D_3$).}
 \label{fig:replicas}
 \end{figure}
 

@@ -6,27 +6,24 @@ In this paper, we have focused on the problem of recognizing when it
 is possible to avoid distributed coordination. Here, we discuss
 extensions to our approaches and outline areas for future work.
 
-\minihead{Avoiding conflicts} Once a potentially conflicting set of
-subsequences is identified via \iconfluence analysis, how should the
-conflict be avoided? Our system model is amenable to standard
+\minihead{Avoiding conflicts} Once a conflicting set of transactions
+is identified via \iconfluence analysis, how should the conflict be
+avoided? Our system model is amenable to many standard techniques like
 backwards validation from optimistic concurrency
-control~\cite{bernstein-book}, but a range of existing techniques from
-the realm of traditional database systems such as
-locking~\cite{gray-virtues} and pre-scheduling~\cite{calvin} are also
-possible. The optimal strategy---as is standard in concurrency
-control---is workload-dependent, hinting at an opportunity for
-physical ``query planning'' in light of coordination-avoidance. For
-example, in a producer-consumer scenario with an invariant requiring
-exactly-once consumption, there are multiple strategies for
-coordination: all producers could coordinate, or all consumers, or a
-mix of the two. The correct choice depends on the physical location,
-prevalence, and distribution of the producing and consuming
-transactions. Revisiting heuristics- and statistics-based query
-planning, specifically targeting physical layout, choice of
-concurrency control, and recovery appears worthwhile. While recent
-work has used intelligent partitioning to reduce distributed
-coordination~\cite{schism}, we see this as only one aspect of a larger
-optimization problem.
+control~\cite{bernstein-book,tamer-book}, but the optimal
+strategy---as is standard in concurrency control---is
+workload-dependent. This hints at an opportunity for heuristics-based
+query planning for coordination avoidance. For example, in a
+producer-consumer scenario with an invariant requiring exactly-once
+consumption, there are multiple strategies for coordination: all
+producers could coordinate, or all consumers, or a mix of the two. The
+correct choice depends on the physical location, prevalence, and
+distribution of the producing and consuming transactions. Revisiting
+heuristics- and statistics-based query planning, specifically
+targeting physical layout, choice of concurrency control, and recovery
+appears worthwhile. While recent work has used intelligent
+partitioning to reduce distributed coordination~\cite{schism}, we see
+this as only one aspect of a larger optimization problem.
 
 \minihead{Amortizing coordination} We have analyzed conflicts on a
 per-transaction basis, but it is possible to amortize the overhead of
@@ -37,14 +34,12 @@ processes. For example, in a bank application, a balance of $\$100$
 might be divided between five servers, such that each server can
 dispense $\$20$ without requiring coordination to enforce a
 non-negative balance invariant (servers can coordinate to ``refresh''
-supply~\cite{mdcc}). This technique (and related techniques) allow
-\cfreedom for otherwise non-\iconfluent operations up until a
-pre-determined level of concurrency. In the context of our \cfreedom
-analysis, this is similar to limiting the branching factor of the
-execution trace to a some finite factor. We do not attempt a further
-comparison here but believe that adapting Escrow and alternative
-time-, versioned-, and numerical- drift-based models~\cite{yu-conit}
-is a promising area for future work.
+supply~\cite{mdcc}). In the context of our \cfreedom analysis, this is
+similar to limiting the branching factor of the execution trace to a
+some finite factor. We do not attempt a further comparison here but
+believe that adapting Escrow and alternative time-, versioned-, and
+numerical- drift-based models~\cite{yu-conit} is a promising area for
+future work.
 
 \minihead{Future system design} Given our formal grounding and early
 quantitative results, what is the appropriate architecture for future
