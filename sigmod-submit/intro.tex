@@ -57,7 +57,7 @@ username, or, in a classic example, a bank account balance might be
 negative. Our task is to categorize anomalies and only prevent those
 that can violate application-level consistency---without requiring
 users to reason about low-level isolation models~\cite{hat-vldb}
-themselves. This requires more information about applications than
+themselves. This requires more application semantics  than
 traditional~\cite{bernstein-book,gray-virtues} (but not
 all~\cite{eswaran-consistency,korth-serializability,decomp-semantics,garciamolina-semantics,activedb-book,ic-survey,ic-survey-two})
 transaction models: users will specify \textit{invariants} (i.e.,
@@ -71,14 +71,14 @@ To provide a formal basis for coordination-avoidance, we develop a
 necessary and sufficient condition for \cfree execution under a given
 set of invariants, called \textit{invariant confluence}. This
 \iconfluence formalizes---at an application level---which operations
-can be safely executed independently in parallel and subsequently
+can be safely executed independently in parallel, without coordination, and subsequently
 ``merged'' into consistent database state. We prove that a database
 system can maintain invariants during \cfree, available, and
 convergent operation if and only if the invariants are \iconfluent
 with respect to an application's transactions. Accordingly,
 \iconfluence analysis can capture the potential scalability of a given
-application: if an application passes the \iconfluence test, it can be
-executed without coordination. If an application fails the test, it
+application: if the application's transactions   pass the \iconfluence test, they can be
+executed without coordination. If  the test fails, it
 will (provably) \textit{have} to coordinate in order to guarantee
 correctness. As we discuss in Section~\ref{sec:relatedwork}, our core
 results marry concepts from rule-based rewriting
