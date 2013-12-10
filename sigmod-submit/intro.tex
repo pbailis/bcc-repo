@@ -49,12 +49,12 @@ acceptable for applications~\cite{consistency-borders}.
 
 In this paper, we seek an alternative: coordination-avoiding
 concurrency control strategies that coordinate only when it is
-provably \textit{necessary} for correctness. For arbitrary
-applications, \textit{anomalies} resulting from non-serializable
+\textit{necessary} for correctness. For arbitrary applications,
+\textit{anomalies} resulting from non-serializable
 execution~\cite{adya-isolation} may compromise application
 correctness: for example, multiple users might be assigned the same
 username, or, in a classic example, a bank account balance might be
-negative. Our task is to categorize and only prevent those anomalies
+negative. Our task is to categorize anomalies and only prevent those
 that can violate application-level consistency---without requiring
 users to reason about low-level isolation models~\cite{hat-vldb}
 themselves. This requires more information about applications than
@@ -103,7 +103,8 @@ analysis to existing benchmarks to determine their required degree of
 coordination: surprisingly, many are executable without
 coordination. As a case study, we focus on the TPC-C
 benchmark~\cite{tpcc}, which has seen substantial popularity in the
-database community as a gold standard for new concurrency control
+database community as a gold standard for measuring new concurrency
+control
 algorithms~\cite{abadi-vll,jones-dtxn,schism,calvin,hstore,oltpbench}. We
 show that ten of twelve of TPC-C's integrity constraints are
 \iconfluent and, more importantly, compliant TPC-C can be implemented
@@ -111,7 +112,7 @@ without synchronous coordination across servers. As a proof of
 concept, we scale a simple coordination-avoiding database prototype
 linearly, to over $1.6M$ New-Order transactions per second on $100$
 servers. We also discuss other applications and demonstrate the costs
-of coordination by analyzing throughput limits due to to atomic
+of coordination by analyzing throughput limits due to atomic
 commitment overhead.
 
 Overall, our results provide a formal but pragmatic grasp on the

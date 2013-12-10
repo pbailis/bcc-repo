@@ -1458,7 +1458,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{216.916259765625, 193.4647216796875}, {88, 36}}</string>
+			<string>{{217.916259765625, 193.4647216796875}, {86, 36}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1523,7 +1523,7 @@ from initial state)}</string>
 \f1\fs28 \nosupersub \uc0\u8852 
 \fs20  
 \f0 D\sub jm\nosupersub )
-\f2 \uc0\u8594 
+\f2 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -1552,7 +1552,7 @@ from initial state)}</string>
 			<array>
 				<string>{114, 187}</string>
 				<string>{165, 204}</string>
-				<string>{216.916259765625, 208.04040389760524}</string>
+				<string>{217.916259765625, 208.11822930174347}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -2312,7 +2312,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{398, 148}, {58, 35}}</string>
+			<string>{{399, 148}, {56, 35}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2371,7 +2371,7 @@ from initial state)}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \b0\fs20 \cf0 \nosupersub I(D\sub jm\nosupersub )
-\f1 \uc0\u8594 
+\f1 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -2381,7 +2381,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{299.16751861572266, 78}, {55, 35}}</string>
+			<string>{{300.16751861572266, 78}, {53, 35}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2440,7 +2440,7 @@ from initial state)}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \b0\fs20 \cf0 \nosupersub I(D\sub j1\nosupersub )
-\f1 \uc0\u8594 
+\f1 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -2450,7 +2450,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{68, 152}, {55, 35}}</string>
+			<string>{{69, 152}, {53, 35}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2509,7 +2509,7 @@ from initial state)}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \b0\fs20 \cf0 \nosupersub I(D\sub in\nosupersub )
-\f1 \uc0\u8594 
+\f1 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -2519,7 +2519,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165, 78}, {55, 35}}</string>
+			<string>{{166, 78}, {53, 35}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2578,7 +2578,7 @@ from initial state)}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \b0\fs20 \cf0 \nosupersub I(D\sub i1\nosupersub )
-\f1 \uc0\u8594 
+\f1 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -2588,7 +2588,7 @@ from initial state)}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{230.5, 50}, {52, 35}}</string>
+			<string>{{231.5, 50}, {50, 35}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2647,7 +2647,7 @@ from initial state)}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \b0\fs20 \cf0 \nosupersub I(D\sub s\nosupersub )
-\f1 \uc0\u8594 
+\f1 =
 \f0 True}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -2931,7 +2931,7 @@ from initial state)}</string>
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-03 21:28:03 +0000</string>
+	<string>2013-12-10 03:58:58 +0000</string>
 	<key>Modifier</key>
 	<string>Peter Bailis</string>
 	<key>NotesVisible</key>
@@ -3012,7 +3012,7 @@ from initial state)}</string>
 			</dict>
 		</array>
 		<key>Frame</key>
-		<string>{{457, 6}, {710, 872}}</string>
+		<string>{{688, 75}, {710, 872}}</string>
 		<key>ListView</key>
 		<true/>
 		<key>OutlineWidth</key>

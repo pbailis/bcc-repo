@@ -32,7 +32,7 @@ results on \cfreedom in real world deployments.
       traces from~\cite{bobtail}}\par}
   \includegraphics[width=\columnwidth]{figs/multidc-twopc.pdf}\\ \textbf{\scriptsize
     b.) Wide-area network scenario based on traces
-    from~\cite{hat-vldb} with transactions origininating from a
+    from~\cite{hat-vldb} with transactions originating from a
     coordinator in VA (VA:~Virginia, OR:~Oregon, CA:~California,
     IR:~Ireland, SP:~S\~{a}o Paulo, TO:~Tokyo, SI:~Singapore,
     SY:~Sydney)}
@@ -86,13 +86,13 @@ operations on items residing on different servers), we see a maximum
 attainable throughput of approximately $1100$ transactions per second
 (via \dpc; $750$/s via \cpc). With ten servers participating, \dpc
 throughput drops to only $120$ transactions per second (resp. $200$
-for \cpc): the long-tail of network latency surfaces as the number of
+for \cpc): the long tail of network latency surfaces as the number of
 messages sent increases. In the wide area, the effects are stark: if
 only coordinating within the continental US from Virginia to Oregon,
 \dpc message delays incur a latency of approximately $83$~ms per
 commit, resulting in a throughput of $12$ operations per second. If
 coordinating between all eight EC2 availability zones, throughput
-drops to slightly over $2$ transaction per second in both algorithms.
+drops to slightly over $2$ transactions per second in both algorithms.
 
 While this study is based solely on reported latencies, deployment
 reports corroborate our findings. For example, Google's F1 uses
@@ -217,7 +217,7 @@ server), we achieve over 1.6 million New-Order transactions per
 second. We achieve 89.5\% of perfect scaling from one to 100 machines
 and perfect scaling from ten to 100 machines. At peak, each server is
 CPU bound due to our admittedly fairly inefficient
-implementation. Nonetheless, by avoiding distributed coordination, we
+implementation. Nonetheless, by avoiding distributed coordination, 
 the system scales out. A comparison with a serializable or Snapshot
 Isolated system would be unfair, but we are unaware of any other
 compliant TPC-C implementation that achieves greater than $500K$
@@ -237,21 +237,20 @@ scalability if implemented in a coordination-avoiding manner.
 \label{fig:scaleout}
 \end{figure}
 
-\minihead{Additional transactions} The remainder of the TPC-C
-transactions are not distributed and are largely
-uninteresting~\cite{calvin}: all transactions except Delivery are
-implementable via a combination of foreign key updates and commutative
-counter increment/decrement, and Delivery is easily implemented (as
-acknowledged in the benchmark specification~\cite{tpcc}) as a
-single-partition transaction. The TPC-C isolation requirements
-(reflecting the ANSI SQL specification) are all achievable via
-client-side caching~\cite{hat-vldb}.
+\minihead{Additional transactions} The remaining TPC-C transactions
+are not distributed and are largely uninteresting~\cite{calvin}: all
+transactions except Delivery are implementable via a combination of
+foreign key updates and commutative counter increment/decrement, and
+Delivery is easily implemented (as acknowledged in the benchmark
+specification~\cite{tpcc}) as a single-partition transaction. The
+TPC-C isolation requirements (reflecting the ANSI SQL specification)
+are all achievable via client-side caching~\cite{hat-vldb}.
 
 \subsection{Discussion}
 
 These results begin to quantify the effects of coordination-avoiding
 concurrency control. When conflicts cannot be avoided, coordination
-(and atomic commitment can be expensive). However, if considering
+(and atomic commitment) can be expensive. However, if considering
 \textit{application-level} invariants, databases only have to pay the
 price of coordination when it is necessary. We were surprised that
 this application-specific property was so favorable on the ``current

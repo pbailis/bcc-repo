@@ -27,8 +27,8 @@ concurrency control and studies the problem of verifying constraints
 in a shared-nothing, partitioned (but non-replicated) database system,
 while~\cite{kemme-si-ic} discusses the maintenance of common integrity
 constraints under replicated (non-\cfree~\cite{hat-vldb}) Snapshot
-Isolation. Our goal to determine when we can avoid global concurrency
-control and any coordination between replicas.
+Isolation. Our goal is to determine when we can avoid global
+concurrency control and any coordination between replicas.
 
 % following serializability, looked at semantics for concurrency
 % control
@@ -75,10 +75,10 @@ invariant-based conflicts can actually occur.
 \minihead{State-based Commutativity} Related work often reasons about
 the commutativity of transaction \textit{outcomes}~\cite{boosting}:
 for example, two transactions provide state-based commutativity if
-their return value is the same the the final state of the database is
-equivalent despite reordering~\cite{weihl-thesis}. This
-state-based commutativity is a sufficient but not necessary condition
-for concurrent execution. Despite its conservativity, these techniques
+their return value is the same the final state of the database is
+equivalent despite reordering~\cite{weihl-thesis}. This state-based
+commutativity is a sufficient but not necessary condition for
+concurrent execution. Despite its conservativeness, these techniques
 have been successfully applied in diverse fields including database
 concurrency control, concurrent programming~\cite{boosting}, recently,
 operating systems design~\cite{kohler-commutativity}. State-based
@@ -109,7 +109,7 @@ interfere with one another's preconditions for execution, as well as
 Lamport's monotone
 assertions~\cite{schneider-concurrent}. As~\cite{agarwal-consistency}
 and~\cite{decomp-semantics} demonstrate, much of this theory for
-axomatic decomposition of concurrent programs is applicable to
+axiomatic decomposition of concurrent programs is applicable to
 analysis of transaction schedules. However, this literature (yet
 again) almost exclusively considers atomic update to shared state (as
 is reasonable on a multiprocessor system), so the techniques are not
@@ -119,7 +119,7 @@ consider here.
 \minihead{Hoping and Apologizing} In this work, we have assumed that
 database state should \textit{always} be consistent with respect to
 invariants. Some applications can instead benefit from
-probabilistically or numerically-bounded deviations from consistent
+probabilistically or numerically bounded deviations from consistent
 state~\cite{epsilon-divergence} or can provide compensating
 transactions to account for concurrent behavior (e.g.,
 Sagas~\cite{sagas})~\cite{ic-survey,ic-survey-two}. These strategies
@@ -160,7 +160,7 @@ read/write isolation anomalies.  Johnson et al. have examined the
 communication patterns of transactions~\cite{shore-communication}; we
 focus on all-or-nothing communication requirements, but their
 observations are useful for non-\iconfluent applications. Finally, a
-range of mechanisms allow a variety of execution strategies for
+range of mechanisms allows a variety of execution strategies for
 non-\cfree
 operations~\cite{silo,spanner,mdcc,bernstein-book,tamer-book,hstore,megastore}.
 

@@ -8,7 +8,7 @@ As repositories for application state, databases are tasked with the
 challenging goal of managing data despite concurrency, failures, and,
 often, distribution~\cite{bernstein-book}. Core to the utility of a
 database system is its ability to maintain application data that is
-\textit{consistent}---that is, data that is well-formed according to
+\textit{consistent}---that is, data that is well formed according to
 application semantics~\cite{gray-virtues}. In this section, we discuss
 this trade-off, describe classic, conservative approaches to
 maintaining consistency, and motivate an alternative approach.
@@ -51,7 +51,7 @@ correct transaction processing require synchronous coordination?
 pioneered by Jim Gray and System R relieves programmers of the
 requirement to explicitly reason about consistency by encouraging the
 use of serializable transactions~\cite{gray-virtues}. Under
-serialiable isolation, the execution of a set of transactions is
+serializable isolation, the execution of a set of transactions is
 equivalent to some serial ordering among
 them~\cite{bernstein-book}. As long as each transaction leaves the
 database in a consistent state, serializable transactions ensure
@@ -76,7 +76,7 @@ hefty price tag: a requirement for
 coordination~\cite{davidson-survey}. We formally define coordination
 in Section~\ref{sec:model}, but, informally, we say that a database is
 \textit{coordination-free} if each copy of shared database state can
-can execute operations without contacting (and, therefore, possibly
+execute operations without contacting (and, therefore, possibly
 stalling) other copies. This requirement has been captured in
 distributed systems as \textit{availability}, or ``always-on''
 operation: an available system can perform operations on any
@@ -122,9 +122,9 @@ regular register semantics~\cite{hat-vldb}.\footnote{To prevent
   such as linearizability as \textit{isolation models} and reserve the
   use of \textit{consistency} for referring to application-level
   ``ACID'' consistency.}  Not all weaker models are \cfree (e.g.,
-Snapshot Isolation)~\cite{hat-vldb}, but all expose end users to
-isolation \textit{anomalies}, or behavior that could not have arisen
-in a serial execution.
+Snapshot Isolation)~\cite{hat-vldb}, but all---by definition---expose
+end users to isolation \textit{anomalies}, or behavior that could not
+have arisen in a serial execution.
 
 Unfortunately, determining whether weak isolation (and, moreover,
 which isolation model) is safe for a given application is

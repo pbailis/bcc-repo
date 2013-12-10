@@ -31,7 +31,7 @@ database state), and, later, we will use communication and the merge
 operator to disseminate the effects of transactions (i.e., write sets)
 between replicas.
 
-A transaction may ocntain writes (which add new versions to the
+A transaction may contain writes (which add new versions to the
 database) or reads (which return a specific set of versions from the
 database) but may also operate on abstract data types, by, say,
 incrementing a counter or adding a value to a set. When required---and
@@ -61,7 +61,7 @@ we say that a database state is \textit{valid} under an invariant $I$
 (or $I$-valid) if it satisfies the predicate:
 
 \begin{definition}
-A database state $D$ is \textit{$I$-valid} if $I(D) \rightarrow true$.
+A database state $D$ is \textit{$I$-valid} if $I(D) = true$.
 \end{definition}
 
 We wish to analyze sequences of valid transactions that transitively
@@ -82,7 +82,7 @@ in the form of primary key, foreign key, uniqueness, and row-level
 invariants in Section~\ref{sec:bcc-practice} and demonstrate that a
 small set of invariants provides expressive power for many
 applications. It is possible to perform a conservative analysis
-without a full specification of invaraints, but this will result in
+without a full specification of invariants, but this will result in
 less useful results.\vspace{.5em}
 
 % Unlike more general forms of axiomatic logic (e.g., Hoare-style triples~\cite{decomp-semantics,isolation-semantics}), we require only one set of invariants per application.
@@ -97,7 +97,7 @@ by physically replicating data~\cite{bernstein-book}. This allows
 applicability to both single-site database systems with appropriate
 support for concurrent execution on (logically) separate copies of
 data and traditional, replicated multi-master designs. We do not
-further distinguish between partitioned and fully-replicated
+further distinguish between partitioned and fully replicated
 systems~\cite{hat-vldb}.
 
 \minihead{Availability} To reflect the requirement that each user's
