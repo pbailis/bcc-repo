@@ -81,8 +81,8 @@ in the form of primary key, foreign key, uniqueness, and row-level
 ``check'' constraints~\cite{kemme-si-ic}. We discuss specific
 invariants in Section~\ref{sec:bcc-practice} and demonstrate that a
 small set of invariants provides expressive power for many
-applications. It is possible to perform a conservative analysis if a
-full specification of invariants is missing, but this will result in
+applications. It is possible to perform a conservative analysis
+without a full specification of invaraints, but this will result in
 less useful results.\vspace{.5em}
 
 % Unlike more general forms of axiomatic logic (e.g., Hoare-style triples~\cite{decomp-semantics,isolation-semantics}), we require only one set of invariants per application.
@@ -130,15 +130,16 @@ in a warehouse) or committing would invalidate the replica state.
 maintain valid state \textit{independently} but, without additional
 constraints, it is vacuously possible to maintain ``consistent''
 database states by letting replicas diverge (contain different state)
-forever. For example, replicas $R_i$ and $R_j$ might each contain
-valid state but their combined contents may not be valid (e.g., a user
-$u_i$ on $R_i$ is assigned ID $5$ and a separate user $u_j$ on $R_j$
-is assigned the same ID, satisfying the invariant that user IDs are
-unique locally but not globally). In distributed systems parlance,
-this guarantees \textit{safety} (nothing bad happens) but not
-\textit{liveness} (something good happens)~\cite{schneider-concurrent}. To
-ensure that replicas eventually agree---reflecting a shared, common
-set of database state---we adopt the following definition:
+forever. In distributed systems parlance, this guarantees
+\textit{safety} (nothing bad happens) but not \textit{liveness}
+(something good happens)~\cite{schneider-concurrent}. For example,
+replicas $R_i$ and $R_j$ might each contain valid state but their
+combined contents may not be valid (e.g., a user $u_i$ on $R_i$ is
+assigned ID $5$ and a separate user $u_j$ on $R_j$ is assigned the
+same ID, satisfying the invariant that user IDs are unique locally but
+not globally). To ensure that replicas eventually agree---reflecting a
+shared, common set of database state---we adopt the following
+definition:
 
 \begin{definition}A system is \textit{convergent} if, in the
 absence of new transactions and in the absence of indefinite

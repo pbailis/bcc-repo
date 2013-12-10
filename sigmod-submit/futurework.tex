@@ -12,8 +12,8 @@ avoided? Our system model is amenable to many standard techniques like
 backwards validation from optimistic concurrency
 control~\cite{bernstein-book,tamer-book}, but the optimal
 strategy---as is standard in concurrency control---is
-workload-dependent. This hints at an opportunity for heuristics-based
-query planning for coordination avoidance. For example, in a
+workload-dependent. This hints at an opportunity for ``query
+planning'' for coordination avoidance. For example, in a
 producer-consumer scenario with an invariant requiring exactly-once
 consumption, there are multiple strategies for coordination: all
 producers could coordinate, or all consumers, or a mix of the two. The

@@ -195,11 +195,12 @@ or compromising availability.\footnote{We can likely apply Newman's
 \subsection{Discussion}
 
 \iconfluence captures a simple (informal) rule: \textbf{coordination
-  can only be avoided when replica-local commit decisions are globally
-  valid.} If two independent decisions to commit can result in invalid
-converged state, then replicas must coordinate in order to ensure that
-only one of the decisions is to commit. If two such decisions exist,
-it is unsafe for those operations to proceed in parallel, without
+  can only be avoided if all local commit decisions are globally
+  valid} (i.e. the merged global state satisfies all invariants). If
+two independent decisions to commit can result in invalid converged
+state, then replicas must coordinate in order to ensure that only one
+of the decisions is to commit. If two such decisions exist, it is
+unsafe for those operations to proceed in parallel, without
 coordination. Given the existence of an unsafe execution and the
 inability to distinguish between safe and invalid executions using
 only local information, a globally valid system \textit{must}
