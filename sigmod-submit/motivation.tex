@@ -9,8 +9,12 @@ challenging goal of managing data despite concurrency, failures, and,
 often, distribution~\cite{bernstein-book}. Core to the utility of a
 database system is its ability to maintain application data that is
 \textit{consistent}---that is, data that is well formed according to
-application semantics~\cite{gray-virtues}. In this section, we discuss
-this trade-off, describe classic, conservative approaches to
+application semantics~\cite{gray-virtues}. In this section, we 
+% There is no clear tradeoff! There is sometimes a cost to
+% consistency!  In fact, others previously made this false claim:
+% tradeoff between consistency and efficiency. Instead, we say that
+% the cost of consistency varies.
+describe classic and conservative approaches to
 maintaining consistency, and motivate an alternative approach.
 
 \minihead{A simple example} As an example we will revisit throughout
@@ -39,7 +43,7 @@ appear unsafe without coordination between concurrent operations,
 whereas others appear to be resilient to independent access and
 update.
 
-A primary goal of this paper is to formalize this trade-off and state
+A primary goal of this paper is to formalize and state
 a general property for deciding whether or not coordination is
 required. More succinctly, we will answer the question: when does
 correct transaction processing require synchronous coordination?
@@ -52,7 +56,7 @@ pioneered by Jim Gray and System R relieves programmers of the
 requirement to explicitly reason about consistency by encouraging the
 use of serializable transactions~\cite{gray-virtues}. Under
 serializable isolation, the execution of a set of transactions is
-equivalent to some serial ordering among
+equivalent to some serial execution ordering among
 them~\cite{bernstein-book}. As long as each transaction leaves the
 database in a consistent state, serializable transactions ensure
 database consistency. Accordingly, traditional database systems treat
