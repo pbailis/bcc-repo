@@ -61,7 +61,7 @@ we say that a database state is \textit{valid} under an invariant $I$
 (or $I$-valid) if it satisfies the predicate:
 
 \begin{definition}
-A database state $D$ is \textit{$I$-valid} if $I(D) = true$.
+A database state $D$ is \textit{$I$-valid} iff $I(D) = true$.
 \end{definition}
 
 We wish to analyze sequences of valid transactions that transitively
@@ -115,7 +115,7 @@ one), we adopt the following definition of availability\footnote{This
   constant.}~\cite{hat-vldb}:
 
 \begin{definition} 
-A system provides \textit{transactional availability} if, whenever a
+A system provides \textit{transactional availability} iff, whenever a
 client executing a transaction $T$ can access a replica for each item
 in $T$, $T$ eventually commits or otherwise aborts itself either due
 to an \textit{abort} operation in $T$ or if committing the transaction
@@ -141,7 +141,7 @@ not globally). To ensure that replicas eventually agree---reflecting a
 shared, common set of database state---we adopt the following
 definition:
 
-\begin{definition}A system is \textit{convergent} if, in the
+\begin{definition}A system is \textit{convergent} iff, in the
 absence of new transactions and in the absence of indefinite
 communication delays, all correct replicas eventually contain the same
 state.
@@ -178,7 +178,7 @@ the requirement that replica states are valid not only during
 definition:
 
 \begin{definition}
-A system is \textit{globally $I$-valid} if all replicas always contain
+A system is \textit{globally $I$-valid} iff all replicas always contain
 $I$-valid state.
 \end{definition}
 
@@ -197,7 +197,7 @@ coordination under any scenario, we adopt the following definition of
 coordination-freedom:
 
 \begin{definition}
-A system is \textit{\cfree} if replicas do not communicate in order to
+A system is \textit{\cfree} iff replicas do not communicate in order to
 execute any finite number of transactions.
 \end{definition}
 
