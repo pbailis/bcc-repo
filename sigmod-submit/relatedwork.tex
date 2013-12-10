@@ -49,7 +49,7 @@ relations~\cite{herlihy-apologizing}). This is eminently useful when,
 indeed, conflicts are possible. However, this validation (and conflict
 detection) requires communication between processes to reach commit
 decisions. We seek to identify semantics that are achievable entirely
-without coordination: \iconfluence analysis statically reason about
+without coordination: \iconfluence analysis statically reasons about
 all \textit{possible} schedules of transactions instead of performing
 run-time validation.
 
@@ -64,18 +64,19 @@ sets. Assertional Concurrency Control~\cite{decomp-semantics}
 decomposes atomic transactions (like chopping~\cite{chopping} and
 nested atomic transactions~\cite{atomictransactions}) by requiring
 Hoare-style pre- and post-conditions for each individual operation and
-performing axiomatic program analysis (and has also been applied to
-single-site isolation models~\cite{isolation-semantics}). We use a
-single, database-wide set of invariants, which obviates the need for
-manually labeling transaction types. A range of extended transaction
-models~\cite{acta} can further reduce conflicts once it is established
-that invariant-based conflicts can actually occur.
+performing axiomatic program analysis (these techniques have also been
+applied to single-site isolation
+models~\cite{isolation-semantics}). We use a single, database-wide set
+of invariants, which obviates the need for manually labeling
+transaction types. A range of extended transaction models~\cite{acta}
+can further reduce conflicts once it is established that
+invariant-based conflicts can actually occur.
 
 \minihead{State-based Commutativity} Related work often reasons about
 the commutativity of transaction \textit{outcomes}~\cite{boosting}:
 for example, two transactions provide state-based commutativity if
 their return value is the same the the final state of the database is
-equivalent despite reordering~\cite{weihl-data,weihl-thesis}. This
+equivalent despite reordering~\cite{weihl-thesis}. This
 state-based commutativity is a sufficient but not necessary condition
 for concurrent execution. Despite its conservativity, these techniques
 have been successfully applied in diverse fields including database
@@ -106,8 +107,8 @@ condition is closely related to Owicki-Gries interference
 freedom~\cite{owickigries}, whereby concurrent operations cannot
 interfere with one another's preconditions for execution, as well as
 Lamport's monotone
-assertions~\cite{lamport-safety}. As~\cite{decomp-semantics}
-and~\cite{agarwal-consistency} demonstrate, much of this theory for
+assertions~\cite{schneider-concurrent}. As~\cite{agarwal-consistency}
+and~\cite{decomp-semantics} demonstrate, much of this theory for
 axomatic decomposition of concurrent programs is applicable to
 analysis of transaction schedules. However, this literature (yet
 again) almost exclusively considers atomic update to shared state (as
@@ -130,18 +131,20 @@ Theorem~\cite{ameloot-calm} states that monotonic logic provides
 confluent (deterministic) program outcomes despite message
 re-ordering. Subsequent analyses in the Bloom~\cite{calm}, and
 Bloom\textsuperscript{L}~\cite{blooml} languages and the
-Blazes~\cite{blazes} system detect non-monotonic operations. This is a
-useful \textit{liveness} guarantee---something good will
-happen~\cite{lamport-safety}---but does not prevent users from
+Blazes~\cite{blazes} system detect non-monotonic
+operations. Confluence is a useful \textit{liveness}
+guarantee~\cite{schneider-concurrent} but does not prevent users from
 observing inconsistent database state---\textit{safety}---both during
 execution and post-convergence. Here, we consider safety (in the form
 of application-level integrity constraints) and also allow
-non-deterministic (but safe) outcomes. CRDT objects~\cite{crdt}
-similarly ensure convergent outcomes that reflect all updates made to
-each object. This is useful in appropriately merging divergent
-replicas on a per-item basis (and managing replicated state without
-suffering from many forms of Lost Update) but does not guarantee
-application-level correctness.
+non-deterministic (but safe) outcomes. \iconfluence effectively
+identifies monotonicity with respect to declared invariants rather
+than across all program logic. CRDT objects~\cite{crdt} similarly
+ensure convergent outcomes that reflect all updates made to each
+object. This is useful in appropriately merging divergent replicas on
+a per-item basis (and managing replicated state without suffering from
+many forms of Lost Update) but does not guarantee application-level
+correctness.
 
 \minihead{High Availability and Scalability} A large class of systems
 seeks to provide availability~\cite{gilbert-cap} via ``optimistic
@@ -156,7 +159,8 @@ application-level consistency and instead focused on low-level
 read/write isolation anomalies.  Johnson et al. have examined the
 communication patterns of transactions~\cite{shore-communication}; we
 focus on all-or-nothing communication requirements, but their
-observations are useful for non-\iconfluent applications. A range of
-mechanisms provide execution for non-\cfree
-operations~\cite{silo,spanner,mdcc,bernstein-book,gray-book,hstore,megastore}.
+observations are useful for non-\iconfluent applications. Finally, a
+range of mechanisms allow a variety of execution strategies for
+non-\cfree
+operations~\cite{silo,spanner,mdcc,bernstein-book,tamer-book,hstore,megastore}.
 

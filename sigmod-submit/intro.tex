@@ -5,17 +5,17 @@
 % coordination-freedom provides scalability
 
 Minimizing coordination is key in high-performance, scalable database
-designs. Coordination---informally, the requirement that concurrently
+design. Coordination---informally, the requirement that concurrently
 executing operations communicate or otherwise stall in order to
 complete---is expensive. Coordination prohibits parallel execution,
-limits availability in the presence of partial failure, and requires
+limits availability in the presence of partial failures, and incurs
 potentially high latency as communication costs increase (e.g.,
 wide-area networks)~\cite{hat-vldb,gilbert-cap}. A system without
-synchronous coordination (i.e., that is \textit{\cfree}) can scale
-aggressively: adding more query processing capacity (e.g., servers)
-does not incur additional overhead as queries can execute
-independently. In contrast with scale-out across multiple data items
-(as in ``shared-nothing''
+synchronous coordination (i.e., that is \textit{coordination-free})
+can scale aggressively: adding more query processing capacity (e.g.,
+servers) does not incur additional overhead because queries can
+execute independently. In contrast with scale-out across multiple data
+items (as in ``shared-nothing''
 designs~\cite{bernstein-book,f1,spanner,pnuts,hstore}), \cfreedom
 allows scale-out even at the granularity of a single contended data
 item and ensures both high availability~\cite{gilbert-cap} and low
@@ -29,12 +29,13 @@ during concurrent access are at odds with the goal of \cfreedom. The
 serializable transaction concept provides concurrent operations
 (transactions) with the illusion of executing in some serial
 order~\cite{bernstein-book}. Serializability is \textit{sufficient} to
-guarantee application-level consistency: if individual transactions
-maintain correct application state, then a serially ordered execution
-will not violate correctness~\cite{gray-virtues}. However,
-serializability incurs a steep coordination cost: at the level of
-reads and writes, any write potentially conflicts with any other read
-or write to the same item, requiring coordination for safe
+guarantee application-level correctness, or \textit{consistency}: if
+individual transactions maintain correct application state, then a
+serially ordered execution will not violate
+correctness~\cite{gray-virtues}. However, serializability incurs a
+steep coordination cost: at the level of reads and writes, any write
+potentially conflicts with any other read or write to the same item,
+requiring coordination for safe
 execution~\cite{hat-vldb,davidson-survey}. A proliferation of
 alternative data management solutions (e.g., ``NoSQL'') offer greater
 scalability by foregoing such strong
@@ -63,8 +64,8 @@ transaction models: users will specify \textit{invariants} (i.e.,
 integrity constraints)~\cite{traiger-tods}, or predicates representing
 application-level correctness criteria that should always hold true
 across database state(s). For example, users might inform the database
-that usernames should be unique and that each customer should belong
-to a bank branch (e.g., via schema annotations).
+that user IDs should be unique and that each customer should belong to
+a bank branch (e.g., via schema annotations).
 
 To provide a formal basis for coordination-avoidance, we develop a
 necessary and sufficient condition for \cfree execution under a given
@@ -79,29 +80,26 @@ with respect to an application's transactions. Accordingly,
 application: if an application passes the \iconfluence test, it can be
 executed without coordination. If an application fails the test, it
 will (provably) \textit{have} to coordinate in order to guarantee
-correctness. Analyzing invariants and transactions \textit{together}
-provides the foundation for \textit{coordination-avoiding} database
-designs that coordinate only when required. As we discuss in
-Section~\ref{sec:relatedwork}, our core results marry concepts from
-rule-based rewriting systems~\cite{obs-confluence,termrewriting},
-distributed computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb},
-and many prior database
-concepts~\cite{activedb-book,ic-survey,ic-survey-two} such as
-semantics-based concurrency
+correctness. As we discuss in Section~\ref{sec:relatedwork}, our core
+results marry concepts from rule-based rewriting
+systems~\cite{obs-confluence,termrewriting}, distributed
+computing~\cite{herlihy-apologizing,gilbert-cap,hat-vldb}, and many
+prior database concepts~\cite{activedb-book,ic-survey,ic-survey-two}
+such as semantics-based concurrency
 control~\cite{sdd1,decomp-semantics,badrinath-semantics,garciamolina-semantics,korth-serializability,atomictransactions,weihl-thesis},
 in the context of (logically) replicated state.
 
 % many workloads are amenable to cfree execution! the following ICs
 % are actually okay. but if not, here's the cost.
 
-We subsequently apply our \iconfluence coordination analysis to
-existing applications and quantify the costs of
-coordination. Specifically, we demonstrate that many common integrity
+We subsequently apply our \iconfluence analysis to existing
+applications and quantify the costs of coordination. Specifically, we
+demonstrate that transaction execution under many common integrity
 constraints are indeed achievable without coordination, including
 forms of foreign key constraints, unique value generation, and
 row-level check constraints. In contrast, others, like unique value
-checks and sequence number generation do not. We apply this analysis
-to existing benchmarks to determine their required degree of
+invariants and sequence number generation do not. We apply this
+analysis to existing benchmarks to determine their required degree of
 coordination: surprisingly, many are executable without
 coordination. As a case study, we focus on the TPC-C
 benchmark~\cite{tpcc}, which has seen substantial popularity in the
@@ -116,12 +114,11 @@ $100$-node EC2 cluster. We also discuss other applications and
 demonstrate the costs of coordination by analyzing upper bounds on
 throughput due to to atomic commitment overhead.
 
-While our results are not comprehensive, they provide a formal but
-pragmatic grasp on the trade-off between coordination and
-application-level consistency. We accordingly view this work as the
-first step in revisiting core database concepts like query
-optimization, failure recovery, and data layout in light of
-coordination avoidance and increased knowledge of application-level
-semantics.
+Overall, our results provide a formal but pragmatic grasp on the
+trade-off between coordination and application-level consistency. We
+accordingly view this work as the first step in revisiting core
+database concepts like query optimization, failure recovery, and data
+layout in light of coordination avoidance and increased knowledge of
+application-level semantics.
 
 

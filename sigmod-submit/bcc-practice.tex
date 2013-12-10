@@ -25,35 +25,37 @@ several applications in Section~\ref{sec:evaluation}.
 We begin by considering several constraints found in SQL that are
 expressible via standard relational constructs.
 
-\minihead{Equality} Applications often wish to disallow certain values
-from records. For example, an application writer might require that an
-ID column assume a non-null value by marking the column as \texttt{NOT
-  NULL}. These equality (and in-equality) constraints operate on a
-per-record basis. We can apply \iconfluence analysis to show that
-equality constraints are achievable with \cfreedom. Assume two
-database states $S_1$ and $S_2$ each satisfy a per-record equality
-invariant $I_e$ but that $I_e(S_1 \sqcup S_2)\rightarrow false$. Then
-there exists at least one record $r \in S_1 \sqcup S_2$ such that the
-equality constraint fails. Union-based merge is non-destructive and
-does not change the value of a given record, so $r \in S_1$ or $r \in
-S_2$ (or both). But that would imply that one of $S_1$ or $S_2$
-violates $I_e$, a contradiction. Therefore, per-record equality
-invariants for arbitrary values are \iconfluent.
+\minihead{Equality} Applications often wish to disallow records from
+attaining particular values. For example, an application writer might
+require that an ID column contain a non-null value by marking the
+column as \texttt{NOT NULL}. These equality (and in-equality)
+constraints operate on a per-record basis and we can apply
+\iconfluence analysis to show they are achievable with
+\cfreedom. Assume two database states $S_1$ and $S_2$ are each
+$I$-valid under per-record equality invariant $I_e$ but that $I_e(S_1
+\sqcup S_2)\rightarrow false$. Then there exists at least one record
+$r \in S_1 \sqcup S_2$ that violates $I_e$. Union-based merge is
+non-destructive and does not change the value of a given record, so $r
+\in S_1$ or $r \in S_2$ (or both). But that would imply that one of
+$S_1$ or $S_2$ is not $I$-valid under $I_e$, a
+contradiction. Therefore, per-record equality invariants for arbitrary
+values are \iconfluent.
 
-For brevity, we omit formal proofs for remaining invariants.
+Due to space constraints, we unfortunately omit formal proofs for
+remaining invariants and instead sketch \iconfluence results.
 
 \minihead{Uniqueness} Applications often wish to assert the uniqueness
 of values within a given record. For example, an application might
 desire that user IDs be unique. If we allow arbitrary insertion and
 modification of unique values, then we can easily construct
-non-\iconfluent sequences of transactions. For example, in our payroll
-example, we already violated uniqueness of employee IDs:
-$\{$Stan:5$\}$ and $\{$Mary:5$\}$ are both valid states that can be
-reached by valid sequences (starting at $\{\}$) but their
-merge---$\{$Stan:5, Mary:5$\}$ is not valid. Uniqueness is not
-\iconfluent for inserts of unique values. However, deletion of unique
-records \textit{is} $I$-confluent: removing items from a bag of unique
-values cannot introduce duplicates.
+non-\iconfluent sequences of transactions. In our payroll example, we
+already violated uniqueness of employee IDs: $\{$Stan:5$\}$ and
+$\{$Mary:5$\}$ are both valid states that can be reached by valid
+sequences (starting at $\{\}$) but their merge---$\{$Stan:5,
+Mary:5$\}$ is not $I$-valid. Therefore, uniqueness is not \iconfluent
+for inserts of unique values. However, deletion of unique records
+\textit{is} $I$-confluent: removing items from a bag of unique values
+cannot introduce duplicates.
 
 However, if we consider arbitrary \textit{generation} of IDs, whereby
 the database generates unique values on behalf of users (e.g., assign
@@ -63,24 +65,26 @@ replica membership (e.g., server or replica IDs), deterministically
 high probability (e.g., via UUIDs). The difference is subtle (``grant
 this record this specific, unique ID'' versus ``grant this record some
 unique ID''), but, in a system model with membership or random number
-generation (as is pragmatic for most contexts), is powerful. If
+generation (as is pragmatic in many contexts), is powerful. If
 replicas only assign IDs that are unique and within their respective
 portion of the ID namespace, then merging locally valid states will
 also be globally valid.
 
 We can consider further invariants on the unique values: for example,
-an \texttt{AUTO\_INCREMENT} constraint dictates that values are
-assigned in increasing order. This represents a further refinement to
-the above examples. The former (specific value assignment) is still
-not \iconfluent, while the latter depends on the semantics of the
-constraint. A constraint requiring a dense, unique sequence of IDs
-(i.e., no gaps in the ID space) is not \iconfluent. However, as a
-consolation, if we can defer the ID assignment until the end of the
-transaction (Section~\ref{sec:evaluation}), resolving this
-``conflict'' does not necessarily require transaction abort. 
+an \texttt{AUTO\_INCREMENT} constraint might require that values are
+assigned in increasing order (i.e., unique and no sequential
+gaps). This represents a further refinement to the above examples. The
+former (unique value assignment) is still not \iconfluent, while the
+latter (sequentiality) depends the invariant's semantics. A constraint
+requiring a dense, unique sequence of IDs (i.e., no gaps in the ID
+space) is not \iconfluent. However, as a consolation, if we can defer
+the ID assignment until the end of the transaction
+(Section~\ref{sec:evaluation}), resolving this ``conflict'' does not
+necessarily require transaction abort.
 
 Uniqueness invariants are unsurprisingly \iconfluent under selection
-(i.e., read) and deletion.
+(i.e., read) and deletion. Again, invariants alone do not make a
+transaction \cfree or not.
 
 \minihead{Foreign Keys} Applications often wish to express
 relationships between records, captured in SQL by foreign key
@@ -108,20 +112,21 @@ concepts to update (and cascading updates).
 we can consider the problem of maintaining materialized views. A user
 may wish to pre-compute the cardinality of a given relation or query
 in order to speed performance via a materialized
-view~\cite{gray-book}. When data changes, the materialized view should
+view~\cite{tamer-book}. When data changes, the materialized view should
 change. Merging divergent ``primary'' data should update the
 (divergent) materialized views. The updated materialized views can be
 computed and installed at the same time as the changes to the primary
-data are installed (a problem related to foreign key
-\iconfluent. Synchronously updating the views may be expensive but is
-constraints). Accordingly, view maintenance is indeed possible in a convergent setting.
+data are installed (a problem related to maintaining foreign key
+constraints): there are no ``conflicts'' in a view. Accordingly, view
+maintenance (although potentiallye expensive) is indeed possible in a
+convergent setting.
 
 \subsection{\iconfluence for Data Types}
 
 Thus far, we have only considered bags of modifications stored in
 relations. We can express many useful constraints over these bags, and
 the model is a natural fit for, say, immutable
-databases~\cite{gray-virtues,gray-book} (which, as the prior section
+databases~\cite{gray-virtues} (which, as the prior section
 demonstrated, are not \iconfluent for all invariants). However, in
 practice, many database systems do not expose bag semantics, leading
 to a variety of interesting anomalies. For example, if we implement a
@@ -131,13 +136,13 @@ withdrawal transactions might result in a database state reflecting
 only one transaction (i.e., the Lost Update
 phenomenon)~\cite{adya-isolation,hat-vldb}. To support these
 anomalies, many database designs have proposed the use of
-\textit{abstract data types}, providing merge functions for a variety
-of uses such as counters, sets, and
+\textit{abstract data types} (ADTs), providing merge functions for a
+variety of uses such as counters, sets, and
 maps~\cite{crdt,atomictransactions,weihl-thesis,blooml} that ensure
 that all operations are reflected in converged database state. For
-example, a simple op-based ``CRDT'' counter~\cite{crdt} might be built
-from a single integer that is incremented for each corresponding
-user-level \texttt{increment} operation.
+example, a simple counter ADT can be built from a single integer that
+is incremented for each corresponding user-level \texttt{increment}
+operation~\cite{crdt}.
 
 \iconfluence is applicable to these data types as well. For example,
 it is easy to see that a row-level \texttt{>} threshold invariant is
@@ -154,10 +159,10 @@ relational constraints like materialized view maintenance (e.g., the
 the \texttt{employee} table). Importantly, while many implementations
 of these data types provide useful properties like convergence without
 compromising availability~\cite{blooml,crdt}, they do \textit{not}
-guarantee that invariants are not violated. The prior CRDT counter
+guarantee that invariants are not violated. The prior counter
 supporting increment and decrement operations will guarantee that all
-operation invocations are reflected in the final CRDT state but will
-not guarantee (or enforce) that invariants hold.
+operation invocations are reflected in the final state but will not
+guarantee (or enforce) that invariants hold.
 
 \subsection{Discussion and Limitations}
 
@@ -171,49 +176,48 @@ automate this process via syntactic, rule-based analysis of
 declarative procedures and DDL; building a prototype analysis tool
 that identifies \iconfluence for all of the above constraints in
 addition to limited support for conditional updates required less than
-a week to build. As an alternative to our current approach, we have
-considered using automatic (and, likely, undecidable) analysis for
-arbitrary program logic. We believe this is feasible for restricted
-languages (possibly SQL as well) but, given our initial success in
-classifying a (growing) set of invariants on an as-needed basis, we
-have reserved this as future work.
+a week. As an alternative to our current approach, we have considered
+using automatic (and, likely, undecidable) analysis for arbitrary
+program logic. We believe this is feasible for restricted languages
+(possibly SQL as well) but, given our initial success in classifying a
+(growing) set of invariants on an as-needed basis, we have reserved
+this as future work.
 
 Immutable/bag semantics simplify reasoning about merge but are not
 always ideal for programmability. As many have
-noted~\cite{bayou,gray-book}, merging concurrent updates using
-destructive operators (e.g., ``last write wins'') requires care to
-avoid ``losing'' modifications (e.g., Lost Update) and/or ending up
-with logically inconsistent data (e.g., ``return \texttt{NULL}'' is a
-safe but trivial merge function that loses data). In practice, and in
-our analysis thus far, we have found abstract data types to be a
-useful workaround for avoiding anomalies due to non-bag merge
-semantics. \iconfluence analysis adds application-level semantics
-(safety) to the process of merging (liveness) and can be viewed as a
-tool that decides when it is indeed safe to perform ``optimistic''
-replication and merge~\cite{optimistic}. However, unlike ``tentative
-update'' programming models, successful (i.e., committed) updates will
-not be rolled back.
+noted~\cite{bayou,tamer-book,dynamo}, merging concurrent updates using
+destructive operators (e.g., ``last write wins,'' as in our Lost
+Update example above) requires care to avoid logically inconsistent
+data (e.g., ``return \texttt{NULL}'' is a safe but trivial merge
+function that loses data). In practice, and in our analysis thus far,
+we have found ADTs to be a useful workaround for avoiding anomalies
+due to non-bag merge semantics. While we use these ADTs for merge,
+\iconfluence analysis adds application-level semantics (safety) and
+can be viewed as a tool for deciding when ``optimistic'' replication
+and merge is safe~\cite{optimistic}. Unlike ``tentative update''
+programming models, successful (i.e., committed) updates will not be
+rolled back.
 
-Our proposed invariants are declarative, but a class of useful
-semantics---recency guarantees---are operational. Users often wish to
-read data that is up-to-date as of a given point in time (e.g., ``read
-latest''~\cite{pnuts}). While serializability and traditional
-isolation models do not directly address these recency
+Finally, our proposed invariants are declarative, but a class of
+useful semantics---recency guarantees---are operational. Users often
+wish to read data that is up-to-date as of a given point in time
+(e.g., ``read latest''~\cite{pnuts}). While serializability and
+traditional isolation models do not directly address these recency
 guarantees~\cite{adya-isolation}, they are often important to
 programmers. We can possibly simulate recency guarantees in
 \iconfluence analysis by logging the result of all reads with a
 timestamp and requiring that the logged timestamps obey their recency
-guarantees, but it is known that these guarantees are unachievable
-with transactional availability~\cite{hat-vldb}. If users wish to
-``read their writes'' (i.e., ``session'' guarantees~\cite{bayou}),
-they can do so by maintaining affinity or
+guarantees, but it is already known that these guarantees are
+unachievable with transactional availability~\cite{hat-vldb}. If users
+wish to ``read their writes'' (i.e., ``session''
+guarantees~\cite{bayou}), they can do so by maintaining affinity or
 ``stickiness''~\cite{hat-vldb,vogels-defs} with a given set of
 replicas, while ``bounded staleness'' guarantees for reads are
 achievable with multi-versioning or read
 replicas~\cite{pnuts}. Otherwise, linearizable
 semantics~\cite{spanner} will require coordination. Indeed, when
-``consistency'' means ``recency,'' systems cannot circumvent speed-of-light
-delays.
+application ''consistency'' means ``recency,'' systems cannot
+circumvent speed-of-light delays.
 
 % understanding the limits -- merges, recency, escrow, immutability
 

@@ -10,16 +10,17 @@ often, distribution~\cite{bernstein-book}. Core to the utility of a
 database system is its ability to maintain application data that is
 \textit{consistent}---that is, data that is well-formed according to
 application semantics~\cite{gray-virtues}. By entrusting databases
-with their data, applications are freed from the requirement to
-manually manage this correctness. Maintaining consistency inherently
-requires reasoning about and often controlling concurrent access to
-data: in this section, we discuss this trade-off and describe classic,
-conservative approaches to maintaining consistency.
+with their data, applications are freed from the requirement to reason
+about correctness despite concurrency. Maintaining consistency
+inherently requires reasoning about and often controlling concurrent
+access to data: in this section, we discuss this trade-off and
+describe classic, conservative approaches to maintaining consistency
+and motivate an alternative approach.
 
-\minihead{A simple example} As a motivating example we will revisit
-throughout this paper, consider a simple payroll application managing
-information about employees and departments. We will focus on three
-specific features of the application:
+\minihead{A simple example} As an example we will revisit throughout
+this paper, consider a simple payroll application managing information
+about employees and departments. We will focus on three specific
+features of the application:
 \begin{myitemize}
 \item\textbf{Employee IDs:} Employees are assigned ID numbers that
   should be unique with respect to all other assigned IDs (i.e., a
@@ -52,22 +53,22 @@ correct transaction processing require synchronous coordination?
 
 \minihead{Transactions and Isolation} The ACID transaction concept
 pioneered by Jim Gray and System R relieves programmers of the
-requirement to explicitly specify their consistency constraints by
-encouraging the use of serializable
-transactions~\cite{gray-virtues}. Under serialiable isolation, the
-execution of a set of transactions is equivalent to some serial
-ordering among them~\cite{bernstein-book}. As long as each transaction
-leaves the database in a consistent state, serializable transactions
-ensure database consistency. Accordingly, traditional database systems
-treat isolation between concurrently executing transactions as a
+requirement to explicitly reason about consistency by encouraging the
+use of serializable transactions~\cite{gray-virtues}. Under
+serialiable isolation, the execution of a set of transactions is
+equivalent to some serial ordering among
+them~\cite{bernstein-book}. As long as each transaction leaves the
+database in a consistent state, serializable transactions ensure
+database consistency. Accordingly, traditional database systems treat
+isolation between concurrently executing transactions as a
 \textit{means} towards achieving application consistency. Serializable
 transactions are a \textit{sufficient} mechanism for ensuring
 consistency but are not always \textit{necessary}: as a classic
 example due to Lamport in
 1976~\cite{lamport-audit,schneider-concurrent}, an ``audit''
 transaction that monitors bank accounts for embezzlement does not need
-to observe serializable state as long as account balances reflect
-deposits and transfers.
+to observe serializable state as long as account balances reflect all
+visible deposits and transfers.
 
 % problem: serializability is actually pretty expensive; seen shift
 % away from them
@@ -91,7 +92,7 @@ faces unavailability in the presence of network partitions and partial
 failures, and, during normal operation, incurs higher latency due to
 communication delays~\cite{hat-vldb} and, possibly, resource
 contention, unstable queuing effects~\cite{ladis}, deadlocks, and
-spurious aborts~\cite{bernstein-book,gray-book,gray-virtues}.
+spurious aborts~\cite{bernstein-book,gray-virtues}.
 
 % cost of coordination? unavailability, latency, stalls : focus on
 % worst-case behavior yields average-case benefits
@@ -112,21 +113,21 @@ scale-out system, even for single-record operations.
 % spectrum of models; actually infinitely many of them
 % not necessarily even easy to program
 
-\minihead{Alternative models} Given the costs of coordination, many
-database designs and systems operators opt for weaker isolation models
-that offer higher performance, lower latency, and fewer aborts. On a
-single-node database, weaker models include Read Committed and
-Repeatable Read isolation~\cite{adya-isolation}, while modern
-distributed databases offer a range of isolation models such as
-eventual consistency and regular register
-semantics~\cite{hat-vldb}.\footnote{To prevent confusion, we will
-  refer to distributed systems consistency models such as
-  linearizability as \textit{isolation models} and reserve the use of
-  \textit{consistency} for referring to application-level ``ACID''
-  consistency.}  Not all weaker models are \cfree (e.g., Snapshot
-Isolation)~\cite{hat-vldb}, but all expose end users to isolation
-\textit{anomalies}, or behavior that could not have arisen in a serial
-execution.
+\minihead{Alternative models} Given the costs of coordination (and, by
+association, serializability), many database designs and systems
+operators opt for weaker isolation models that offer higher
+performance, lower latency, and fewer aborts. On a single-node
+database, weaker models include Read Committed and Repeatable Read
+isolation~\cite{adya-isolation}, while modern distributed databases
+offer a range of isolation models such as eventual consistency and
+regular register semantics~\cite{hat-vldb}.\footnote{To prevent
+  confusion, we will refer to distributed systems consistency models
+  such as linearizability as \textit{isolation models} and reserve the
+  use of \textit{consistency} for referring to application-level
+  ``ACID'' consistency.}  Not all weaker models are \cfree (e.g.,
+Snapshot Isolation)~\cite{hat-vldb}, but all expose end users to
+isolation \textit{anomalies}, or behavior that could not have arisen
+in a serial execution.
 
 Unfortunately, determining whether weak isolation (and, moreover,
 which isolation model) is safe for a given application is
@@ -156,9 +157,9 @@ guarantees---one model does not fit all.
 % evidence for mixed models: polyglot persistence, adding support for
 % CAS, basis for lock manager, etc.
 
-\minihead{Correctness without coordination} We desire an alternative
-that manages the trade-off between coordination and correctness while
-reducing the tension between programmability and
+\minihead{Correctness without coordination} In this paper, we develop
+an alternative that manages the trade-off between coordination and
+correctness while reducing the tension between programmability and
 performance. Applications should ideally execute with as little
 coordination as possible, but non-serializable isolation anomalies can
 and will result in inconsistency for arbitrary applications. We must

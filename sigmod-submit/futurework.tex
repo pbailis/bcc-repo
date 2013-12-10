@@ -16,17 +16,17 @@ locking~\cite{gray-virtues} and pre-scheduling~\cite{calvin} are also
 possible. The optimal strategy---as is standard in concurrency
 control---is workload-dependent, hinting at an opportunity for
 physical ``query planning'' in light of coordination-avoidance. For
-example, in a producer-consumer scenario with an exactly-once
-consumption invariant, there are multiple strategies for coordination:
-all producers could coordinate, or all consumers, or a mix of the
-two. The correct choice depends on the physical location, prevalence,
-and distribution of the producing and consuming
+example, in a producer-consumer scenario with an invariant requiring
+exactly-once consumption, there are multiple strategies for
+coordination: all producers could coordinate, or all consumers, or a
+mix of the two. The correct choice depends on the physical location,
+prevalence, and distribution of the producing and consuming
 transactions. Revisiting heuristics- and statistics-based query
 planning, specifically targeting physical layout, choice of
 concurrency control, and recovery appears worthwhile. While recent
 work has used intelligent partitioning to reduce distributed
-coordination~\cite{schism}, we believe that this is only one aspect of
-a larger optimization problem.
+coordination~\cite{schism}, we see this as only one aspect of a larger
+optimization problem.
 
 \minihead{Amortizing coordination} We have analyzed conflicts on a
 per-transaction basis, but it is possible to amortize the overhead of
@@ -34,7 +34,7 @@ coordination across multiple transactions. For example, the Escrow
 transaction method~\cite{escrow} reduces coordination by allocating a
 ``share'' of non-\iconfluent operations between multiple
 processes. For example, in a bank application, a balance of $\$100$
-might be divided between $5$ servers, such that each server can
+might be divided between five servers, such that each server can
 dispense $\$20$ without requiring coordination to enforce a
 non-negative balance invariant (servers can coordinate to ``refresh''
 supply~\cite{mdcc}). This technique (and related techniques) allow
@@ -47,16 +47,15 @@ time-, versioned-, and numerical- drift-based models~\cite{yu-conit}
 is a promising area for future work.
 
 \minihead{Future system design} Given our formal grounding and early
-quantitative results, what is the appropriate system architecture for
-a coordination-avoiding database \textit{system}? Users could express
-their invariants in a high-level language like SQL and the system
-could in turn avoid and resolve conflicts without their further
-involvement. Analysis tools could automatically inform system's
-conflict resolution policies as suggested above. We believe this is
-feasible in the near-term but, in turn, raises several interesting
-design and engineering challenges: for example, as new invariants are
-added, the system must ensure that satisfiability is possible. While
-we have focused on SQL, we might also consider the use of restricted,
-\iconfluent operators (e.g., Bloom\textsuperscript{L}~\cite{blooml})
-and more data types.
+quantitative results, what is the appropriate architecture for future
+coordination-avoiding databases? Users could express their invariants
+in a high-level language like SQL and the system could in turn avoid
+and resolve conflicts without their further involvement. Analysis
+tools could automatically inform system's conflict resolution policies
+as suggested above. We believe this is feasible in the near-term but,
+in turn, raises several interesting design and engineering challenges:
+for example, as new invariants are added, the system must ensure that
+satisfiability is possible. While we have focused on SQL, we might
+also consider the use of restricted, \iconfluent operators (e.g.,
+Bloom\textsuperscript{L}~\cite{blooml}) and more data types.
 
